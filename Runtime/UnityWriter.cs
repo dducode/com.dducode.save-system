@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -5,9 +6,9 @@ using UnityEngine;
 namespace SaveSystem {
 
     /// <summary>
-    /// Адаптер к классу <see cref="BinaryWriter"/> для упрощения записи данных
+    /// Adapter to class <see cref="BinaryWriter"/> for simplify writing data
     /// </summary>
-    public class UnityWriter {
+    public class UnityWriter : IDisposable {
 
         private readonly BinaryWriter m_writer;
 
@@ -101,6 +102,11 @@ namespace SaveSystem {
 
         public void Write (bool value) {
             m_writer.Write(value);
+        }
+
+
+        public void Dispose () {
+            m_writer?.Dispose();
         }
 
     }

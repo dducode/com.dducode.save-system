@@ -1,4 +1,3 @@
-using System;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -19,9 +18,9 @@ namespace SaveSystem.Tests.Editor {
                 color = Color.cyan
             };
 
-            DataManager.SaveObjects(FILE_NAME, firstObject);
+            DataManager.SaveObject(FILE_NAME, firstObject);
             var secondObject = new BinaryObject();
-            DataManager.LoadObjects(FILE_NAME, secondObject);
+            DataManager.LoadObject(FILE_NAME, secondObject);
             Assertion(firstObject, secondObject);
             var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
@@ -37,9 +36,9 @@ namespace SaveSystem.Tests.Editor {
                 color = Color.green
             };
 
-            DataManager.SaveObjects(FILE_NAME, firstObject);
+            DataManager.SaveObject(FILE_NAME, firstObject);
             var secondObject = new JsonObject();
-            DataManager.LoadObjects(FILE_NAME, secondObject);
+            DataManager.LoadObject(FILE_NAME, secondObject);
             Assertion(firstObject, secondObject);
             var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });

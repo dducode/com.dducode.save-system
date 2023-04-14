@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -5,9 +6,9 @@ using UnityEngine;
 namespace SaveSystem {
 
     /// <summary>
-    /// Адаптер к классу <see cref="BinaryReader"/> для упрощения чтения данных
+    /// Adapter to class <see cref="BinaryReader"/> for simplify reading data
     /// </summary>
-    public class UnityReader {
+    public class UnityReader : IDisposable {
 
         private readonly BinaryReader m_reader;
 
@@ -115,6 +116,11 @@ namespace SaveSystem {
 
         public bool ReadBool () {
             return m_reader.ReadBoolean();
+        }
+
+
+        public void Dispose () {
+            m_reader?.Dispose();
         }
 
     }
