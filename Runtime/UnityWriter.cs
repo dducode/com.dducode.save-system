@@ -49,14 +49,14 @@ namespace SaveSystem {
         public void Write<T> (List<T> list) {
             m_writer.Write(list.Count);
             foreach (var obj in list)
-                m_writer.Write(JsonUtility.ToJson(obj));
+                Write(obj);
         }
 
 
         public void Write<T> (T[] array) {
             m_writer.Write(array.Length);
             foreach (var obj in array)
-                m_writer.Write(JsonUtility.ToJson(obj));
+                Write(obj);
         }
 
 

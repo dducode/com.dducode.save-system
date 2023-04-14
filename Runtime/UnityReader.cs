@@ -57,7 +57,7 @@ namespace SaveSystem {
             var list = new List<T>(count);
 
             for (var i = 0; i < count; i++)
-                list.Add(JsonUtility.FromJson<T>(m_reader.ReadString()));
+                list.Add(ReadObject<T>());
 
             return list;
         }
@@ -68,7 +68,7 @@ namespace SaveSystem {
             var array = new T[length];
 
             for (var i = 0; i < length; i++)
-                array[i] = JsonUtility.FromJson<T>(m_reader.ReadString());
+                array[i] = ReadObject<T>();
 
             return array;
         }
