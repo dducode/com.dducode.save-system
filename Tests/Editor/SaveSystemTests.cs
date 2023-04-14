@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -22,7 +23,11 @@ namespace SaveSystem.Tests.Editor {
             var secondObject = new BinaryObject();
             DataManager.LoadObject(FILE_NAME, secondObject);
             Assertion(firstObject, secondObject);
-            var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+
+            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
+            method?.Invoke(null, new object[] { });
+
+            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
         }
 
@@ -40,7 +45,35 @@ namespace SaveSystem.Tests.Editor {
             var secondObject = new JsonObject();
             DataManager.LoadObject(FILE_NAME, secondObject);
             Assertion(firstObject, secondObject);
-            var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+
+            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
+            method?.Invoke(null, new object[] { });
+
+            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+            method?.Invoke(null, new object[] { });
+        }
+
+
+        [Test]
+        public void DataSizeTest () {
+            var objectList = new List<BinaryObject>();
+
+            for (var i = 0; i < 100_000; i++) {
+                var binaryObject = new BinaryObject {
+                    name = "Binary Object",
+                    position = new Vector3(10, 0, 15),
+                    rotation = new Quaternion(100, 5, 14, 0),
+                    color = Color.cyan
+                };
+                objectList.Add(binaryObject);
+            }
+            
+            DataManager.SaveObjects(FILE_NAME, objectList);
+
+            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
+            method?.Invoke(null, new object[] { });
+
+            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
         }
 

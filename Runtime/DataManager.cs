@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -104,6 +105,32 @@ namespace SaveSystem {
                 File.Delete(filePath);
 
             Debug.Log("Data deleted successfully");
+        }
+
+
+        [MenuItem("Data Manager/Get Data Size")]
+        private static void GetDataSize () {
+            var data = Directory.GetFiles(Application.persistentDataPath);
+            var dataSize = 0L;
+
+            foreach (var filePath in data)
+                dataSize += new FileInfo(filePath).Length;
+
+            const string message = "Size of data: ";
+
+            switch (dataSize) {
+                case > 1024 * 1024:
+                    var size = Math.Round(dataSize / 1024d / 1024d, 2);
+                    Debug.Log($"{message}{size} MByte");
+                    break;
+                case > 1024:
+                    size = Math.Round(dataSize / 1024d, 2);
+                    Debug.Log($"{message}{size} KByte");
+                    break;
+                default:
+                    Debug.Log($"{message}{dataSize} Byte");
+                    break;
+            }
         }
 
 
