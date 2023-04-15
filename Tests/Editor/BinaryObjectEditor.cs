@@ -2,7 +2,7 @@
 
 namespace SaveSystem.Tests.Editor {
 
-    public class BinaryObject : TestObject {
+    public class BinaryObjectEditor : TestObjectEditor {
 
         public override void Save (UnityWriter writer) {
             writer.Write(name);
@@ -14,7 +14,7 @@ namespace SaveSystem.Tests.Editor {
 
         public override void Load (UnityReader reader) {
             name = reader.ReadString();
-            position = reader.ReadPosition();
+            position = reader.ReadVector3();
             rotation = reader.ReadRotation();
             color = reader.ReadColor();
         }

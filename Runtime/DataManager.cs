@@ -81,7 +81,7 @@ namespace SaveSystem {
 
         private static UnityWriter GetUnityWriter (string fileName) {
             var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
-            var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.OpenOrCreate));
+            var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.Create));
             return new UnityWriter(binaryWriter);
         }
 
@@ -119,16 +119,20 @@ namespace SaveSystem {
             const string message = "Size of data: ";
 
             switch (dataSize) {
-                case > 1024 * 1024:
-                    var size = Math.Round(dataSize / 1024d / 1024d, 2);
-                    Debug.Log($"{message}{size} MByte");
+                case > 1_000_000_000:
+                    var size = Math.Round(dataSize / Math.Pow(1024d, 3), 2);
+                    Debug.Log($"{message}{size} GBytes");
                     break;
-                case > 1024:
+                case > 1_000_000:
+                    size = Math.Round(dataSize / Math.Pow(1024d, 2), 2);
+                    Debug.Log($"{message}{size} MBytes");
+                    break;
+                case > 1_000:
                     size = Math.Round(dataSize / 1024d, 2);
-                    Debug.Log($"{message}{size} KByte");
+                    Debug.Log($"{message}{size} KBytes");
                     break;
                 default:
-                    Debug.Log($"{message}{dataSize} Byte");
+                    Debug.Log($"{message}{dataSize} Bytes");
                     break;
             }
         }

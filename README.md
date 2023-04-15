@@ -58,11 +58,12 @@ public class YourClass : IPersistentObject {
 }
 ````
 
-You must reading data in the same order 
-as you writing their. 
+> [!NOTE]
+> You must reading data in the same order
+> as you writing their.
 
-Also you can writing and reading data such as 
-Vector3, Quaternion, Color and your custom 
+Also you can writing and reading data such as
+Vector3, Quaternion, Color and your custom
 classes and structs
 
 ````csharp
@@ -88,10 +89,6 @@ public void Load (UnityReader reader) {
 }
 ````
 
-For writing and reading your classes should not be
-inherited from MonoBehaviour, because MonoBehaviour
-classes can't be created from constructor.
-
 For saving your objects usually you will write
 
 ````csharp
@@ -112,9 +109,55 @@ LoadObject method returns true when he loading your
 object successfully. If save file doesn't exists,
 method will has return false.
 
+### MonoBehaviour classes
+
+For writing and reading classes which inherits from
+MonoBehaviour you can move your prefabs with
+this classes in Resources folder, then write this
+
+````csharp
+writer.Write(prefabPath, monoObject);
+````
+
+Where "prefabPath" is path to your prefab without
+file format (ex. "Prefabs/MyObjects/MonoObject",
+where Prefabs folder contained in Resources folder).
+
+To reading your mono object you will write
+
+````csharp
+monoObject = reader.ReadMonoBehaviour<MonoObject>();
+````
+
+Where MonoObject inherits from MonoBehaviour
+
+Also you can writing and reading lists and arrays
+of mono objects
+
+````csharp
+public void Save (UnityWriter writer) {
+    writer.Write(prefabPath, monoList);
+    writer.Write(prefabPath, monoArray);
+}
+
+
+public void Load (UnityReader reader) {
+    monoList = reader.ReadListMonoBehaviours<MonoObject>();
+    monoArray = reader.ReadArrayMonoBehaviours<MonoObject>();
+}
+````
+
+### Other
+
 In unity editor there is button for remove data
 
 ![](docs~/Screenshot_7.png)
 
 It active only when data is exist. After you remove
-data, this button will have disabled
+data, this button will have disabled.
+
+Also Data Manager menu contains Get Data Size
+button. It writing size of your data files in debug
+console
+
+![](docs~/Screenshot_8.png)

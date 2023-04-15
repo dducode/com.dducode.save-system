@@ -18,10 +18,24 @@ namespace SaveSystem {
         }
 
 
-        public void Write (Vector3 position) {
-            m_writer.Write(position.x);
-            m_writer.Write(position.y);
-            m_writer.Write(position.z);
+        public void Write (Vector2 vector2) {
+            m_writer.Write(vector2.x);
+            m_writer.Write(vector2.y);
+        }
+
+
+        public void Write (Vector3 vector3) {
+            m_writer.Write(vector3.x);
+            m_writer.Write(vector3.y);
+            m_writer.Write(vector3.z);
+        }
+
+
+        public void Write (Vector4 vector4) {
+            m_writer.Write(vector4.x);
+            m_writer.Write(vector4.y);
+            m_writer.Write(vector4.z);
+            m_writer.Write(vector4.w);
         }
 
 
@@ -41,22 +55,65 @@ namespace SaveSystem {
         }
 
 
+        public void Write (Color32 color32) {
+            m_writer.Write(color32.r);
+            m_writer.Write(color32.g);
+            m_writer.Write(color32.b);
+            m_writer.Write(color32.a);
+        }
+
+
+        public void Write (Matrix4x4 matrix) {
+            for (var i = 0; i < 16; i++)
+                m_writer.Write(matrix[i]);
+        }
+
+
         public void Write<T> (T obj) {
             m_writer.Write(JsonUtility.ToJson(obj));
         }
 
 
-        public void Write<T> (List<T> list) {
-            m_writer.Write(list.Count);
-            foreach (var obj in list)
+        public void Write<T> (string prefabPath, T monoBehaviour) where T : MonoBehaviour {
+            if (monoBehaviour.transform.parent is not null) {
+                const string message = "MonoBehaviour for writing must be root in hierarchy";
+                throw new NotRootObjectException(message);
+            }
+
+            m_writer.Write(prefabPath);
+            m_writer.Write(monoBehaviour.name);
+            m_writer.Write(monoBehaviour.enabled);
+            m_writer.Write(monoBehaviour.transform.GetSiblingIndex());
+            Write(monoBehaviour.transform.position);
+            Write(monoBehaviour.transform.rotation);
+        }
+
+
+        public void Write<T> (List<T> listObjects) {
+            m_writer.Write(listObjects.Count);
+            foreach (var obj in listObjects)
                 Write(obj);
         }
 
 
-        public void Write<T> (T[] array) {
-            m_writer.Write(array.Length);
-            foreach (var obj in array)
+        public void Write<T> (string prefabPath, List<T> listMonoBehaviours) where T : MonoBehaviour {
+            m_writer.Write(listMonoBehaviours.Count);
+            foreach (var monoBehaviour in listMonoBehaviours)
+                Write(prefabPath, monoBehaviour);
+        }
+
+
+        public void Write<T> (T[] arrayObjects) {
+            m_writer.Write(arrayObjects.Length);
+            foreach (var obj in arrayObjects)
                 Write(obj);
+        }
+
+
+        public void Write<T> (string prefabPath, T[] arrayMonoBehaviours) where T : MonoBehaviour {
+            m_writer.Write(arrayMonoBehaviours.Length);
+            foreach (var monoBehaviour in arrayMonoBehaviours)
+                Write(prefabPath, monoBehaviour);
         }
 
 

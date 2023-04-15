@@ -2,7 +2,7 @@
 
 namespace SaveSystem.Tests.Editor {
 
-    public class JsonObject : TestObject {
+    public class JsonObjectEditor : TestObjectEditor {
 
         public override void Save (UnityWriter writer) {
             writer.Write(this);
@@ -10,7 +10,7 @@ namespace SaveSystem.Tests.Editor {
 
 
         public override void Load (UnityReader reader) {
-            var thisObject = reader.ReadObject<JsonObject>();
+            var thisObject = reader.ReadObject<JsonObjectEditor>();
             name = thisObject.name;
             position = thisObject.position;
             rotation = thisObject.rotation;
