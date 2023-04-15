@@ -81,7 +81,7 @@ namespace SaveSystem {
 
         private static UnityWriter GetUnityWriter (string fileName) {
             var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
-            var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.OpenOrCreate));
+            var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.Create));
             return new UnityWriter(binaryWriter);
         }
 

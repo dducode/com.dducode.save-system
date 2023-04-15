@@ -18,11 +18,29 @@ namespace SaveSystem {
         }
 
 
-        public Vector3 ReadPosition () {
+        public Vector2 ReadVector2 () {
+            return new Vector2 {
+                x = m_reader.ReadSingle(),
+                y = m_reader.ReadSingle()
+            };
+        }
+
+
+        public Vector3 ReadVector3 () {
             return new Vector3 {
                 x = m_reader.ReadSingle(),
                 y = m_reader.ReadSingle(),
                 z = m_reader.ReadSingle()
+            };
+        }
+
+
+        public Vector4 ReadVector4 () {
+            return new Vector4 {
+                x = m_reader.ReadSingle(),
+                y = m_reader.ReadSingle(),
+                z = m_reader.ReadSingle(),
+                w = m_reader.ReadSingle()
             };
         }
 
@@ -47,33 +65,86 @@ namespace SaveSystem {
         }
 
 
+        public Color32 ReadColor32 () {
+            return new Color32 {
+                r = m_reader.ReadByte(),
+                g = m_reader.ReadByte(),
+                b = m_reader.ReadByte(),
+                a = m_reader.ReadByte()
+            };
+        }
+
+
+        public Matrix4x4 ReadMatrix () {
+            var matrix = new Matrix4x4();
+            for (var i = 0; i < 16; i++)
+                matrix[i] = m_reader.ReadSingle();
+            return matrix;
+        }
+
+
         public T ReadObject<T> () {
             return JsonUtility.FromJson<T>(m_reader.ReadString());
         }
 
 
+        public T ReadMonoBehaviour<T> () where T : MonoBehaviour {
+            var localPath = m_reader.ReadString();
+            var mono = Resources.Load<T>(localPath);
+            mono.name = m_reader.ReadString();
+            mono.enabled = m_reader.ReadBoolean();
+            mono.transform.SetSiblingIndex(m_reader.ReadInt32());
+            mono.transform.position = ReadVector3();
+            mono.transform.rotation = ReadRotation();
+
+            return mono;
+        }
+
+
         public List<T> ReadListObjects<T> () {
             var count = m_reader.ReadInt32();
-            var list = new List<T>(count);
+            var listObjects = new List<T>(count);
 
             for (var i = 0; i < count; i++)
-                list.Add(ReadObject<T>());
+                listObjects.Add(ReadObject<T>());
 
-            return list;
+            return listObjects;
+        }
+
+
+        public List<T> ReadListMonoBehaviours<T> () where T : MonoBehaviour {
+            var count = m_reader.ReadInt32();
+            var listMonoBehaviours = new List<T>(count);
+            
+            for (var i = 0; i < count; i++)
+                listMonoBehaviours.Add(ReadMonoBehaviour<T>());
+
+            return listMonoBehaviours;
         }
 
 
         public T[] ReadArrayObjects<T> () {
             var length = m_reader.ReadInt32();
-            var array = new T[length];
+            var arrayObjects = new T[length];
 
             for (var i = 0; i < length; i++)
-                array[i] = ReadObject<T>();
+                arrayObjects[i] = ReadObject<T>();
 
-            return array;
+            return arrayObjects;
         }
 
 
+        public T[] ReadArrayMonoBehaviours<T> () where T : MonoBehaviour {
+            var length = m_reader.ReadInt32();
+            var arrayMonoBehaviours = new T[length];
+
+            for (var i = 0; i < length; i++)
+                arrayMonoBehaviours[i] = ReadMonoBehaviour<T>();
+
+            return arrayMonoBehaviours;
+        }
+        
+        
         public byte ReadByte () {
             return m_reader.ReadByte();
         }
