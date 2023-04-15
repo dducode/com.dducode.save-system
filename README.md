@@ -106,7 +106,7 @@ if (DataManager.LoadObject(fileName, this)) {
 
 LoadObject method returns true when he loading your
 object successfully. If save file doesn't exists,
-method will has return false.
+method will have returned false.
 
 ### MonoBehaviour classes
 
@@ -145,6 +145,11 @@ public void Load (UnityReader reader) {
     monoArray = reader.ReadArrayMonoBehaviours<MonoObject>();
 }
 ````
+
+> You can writing MonoBehaviour classes only if they 
+> attached to root game object. If you try to write
+> children object, UnityWriter will have thrown 
+> exception
 
 ### Other
 
