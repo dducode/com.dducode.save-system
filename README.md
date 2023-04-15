@@ -58,7 +58,6 @@ public class YourClass : IPersistentObject {
 }
 ````
 
-> [!NOTE]
 > You must reading data in the same order
 > as you writing their.
 
