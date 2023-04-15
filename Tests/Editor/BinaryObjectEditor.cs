@@ -2,7 +2,7 @@
 
 namespace SaveSystem.Tests.Editor {
 
-    public class BinaryObject : TestObject {
+    public class BinaryObjectEditor : TestObjectEditor {
 
         public override void Save (UnityWriter writer) {
             writer.Write(name);

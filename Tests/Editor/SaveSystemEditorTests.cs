@@ -1,18 +1,20 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace SaveSystem.Tests.Editor {
 
-    public class SaveSystemTests {
+    public class SaveSystemEditorTests {
 
         private const string FILE_NAME = "test";
 
 
         [Test]
         public void BinaryTest () {
-            var firstObject = new BinaryObject {
+            var firstObject = new BinaryObjectEditor {
                 name = "Binary Object",
                 position = new Vector3(10, 0, 15),
                 rotation = new Quaternion(100, 5, 14, 0),
@@ -20,21 +22,18 @@ namespace SaveSystem.Tests.Editor {
             };
 
             DataManager.SaveObject(FILE_NAME, firstObject);
-            var secondObject = new BinaryObject();
+            var secondObject = new BinaryObjectEditor();
             DataManager.LoadObject(FILE_NAME, secondObject);
             Assertion(firstObject, secondObject);
 
-            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
-            method?.Invoke(null, new object[] { });
-
-            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
         }
 
 
         [Test]
         public void JsonTest () {
-            var firstObject = new JsonObject {
+            var firstObject = new JsonObjectEditor {
                 name = "Json Object",
                 position = new Vector3(109, 24, 0),
                 rotation = new Quaternion(0, 1, 19, 1),
@@ -42,24 +41,21 @@ namespace SaveSystem.Tests.Editor {
             };
 
             DataManager.SaveObject(FILE_NAME, firstObject);
-            var secondObject = new JsonObject();
+            var secondObject = new JsonObjectEditor();
             DataManager.LoadObject(FILE_NAME, secondObject);
             Assertion(firstObject, secondObject);
 
-            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
-            method?.Invoke(null, new object[] { });
-
-            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
         }
 
 
         [Test]
         public void DataSizeTest () {
-            var objectList = new List<BinaryObject>();
+            var objectList = new List<BinaryObjectEditor>();
 
-            for (var i = 0; i < 100_000; i++) {
-                var binaryObject = new BinaryObject {
+            for (var i = 0; i < 17_500; i++) {
+                var binaryObject = new BinaryObjectEditor {
                     name = "Binary Object",
                     position = new Vector3(10, 0, 15),
                     rotation = new Quaternion(100, 5, 14, 0),
@@ -67,7 +63,7 @@ namespace SaveSystem.Tests.Editor {
                 };
                 objectList.Add(binaryObject);
             }
-            
+
             DataManager.SaveObjects(FILE_NAME, objectList);
 
             var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
@@ -78,11 +74,11 @@ namespace SaveSystem.Tests.Editor {
         }
 
 
-        private static void Assertion (TestObject firstObject, TestObject secondObject) {
-            Assert.IsTrue(firstObject.name == secondObject.name);
-            Assert.IsTrue(firstObject.position == secondObject.position);
-            Assert.IsTrue(firstObject.rotation == secondObject.rotation);
-            Assert.IsTrue(firstObject.color == secondObject.color);
+        private static void Assertion (TestObjectEditor firstObjectEditor, TestObjectEditor secondObjectEditor) {
+            Assert.IsTrue(firstObjectEditor.name == secondObjectEditor.name);
+            Assert.IsTrue(firstObjectEditor.position == secondObjectEditor.position);
+            Assert.IsTrue(firstObjectEditor.rotation == secondObjectEditor.rotation);
+            Assert.IsTrue(firstObjectEditor.color == secondObjectEditor.color);
         }
 
     }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace SaveSystem {
 
@@ -90,7 +91,7 @@ namespace SaveSystem {
 
         public T ReadMonoBehaviour<T> () where T : MonoBehaviour {
             var localPath = m_reader.ReadString();
-            var mono = Resources.Load<T>(localPath);
+            var mono = Object.Instantiate(Resources.Load<T>(localPath));
             mono.name = m_reader.ReadString();
             mono.enabled = m_reader.ReadBoolean();
             mono.transform.SetSiblingIndex(m_reader.ReadInt32());
