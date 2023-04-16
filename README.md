@@ -28,9 +28,9 @@
 
 ## How to use
 
-[DataManager](Runtime/DataManager.cs) is main class
-for managing data. For saving and loading your
-objects, its must implements
+[DataManager](Runtime/DataManager.cs) is the main class
+for managing data. To save and load your
+objects, they must implement the
 [IPersistentObject](Runtime/IPersistentObject.cs.meta)
 interface.
 
@@ -58,10 +58,9 @@ public class YourClass : IPersistentObject {
 }
 ````
 
-> You must reading data in the same order
-> as you writing their.
+> You must read data in the same order as you write it.
 
-Also you can writing and reading data such as
+Also you can write and read data such as
 Vector3, Quaternion, Color and your custom
 classes and structs
 
@@ -88,7 +87,13 @@ public void Load (UnityReader reader) {
 }
 ````
 
-For saving your objects usually you will write
+Your classes should not inherits from MonoBehaviour because
+MonoBehaviour classes cannot be created from a constructor.
+Instead, implement the IPersistentObject interface on them
+and save them using the SaveObject method. Same
+for loading
+
+To save your objects usually you would write
 
 ````csharp
 DataManager.SaveObject(fileName, this);
@@ -96,7 +101,7 @@ DataManager.SaveObject(fileName, this);
 DataManager.SaveObjects(fileName, new IPersistentObject[] {this, otherObject});
 ````
 
-For loading you can writing
+To load you can write
 
 ````csharp
 if (DataManager.LoadObject(fileName, this)) {
@@ -104,52 +109,9 @@ if (DataManager.LoadObject(fileName, this)) {
 }
 ````
 
-LoadObject method returns true when he loading your
-object successfully. If save file doesn't exists,
-method will have returned false.
-
-### MonoBehaviour classes
-
-For writing and reading classes which inherits from
-MonoBehaviour you can move your prefabs with
-this classes in Resources folder, then write this
-
-````csharp
-writer.Write(prefabPath, monoObject);
-````
-
-Where "prefabPath" is path to your prefab without
-file format (ex. "Prefabs/MyObjects/MonoObject",
-where Prefabs folder contained in Resources folder).
-
-To reading your mono object you will write
-
-````csharp
-monoObject = reader.ReadMonoBehaviour<MonoObject>();
-````
-
-Where MonoObject inherits from MonoBehaviour
-
-Also you can writing and reading lists and arrays
-of mono objects
-
-````csharp
-public void Save (UnityWriter writer) {
-    writer.Write(prefabPath, monoList);
-    writer.Write(prefabPath, monoArray);
-}
-
-
-public void Load (UnityReader reader) {
-    monoList = reader.ReadListMonoBehaviours<MonoObject>();
-    monoArray = reader.ReadArrayMonoBehaviours<MonoObject>();
-}
-````
-
-> You can writing MonoBehaviour classes only if they 
-> attached to root game object. If you try to write
-> children object, UnityWriter will have thrown 
-> exception
+LoadObject method returns true if it successfully
+loaded your object. If there is no safe file,
+the method will return false.
 
 ### Other
 
@@ -157,8 +119,8 @@ In unity editor there is button for remove data
 
 ![](docs~/Screenshot_7.png)
 
-It active only when data is exist. After you remove
-data, this button will have disabled.
+It is active only when there is data. After you remove
+the data, this button will be disabled.
 
 Also Data Manager menu contains Get Data Size
 button. It writing size of your data files in debug

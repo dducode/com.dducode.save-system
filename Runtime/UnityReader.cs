@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace SaveSystem {
 
@@ -27,12 +26,34 @@ namespace SaveSystem {
         }
 
 
+        public Vector2[] ReadVector2Array () {
+            var length = m_reader.ReadInt32();
+            var vector2Array = new Vector2[length];
+
+            for (var i = 0; i < length; i++)
+                vector2Array[i] = ReadVector2();
+
+            return vector2Array;
+        }
+
+
         public Vector3 ReadVector3 () {
             return new Vector3 {
                 x = m_reader.ReadSingle(),
                 y = m_reader.ReadSingle(),
                 z = m_reader.ReadSingle()
             };
+        }
+
+
+        public Vector3[] ReadVector3Array () {
+            var length = m_reader.ReadInt32();
+            var vector3Array = new Vector3[length];
+
+            for (var i = 0; i < length; i++)
+                vector3Array[i] = ReadVector3();
+
+            return vector3Array;
         }
 
 
@@ -43,6 +64,17 @@ namespace SaveSystem {
                 z = m_reader.ReadSingle(),
                 w = m_reader.ReadSingle()
             };
+        }
+
+
+        public Vector4[] ReadVector4Array () {
+            var length = m_reader.ReadInt32();
+            var vector4Array = new Vector4[length];
+
+            for (var i = 0; i < length; i++)
+                vector4Array[i] = ReadVector4();
+
+            return vector4Array;
         }
 
 
@@ -66,6 +98,17 @@ namespace SaveSystem {
         }
 
 
+        public Color[] ReadColors () {
+            var length = m_reader.ReadInt32();
+            var colors = new Color[length];
+
+            for (var i = 0; i < length; i++)
+                colors[i] = ReadColor();
+
+            return colors;
+        }
+
+
         public Color32 ReadColor32 () {
             return new Color32 {
                 r = m_reader.ReadByte(),
@@ -73,6 +116,17 @@ namespace SaveSystem {
                 b = m_reader.ReadByte(),
                 a = m_reader.ReadByte()
             };
+        }
+
+
+        public Color32[] ReadColors32 () {
+            var length = m_reader.ReadInt32();
+            var colors32 = new Color32[length];
+
+            for (var i = 0; i < length; i++)
+                colors32[i] = ReadColor32();
+
+            return colors32;
         }
 
 
@@ -84,25 +138,61 @@ namespace SaveSystem {
         }
 
 
+        public Matrix4x4[] ReadMatrices () {
+            var length = m_reader.ReadInt32();
+            var matrices = new Matrix4x4[length];
+
+            for (var i = 0; i < length; i++)
+                matrices[i] = ReadMatrix();
+
+            return matrices;
+        }
+
+
+        public Mesh ReadMesh () {
+            return new Mesh {
+                name = m_reader.ReadString(),
+                vertices = ReadVector3Array(),
+                uv = ReadVector2Array(),
+                uv2 = ReadVector2Array(),
+                uv3 = ReadVector2Array(),
+                uv4 = ReadVector2Array(),
+                uv5 = ReadVector2Array(),
+                uv6 = ReadVector2Array(),
+                uv7 = ReadVector2Array(),
+                uv8 = ReadVector2Array(),
+                bounds = new Bounds {
+                    center = ReadVector3(),
+                    extents = ReadVector3(),
+                    max = ReadVector3(),
+                    min = ReadVector3(),
+                    size = ReadVector3()
+                },
+                colors32 = ReadColors32(),
+                normals = ReadVector3Array(),
+                tangents = ReadVector4Array(),
+                triangles = ReadIntArray()
+            };
+        }
+
+
+        public Mesh[] ReadMeshes () {
+            var length = m_reader.ReadInt32();
+            var meshes = new Mesh[length];
+
+            for (var i = 0; i < length; i++)
+                meshes[i] = ReadMesh();
+
+            return meshes;
+        }
+
+
         public T ReadObject<T> () {
             return JsonUtility.FromJson<T>(m_reader.ReadString());
         }
 
 
-        public T ReadMonoBehaviour<T> () where T : MonoBehaviour {
-            var localPath = m_reader.ReadString();
-            var mono = Object.Instantiate(Resources.Load<T>(localPath));
-            mono.name = m_reader.ReadString();
-            mono.enabled = m_reader.ReadBoolean();
-            mono.transform.SetSiblingIndex(m_reader.ReadInt32());
-            mono.transform.position = ReadVector3();
-            mono.transform.rotation = ReadRotation();
-
-            return mono;
-        }
-
-
-        public List<T> ReadListObjects<T> () {
+        public List<T> ReadObjectsList<T> () {
             var count = m_reader.ReadInt32();
             var listObjects = new List<T>(count);
 
@@ -113,18 +203,7 @@ namespace SaveSystem {
         }
 
 
-        public List<T> ReadListMonoBehaviours<T> () where T : MonoBehaviour {
-            var count = m_reader.ReadInt32();
-            var listMonoBehaviours = new List<T>(count);
-            
-            for (var i = 0; i < count; i++)
-                listMonoBehaviours.Add(ReadMonoBehaviour<T>());
-
-            return listMonoBehaviours;
-        }
-
-
-        public T[] ReadArrayObjects<T> () {
+        public T[] ReadObjectsArray<T> () {
             var length = m_reader.ReadInt32();
             var arrayObjects = new T[length];
 
@@ -135,19 +214,19 @@ namespace SaveSystem {
         }
 
 
-        public T[] ReadArrayMonoBehaviours<T> () where T : MonoBehaviour {
-            var length = m_reader.ReadInt32();
-            var arrayMonoBehaviours = new T[length];
-
-            for (var i = 0; i < length; i++)
-                arrayMonoBehaviours[i] = ReadMonoBehaviour<T>();
-
-            return arrayMonoBehaviours;
-        }
-        
-        
         public byte ReadByte () {
             return m_reader.ReadByte();
+        }
+
+
+        public byte[] ReadBytes () {
+            var length = m_reader.ReadInt32();
+            var bytes = new byte[length];
+
+            for (var i = 0; i < length; i++)
+                bytes[i] = m_reader.ReadByte();
+
+            return bytes;
         }
 
 
@@ -156,8 +235,30 @@ namespace SaveSystem {
         }
 
 
+        public short[] ReadShorts () {
+            var length = m_reader.ReadInt32();
+            var shorts = new short[length];
+
+            for (var i = 0; i < length; i++)
+                shorts[i] = m_reader.ReadInt16();
+
+            return shorts;
+        }
+
+
         public int ReadInt () {
             return m_reader.ReadInt32();
+        }
+
+
+        public int[] ReadIntArray () {
+            var length = m_reader.ReadInt32();
+            var intArray = new int[length];
+
+            for (var i = 0; i < length; i++)
+                intArray[i] = m_reader.ReadInt32();
+
+            return intArray;
         }
 
 
@@ -166,8 +267,30 @@ namespace SaveSystem {
         }
 
 
+        public long[] ReadLongArray () {
+            var length = m_reader.ReadInt32();
+            var longArray = new long[length];
+
+            for (var i = 0; i < length; i++)
+                longArray[i] = m_reader.ReadInt64();
+
+            return longArray;
+        }
+
+
         public char ReadChar () {
             return m_reader.ReadChar();
+        }
+
+
+        public char[] ReadChars () {
+            var length = m_reader.ReadInt32();
+            var chars = new char[length];
+
+            for (var i = 0; i < length; i++)
+                chars[i] = m_reader.ReadChar();
+
+            return chars;
         }
 
 
@@ -176,13 +299,46 @@ namespace SaveSystem {
         }
 
 
+        public string[] ReadStringArray () {
+            var length = m_reader.ReadInt32();
+            var stringArray = new string[length];
+
+            for (var i = 0; i < length; i++)
+                stringArray[i] = m_reader.ReadString();
+
+            return stringArray;
+        }
+
+
         public float ReadFloat () {
             return m_reader.ReadSingle();
         }
 
 
+        public float[] ReadFloats () {
+            var length = m_reader.ReadInt32();
+            var floats = new float[length];
+
+            for (var i = 0; i < length; i++)
+                floats[i] = m_reader.ReadSingle();
+
+            return floats;
+        }
+
+
         public double ReadDouble () {
             return m_reader.ReadDouble();
+        }
+
+
+        public double[] ReadDoubles () {
+            var length = m_reader.ReadInt32();
+            var doubles = new double[length];
+
+            for (var i = 0; i < length; i++)
+                doubles[i] = m_reader.ReadInt64();
+
+            return doubles;
         }
 
 

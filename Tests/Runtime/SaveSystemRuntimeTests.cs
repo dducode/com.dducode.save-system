@@ -3,6 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using Debug = UnityEngine.Debug;
 
 
 namespace SaveSystem.Tests.Runtime {
@@ -10,6 +11,7 @@ namespace SaveSystem.Tests.Runtime {
     public class SaveSystemRuntimeTests {
 
         private const string FILE_NAME = "test";
+        private const string PREFAB_NAME = "Test Prefab";
         
         
         [SetUp]
@@ -22,35 +24,26 @@ namespace SaveSystem.Tests.Runtime {
 
 
         [UnityTest]
-        public IEnumerator MonoTest () {
+        public IEnumerator MeshTest () {
             yield return new WaitForSeconds(2);
 
-            const string localPath = "Test Prefab";
-            var testMono = Object.Instantiate(Resources.Load<TestMono>(localPath));
-            var testObject = new TestObjectRuntime {
-                testMono = testMono,
-                prefabPath = localPath
-            };
-            Debug.Log("Create new object");
+            var testMono = Object.Instantiate(Resources.Load<TestMesh>(PREFAB_NAME));
+            Debug.Log("Create object");
             yield return new WaitForSeconds(2);
 
-            var transform = testMono.transform;
-            transform.position = Random.insideUnitSphere * 5f;
-            transform.rotation = Random.rotation;
-            Debug.Log("Move and rotate object");
+            DataManager.SaveObject(FILE_NAME, testMono);
+            testMono.GetComponent<MeshFilter>().mesh = null;
+            Debug.Log("Save and remove mesh");
             yield return new WaitForSeconds(2);
 
-            DataManager.SaveObject(FILE_NAME, testObject);
-            testObject.testMono = null;
-            Object.Destroy(testMono.gameObject);
-            Debug.Log("Save object and destroy its");
-            yield return new WaitForSeconds(2);
-
-            DataManager.LoadObject(FILE_NAME, testObject);
-            Debug.Log("Load object");
+            DataManager.LoadObject(FILE_NAME, testMono);
+            Debug.Log("Load mesh");
             yield return new WaitForSeconds(2);
             
-            var method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
+            method?.Invoke(null, new object[] { });
+            
+            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
             Debug.Log("End test");
         }

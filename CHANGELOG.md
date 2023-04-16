@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0] - 2023-04-17
+
+### Added
+
+* Added write and read mesh and meshes array methods
+* Added methods for writing and reading arrays of 
+basic data types and unity structures
+
+### Changed
+
+* Removed methods for writing and reading MonoBehaviour classes.
+Use SaveObject method instead and implement the
+IPersistentObject interface in your MonoBehaviour classes
+
 ## [1.2.0] - 2023-04-15
 
 ### Added
@@ -16,9 +30,9 @@
 
 ### Fixed
 
-* Fixed problem with writing in file. UnityWriter 
-was leaving "trash" bytes in end of file if it was 
-writing less bytes than file contains
+* Fixed problem with writing data to file. UnityWriter 
+was leaving "trash" bytes at the end of the file if it wrote 
+fewer bytes than the file contains
 
 ## [1.1.1] - 2023-04-14
 
