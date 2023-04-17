@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -12,8 +14,8 @@ namespace SaveSystem.Tests.Runtime {
 
         private const string FILE_NAME = "test";
         private const string PREFAB_NAME = "Test Prefab";
-        
-        
+
+
         [SetUp]
         public void Start () {
             var camera = new GameObject();
@@ -39,13 +41,62 @@ namespace SaveSystem.Tests.Runtime {
             DataManager.LoadObject(FILE_NAME, testMono);
             Debug.Log("Load mesh");
             yield return new WaitForSeconds(2);
-            
+
             var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
-            
+
             method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
             Debug.Log("End test");
+        }
+
+
+        [UnityTest]
+        public IEnumerator AsyncTest () {
+            var testObject = new TestObjectRuntime {
+                name = "Test Object",
+                intValue = 12345,
+                boolValue = true
+            };
+
+            var objects = new List<TestObjectRuntime>();
+
+            for (var i = 0; i < 2_500; i++)
+                objects.Add(testObject);
+
+            var showing = new Showing();
+            var asyncOperation = DataManager.SaveObjectsAsync(FILE_NAME, objects.ToArray(), showing);
+
+            while (!asyncOperation.IsCompleted)
+                yield return null;
+        }
+
+
+        [UnityTest]
+        public IEnumerator CancelAsyncTest () {
+            var testObject = new TestObjectRuntime {
+                name = "Test Object",
+                intValue = 12345,
+                boolValue = true
+            };
+
+            var objects = new List<TestObjectRuntime>();
+
+            for (var i = 0; i < 2_500; i++)
+                objects.Add(testObject);
+
+            var source = new CancellationTokenSource();
+            var showing = new Showing();
+            var asyncOperation = DataManager.SaveObjectsAsync(
+                FILE_NAME, objects.ToArray(), showing, source);
+            var iterations = 0;
+
+            while (!asyncOperation.IsCompleted) {
+                iterations++;
+                if (iterations >= 1_000)
+                    source.Cancel();
+                yield return null;
+            }
         }
 
     }

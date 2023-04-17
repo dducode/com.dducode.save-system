@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -72,6 +74,115 @@ namespace SaveSystem {
             foreach (var obj in objects)
                 obj.Load(unityReader);
 
+            return true;
+        }
+
+        #endregion
+
+
+
+        #region SavingAsync
+
+        public static async Task SaveObjectsAsync<T> (string fileName, List<T> objects,
+            CancellationTokenSource source = null,
+            IProgress progress = null,
+            Action onComplete = null
+        )
+            where T : IPersistentObject {
+            await SaveObjectsAsync(fileName, objects.ToArray(), progress, source, onComplete);
+        }
+
+
+        public static async Task SaveObjectsAsync<T> (string fileName, T[] objects,
+            IProgress progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        )
+            where T : IPersistentObject {
+            if (objects.Length is 0) {
+                Debug.LogWarning("Objects for saving haven't been transferred");
+                source?.Dispose();
+                return;
+            }
+
+            using var unityWriter = GetUnityWriter(fileName);
+            var completedObjects = 0f;
+            source ??= new CancellationTokenSource();
+
+            try {
+                foreach (var obj in objects) {
+                    await Task.Run(() => obj.Save(unityWriter), source.Token);
+                    completedObjects++;
+                    progress?.Show(completedObjects / objects.Length);
+                }
+            }
+            catch {
+                unityWriter.Dispose();
+                File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
+                Debug.Log("Object saving canceled. Data file deleted");
+            }
+            finally {
+                source.Dispose();
+            }
+
+            onComplete?.Invoke();
+        }
+
+        #endregion
+
+
+
+        #region LoadingAsync
+
+        public static async Task<bool> LoadObjectsAsync<T> (string fileName, List<T> objects,
+            IProgress progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        )
+            where T : IPersistentObject {
+            return await LoadObjectsAsync(fileName, objects.ToArray(), progress, source, onComplete);
+        }
+
+
+        public static async Task<bool> LoadObjectsAsync<T> (string fileName, T[] objects,
+            IProgress progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        )
+            where T : IPersistentObject {
+            if (objects.Length is 0) {
+                Debug.LogWarning("Objects for loading haven't been transferred");
+                source?.Dispose();
+                return false;
+            }
+
+            using var unityReader = GetUnityReader(fileName);
+
+            if (unityReader is null) {
+                source?.Dispose();
+                return false;
+            }
+
+            var completedObjects = 0f;
+            source ??= new CancellationTokenSource();
+
+            try {
+                foreach (var obj in objects) {
+                    await Task.Run(() => obj.Load(unityReader), source.Token);
+                    completedObjects++;
+                    progress?.Show(completedObjects / objects.Length);
+                }
+            }
+            catch {
+                unityReader.Dispose();
+                File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
+                Debug.Log("Object loading canceled. Data file deleted");
+            }
+            finally {
+                source.Dispose();
+            }
+
+            onComplete?.Invoke();
             return true;
         }
 
