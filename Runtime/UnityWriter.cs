@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace SaveSystem {
 
@@ -31,6 +33,11 @@ namespace SaveSystem {
         }
 
 
+        public async Task WriteAsync (Vector2[] vector2Array) {
+            await Task.Run(() => { Write(vector2Array); });
+        }
+
+
         public void Write (Vector3 vector3) {
             m_writer.Write(vector3.x);
             m_writer.Write(vector3.y);
@@ -42,6 +49,11 @@ namespace SaveSystem {
             m_writer.Write(vector3Array.Length);
             foreach (var vector3 in vector3Array)
                 Write(vector3);
+        }
+
+
+        public async Task WriteAsync (Vector3[] vector3Array) {
+            await Task.Run(() => { Write(vector3Array); });
         }
 
 
@@ -57,6 +69,11 @@ namespace SaveSystem {
             m_writer.Write(vector4Array.Length);
             foreach (var vector4 in vector4Array)
                 Write(vector4);
+        }
+
+
+        public async Task WriteAsync (Vector4[] vector4Array) {
+            await Task.Run(() => { Write(vector4Array); });
         }
 
 
@@ -83,6 +100,11 @@ namespace SaveSystem {
         }
 
 
+        public async Task WriteAsync (Color[] colors) {
+            await Task.Run(() => { Write(colors); });
+        }
+
+
         public void Write (Color32 color32) {
             m_writer.Write(color32.r);
             m_writer.Write(color32.g);
@@ -95,6 +117,11 @@ namespace SaveSystem {
             m_writer.Write(colors32.Length);
             foreach (var color32 in colors32)
                 Write(color32);
+        }
+
+
+        public async Task WriteAsync (Color32[] colors32) {
+            await Task.Run(() => { Write(colors32); });
         }
 
 
@@ -111,7 +138,35 @@ namespace SaveSystem {
         }
 
 
+        public async Task WriteAsync (Matrix4x4[] matrices) {
+            await Task.Run(() => { Write(matrices); });
+        }
+
+
+
+        #region WritingMeshes
+
         public void Write (Mesh mesh) {
+            var subMeshes = new SubMeshDescriptor[mesh.subMeshCount];
+            for (var i = 0; i < subMeshes.Length; i++)
+                subMeshes[i] = mesh.GetSubMesh(i);
+
+            m_writer.Write(subMeshes.Length);
+
+            foreach (var subMesh in subMeshes) {
+                m_writer.Write(subMesh.baseVertex);
+                Write(subMesh.bounds.center);
+                Write(subMesh.bounds.extents);
+                Write(subMesh.bounds.max);
+                Write(subMesh.bounds.min);
+                Write(subMesh.bounds.size);
+                m_writer.Write(subMesh.firstVertex);
+                m_writer.Write(subMesh.indexCount);
+                m_writer.Write(subMesh.indexStart);
+                m_writer.Write((int) subMesh.topology);
+                m_writer.Write(subMesh.vertexCount);
+            }
+
             m_writer.Write(mesh.name);
             Write(mesh.vertices);
             Write(mesh.uv);
@@ -128,8 +183,59 @@ namespace SaveSystem {
             Write(mesh.bounds.min);
             Write(mesh.bounds.size);
             Write(mesh.colors32);
+            m_writer.Write((int) mesh.indexBufferTarget);
+            m_writer.Write((int) mesh.indexFormat);
+            m_writer.Write((int) mesh.vertexBufferTarget);
             Write(mesh.normals);
             Write(mesh.tangents);
+            Write(mesh.triangles);
+        }
+
+
+        public async Task WriteAsync (Mesh mesh) {
+            var subMeshes = new SubMeshDescriptor[mesh.subMeshCount];
+            for (var i = 0; i < subMeshes.Length; i++)
+                subMeshes[i] = mesh.GetSubMesh(i);
+
+            await Task.Run(() => {
+                m_writer.Write(subMeshes.Length);
+
+                foreach (var subMesh in subMeshes) {
+                    m_writer.Write(subMesh.baseVertex);
+                    Write(subMesh.bounds.center);
+                    Write(subMesh.bounds.extents);
+                    Write(subMesh.bounds.max);
+                    Write(subMesh.bounds.min);
+                    Write(subMesh.bounds.size);
+                    m_writer.Write(subMesh.firstVertex);
+                    m_writer.Write(subMesh.indexCount);
+                    m_writer.Write(subMesh.indexStart);
+                    m_writer.Write((int) subMesh.topology);
+                    m_writer.Write(subMesh.vertexCount);
+                }
+            });
+
+            m_writer.Write(mesh.name);
+            await WriteAsync(mesh.vertices);
+            await WriteAsync(mesh.uv);
+            await WriteAsync(mesh.uv2);
+            await WriteAsync(mesh.uv3);
+            await WriteAsync(mesh.uv4);
+            await WriteAsync(mesh.uv5);
+            await WriteAsync(mesh.uv6);
+            await WriteAsync(mesh.uv7);
+            await WriteAsync(mesh.uv8);
+            Write(mesh.bounds.center);
+            Write(mesh.bounds.extents);
+            Write(mesh.bounds.max);
+            Write(mesh.bounds.min);
+            Write(mesh.bounds.size);
+            await WriteAsync(mesh.colors32);
+            m_writer.Write((int) mesh.indexBufferTarget);
+            m_writer.Write((int) mesh.indexFormat);
+            m_writer.Write((int) mesh.vertexBufferTarget);
+            await WriteAsync(mesh.normals);
+            await WriteAsync(mesh.tangents);
             Write(mesh.triangles);
         }
 
@@ -140,6 +246,18 @@ namespace SaveSystem {
                 Write(mesh);
         }
 
+
+        public async Task WriteAsync (Mesh[] meshes) {
+            m_writer.Write(meshes.Length);
+            foreach (var mesh in meshes)
+                await WriteAsync(mesh);
+        }
+
+        #endregion
+
+
+
+        #region WritingObjects
 
         public void Write<T> (T obj) {
             m_writer.Write(JsonUtility.ToJson(obj));
@@ -153,11 +271,24 @@ namespace SaveSystem {
         }
 
 
+        public async Task WriteAsync<T> (List<T> listObjects) {
+            await Task.Run(() => { Write(listObjects); });
+        }
+
+
         public void Write<T> (T[] arrayObjects) {
             m_writer.Write(arrayObjects.Length);
             foreach (var obj in arrayObjects)
                 Write(obj);
         }
+
+
+        public async Task WriteAsync<T> (T[] arrayObjects) {
+            await Task.Run(() => { Write(arrayObjects); });
+        }
+
+        #endregion
+
 
 
         public void Write (byte byteValue) {

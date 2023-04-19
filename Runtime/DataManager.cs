@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -84,12 +85,26 @@ namespace SaveSystem {
         #region SavingAsync
 
         public static async Task SaveObjectsAsync<T> (string fileName, List<T> objects,
-            CancellationTokenSource source = null,
             IProgress progress = null,
+            CancellationTokenSource source = null,
             Action onComplete = null
         )
             where T : IPersistentObjectAsync {
             await SaveObjectsAsync(fileName, objects.ToArray(), progress, source, onComplete);
+        }
+
+
+        public static async Task SaveObjectAsync<T> (string fileName, T obj,
+            IProgress progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (obj is null) {
+                Debug.LogWarning("");
+                return;
+            }
+
+            await SaveObjectsAsync(fileName, new[] {obj}, progress, source, onComplete);
         }
 
 
@@ -105,19 +120,21 @@ namespace SaveSystem {
                 return;
             }
 
-            using var unityAsyncWriter = GetUnityAsyncWriter(fileName);
+            using var unityWriter = GetUnityWriter(fileName);
             var completedObjects = 0f;
             source ??= new CancellationTokenSource();
 
             try {
                 foreach (var obj in objects) {
-                    await obj.Save(unityAsyncWriter);
+                    await obj.Save(unityWriter);
                     completedObjects++;
                     progress?.Show(completedObjects / objects.Length);
                 }
+
+                onComplete?.Invoke();
             }
             catch (Exception ex) when (ex is OperationCanceledException) {
-                unityAsyncWriter.Dispose();
+                unityWriter.Dispose();
                 File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
                 Debug.Log("Object saving canceled. Data file deleted");
             }
@@ -127,8 +144,6 @@ namespace SaveSystem {
             finally {
                 source.Dispose();
             }
-
-            onComplete?.Invoke();
         }
 
         #endregion
@@ -136,6 +151,20 @@ namespace SaveSystem {
 
 
         #region LoadingAsync
+
+        public static async Task<bool> LoadObjectAsync<T> (string fileName, T obj,
+            IProgress progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (obj is null) {
+                Debug.LogWarning("");
+                return false;
+            }
+
+            return await LoadObjectsAsync(fileName, new[] {obj}, progress, source, onComplete);
+        }
+
 
         public static async Task<bool> LoadObjectsAsync<T> (string fileName, List<T> objects,
             IProgress progress = null,
@@ -159,9 +188,9 @@ namespace SaveSystem {
                 return false;
             }
 
-            using var unityAsyncReader = GetUnityAsyncReader(fileName);
+            using var unityReader = GetUnityReader(fileName);
 
-            if (unityAsyncReader is null) {
+            if (unityReader is null) {
                 source?.Dispose();
                 return false;
             }
@@ -171,15 +200,15 @@ namespace SaveSystem {
 
             try {
                 foreach (var obj in objects) {
-                    await obj.Load(unityAsyncReader);
+                    await obj.Load(unityReader);
                     completedObjects++;
                     progress?.Show(completedObjects / objects.Length);
                 }
+
+                onComplete?.Invoke();
             }
             catch (Exception ex) when (ex is OperationCanceledException) {
-                unityAsyncReader.Dispose();
-                File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
-                Debug.Log("Object loading canceled. Data file deleted");
+                Debug.Log("Object loading canceled");
             }
             catch (Exception ex) {
                 Debug.LogException(ex);
@@ -188,8 +217,86 @@ namespace SaveSystem {
                 source.Dispose();
             }
 
-            onComplete?.Invoke();
             return true;
+        }
+
+        #endregion
+
+
+
+        #region SavingCoroutine
+
+        public static IEnumerator SaveObjectsCoroutine<T> (string fileName, List<T> objects,
+            IProgress progress = null,
+            Action onComplete = null
+        ) where T : IPersistentObject {
+            yield return SaveObjectsCoroutine(fileName, objects.ToArray(), progress, onComplete);
+        }
+
+
+        public static IEnumerator SaveObjectsCoroutine<T> (string fileName, T[] objects,
+            IProgress progress = null,
+            Action onComplete = null
+        ) where T : IPersistentObject {
+            if (objects.Length is 0) {
+                Debug.LogWarning("");
+                yield break;
+            }
+
+            using var unityWriter = GetUnityWriter(fileName);
+            var completedTasks = 0f;
+
+            foreach (var obj in objects) {
+                obj.Save(unityWriter);
+                completedTasks++;
+                progress?.Show(completedTasks / objects.Length);
+                yield return null;
+            }
+
+            onComplete?.Invoke();
+        }
+
+        #endregion
+
+
+
+        #region LoadingCoroutine
+
+        public static IEnumerator LoadObjectsCoroutine<T> (string fileName, List<T> objects,
+            Action<bool> result,
+            IProgress progress = null
+        ) where T : IPersistentObject {
+            yield return LoadObjectsCoroutine(fileName, objects.ToArray(), result, progress);
+        }
+
+
+        public static IEnumerator LoadObjectsCoroutine<T> (string fileName, T[] objects,
+            Action<bool> result,
+            IProgress progress = null
+        ) where T : IPersistentObject {
+            if (objects.Length is 0) {
+                Debug.LogWarning("");
+                result(false);
+                yield break;
+            }
+
+            using var unityReader = GetUnityReader(fileName);
+
+            if (unityReader is null) {
+                result(false);
+                yield break;
+            }
+
+            var completedTasks = 0f;
+
+            foreach (var obj in objects) {
+                obj.Load(unityReader);
+                completedTasks++;
+                progress?.Show(completedTasks / objects.Length);
+                yield return null;
+            }
+
+            result(true);
         }
 
         #endregion
@@ -203,13 +310,6 @@ namespace SaveSystem {
         }
 
 
-        private static UnityAsyncWriter GetUnityAsyncWriter (string fileName) {
-            var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
-            var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.Create));
-            return new UnityAsyncWriter(binaryWriter);
-        }
-
-
         private static UnityReader GetUnityReader (string fileName) {
             var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
 
@@ -218,17 +318,6 @@ namespace SaveSystem {
 
             var binaryReader = new BinaryReader(File.Open(localPath, FileMode.Open));
             return new UnityReader(binaryReader);
-        }
-
-
-        private static UnityAsyncReader GetUnityAsyncReader (string fileName) {
-            var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
-
-            if (!File.Exists(localPath))
-                return null;
-
-            var binaryReader = new BinaryReader(File.Open(localPath, FileMode.Open));
-            return new UnityAsyncReader(binaryReader);
         }
 
 

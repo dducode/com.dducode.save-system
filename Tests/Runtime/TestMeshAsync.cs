@@ -9,13 +9,13 @@ namespace SaveSystem.Tests.Runtime {
         private MeshFilter m_meshFilter;
 
 
-        public async Task Save (UnityAsyncWriter writer) {
-            await writer.Write(m_meshFilter.mesh);
+        public async Task Save (UnityWriter writer) {
+            await writer.WriteAsync(m_meshFilter.mesh);
         }
 
 
-        public async Task Load (UnityAsyncReader reader) {
-            m_meshFilter.mesh = await reader.ReadMesh();
+        public async Task Load (UnityReader reader) {
+            m_meshFilter.mesh = await reader.ReadMeshAsync();
         }
 
 

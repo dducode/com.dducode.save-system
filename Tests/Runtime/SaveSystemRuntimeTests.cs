@@ -26,8 +26,6 @@ namespace SaveSystem.Tests.Runtime {
 
         [UnityTest]
         public IEnumerator MeshTest () {
-            yield return new WaitForSeconds(2);
-
             var testMono = Object.Instantiate(Resources.Load<TestMesh>(CUBE_NAME));
             Debug.Log("Create object");
             yield return new WaitForSeconds(2);
@@ -47,19 +45,63 @@ namespace SaveSystem.Tests.Runtime {
         public IEnumerator MeshAsyncTest () {
             var testMono = Object.Instantiate(Resources.Load<TestMeshAsync>(SPHERE_NAME));
             Debug.Log("Create object");
+            yield return new WaitForSeconds(2);
 
-            var saveOperation = DataManager.SaveObjectsAsync(FILE_NAME, new[] {testMono});
+            var saveOperation = DataManager.SaveObjectsAsync(
+                FILE_NAME,
+                new[] {testMono},
+                null,
+                null,
+                () => Debug.Log("Mesh saved")
+            );
             testMono.GetComponent<MeshFilter>().mesh = null;
-            Debug.Log("Save and remove mesh");
+            Debug.Log("Saving and removing a mesh");
 
             while (!saveOperation.IsCompleted)
                 yield return null;
 
-            var loadOperation = DataManager.LoadObjectsAsync(FILE_NAME, new[] {testMono});
-            Debug.Log("Load mesh");
+            var loadOperation = DataManager.LoadObjectsAsync(
+                FILE_NAME,
+                new[] {testMono},
+                null,
+                null,
+                () => Debug.Log("Mesh loaded")
+            );
+            Debug.Log("Loading the mesh");
 
             while (!loadOperation.IsCompleted)
                 yield return null;
+
+            yield return new WaitForSeconds(2);
+        }
+
+
+        [UnityTest]
+        public IEnumerator MeshCoroutineTest () {
+            var testMono = Object.Instantiate(Resources.Load<TestMesh>(CUBE_NAME));
+            Debug.Log("Create object");
+            yield return new WaitForSeconds(2);
+
+            Debug.Log("Saving and removing a mesh");
+            yield return DataManager.SaveObjectsCoroutine(
+                FILE_NAME,
+                new[] {testMono},
+                null,
+                () => Debug.Log("Mesh saved")
+            );
+            testMono.GetComponent<MeshFilter>().mesh = null;
+
+            Debug.Log("Loading the mesh");
+            yield return DataManager.LoadObjectsCoroutine(
+                FILE_NAME,
+                new[] {testMono},
+                success => {
+                    if (success)
+                        Debug.Log("Mesh loaded");
+                }
+            );
+
+            yield return new WaitForSeconds(2);
         }
 
 
