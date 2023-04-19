@@ -84,8 +84,21 @@ namespace SaveSystem {
 
         #region SavingAsync
 
+        public static async Task SaveObjectAsync<T> (string fileName, T obj,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (obj is null) {
+                Debug.LogWarning("Object for saving can't be null");
+                return;
+            }
+
+            await SaveObjectsAsync(fileName, new[] {obj}, null, source, onComplete);
+        }
+
+
         public static async Task SaveObjectsAsync<T> (string fileName, List<T> objects,
-            IProgress progress = null,
+            IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         )
@@ -94,22 +107,8 @@ namespace SaveSystem {
         }
 
 
-        public static async Task SaveObjectAsync<T> (string fileName, T obj,
-            IProgress progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (obj is null) {
-                Debug.LogWarning("");
-                return;
-            }
-
-            await SaveObjectsAsync(fileName, new[] {obj}, progress, source, onComplete);
-        }
-
-
         public static async Task SaveObjectsAsync<T> (string fileName, T[] objects,
-            IProgress progress = null,
+            IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         )
@@ -121,21 +120,21 @@ namespace SaveSystem {
             }
 
             using var unityWriter = GetUnityWriter(fileName);
-            var completedObjects = 0f;
+            var completedTasks = 0f;
             source ??= new CancellationTokenSource();
 
             try {
                 foreach (var obj in objects) {
                     await obj.Save(unityWriter);
-                    completedObjects++;
-                    progress?.Show(completedObjects / objects.Length);
+                    completedTasks++;
+                    progress?.Report(completedTasks / objects.Length);
                 }
 
                 onComplete?.Invoke();
             }
             catch (Exception ex) when (ex is OperationCanceledException) {
                 unityWriter.Dispose();
-                File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
+                File.Delete(unityWriter.localPath);
                 Debug.Log("Object saving canceled. Data file deleted");
             }
             catch (Exception ex) {
@@ -153,21 +152,20 @@ namespace SaveSystem {
         #region LoadingAsync
 
         public static async Task<bool> LoadObjectAsync<T> (string fileName, T obj,
-            IProgress progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObjectAsync {
             if (obj is null) {
-                Debug.LogWarning("");
+                Debug.LogWarning("Object for loading can't be null");
                 return false;
             }
 
-            return await LoadObjectsAsync(fileName, new[] {obj}, progress, source, onComplete);
+            return await LoadObjectsAsync(fileName, new[] {obj}, null, source, onComplete);
         }
 
 
         public static async Task<bool> LoadObjectsAsync<T> (string fileName, List<T> objects,
-            IProgress progress = null,
+            IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         )
@@ -177,7 +175,7 @@ namespace SaveSystem {
 
 
         public static async Task<bool> LoadObjectsAsync<T> (string fileName, T[] objects,
-            IProgress progress = null,
+            IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         )
@@ -195,14 +193,14 @@ namespace SaveSystem {
                 return false;
             }
 
-            var completedObjects = 0f;
+            var completesTasks = 0f;
             source ??= new CancellationTokenSource();
 
             try {
                 foreach (var obj in objects) {
                     await obj.Load(unityReader);
-                    completedObjects++;
-                    progress?.Show(completedObjects / objects.Length);
+                    completesTasks++;
+                    progress?.Report(completesTasks / objects.Length);
                 }
 
                 onComplete?.Invoke();
@@ -227,7 +225,7 @@ namespace SaveSystem {
         #region SavingCoroutine
 
         public static IEnumerator SaveObjectsCoroutine<T> (string fileName, List<T> objects,
-            IProgress progress = null,
+            IProgress<float> progress = null,
             Action onComplete = null
         ) where T : IPersistentObject {
             yield return SaveObjectsCoroutine(fileName, objects.ToArray(), progress, onComplete);
@@ -235,11 +233,11 @@ namespace SaveSystem {
 
 
         public static IEnumerator SaveObjectsCoroutine<T> (string fileName, T[] objects,
-            IProgress progress = null,
+            IProgress<float> progress = null,
             Action onComplete = null
         ) where T : IPersistentObject {
             if (objects.Length is 0) {
-                Debug.LogWarning("");
+                Debug.LogWarning("Objects for saving haven't been transferred");
                 yield break;
             }
 
@@ -249,7 +247,7 @@ namespace SaveSystem {
             foreach (var obj in objects) {
                 obj.Save(unityWriter);
                 completedTasks++;
-                progress?.Show(completedTasks / objects.Length);
+                progress?.Report(completedTasks / objects.Length);
                 yield return null;
             }
 
@@ -264,7 +262,7 @@ namespace SaveSystem {
 
         public static IEnumerator LoadObjectsCoroutine<T> (string fileName, List<T> objects,
             Action<bool> result,
-            IProgress progress = null
+            IProgress<float> progress = null
         ) where T : IPersistentObject {
             yield return LoadObjectsCoroutine(fileName, objects.ToArray(), result, progress);
         }
@@ -272,10 +270,10 @@ namespace SaveSystem {
 
         public static IEnumerator LoadObjectsCoroutine<T> (string fileName, T[] objects,
             Action<bool> result,
-            IProgress progress = null
+            IProgress<float> progress = null
         ) where T : IPersistentObject {
             if (objects.Length is 0) {
-                Debug.LogWarning("");
+                Debug.LogWarning("Objects for loading haven't been transferred");
                 result(false);
                 yield break;
             }
@@ -292,7 +290,7 @@ namespace SaveSystem {
             foreach (var obj in objects) {
                 obj.Load(unityReader);
                 completedTasks++;
-                progress?.Show(completedTasks / objects.Length);
+                progress?.Report(completedTasks / objects.Length);
                 yield return null;
             }
 
@@ -306,7 +304,7 @@ namespace SaveSystem {
         private static UnityWriter GetUnityWriter (string fileName) {
             var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
             var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.Create));
-            return new UnityWriter(binaryWriter);
+            return new UnityWriter(binaryWriter, localPath);
         }
 
 

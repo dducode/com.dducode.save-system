@@ -13,10 +13,12 @@ namespace SaveSystem {
     public class UnityWriter : IDisposable {
 
         private readonly BinaryWriter m_writer;
+        public readonly string localPath;
 
 
-        public UnityWriter (BinaryWriter writer) {
+        public UnityWriter (BinaryWriter writer, string localPath) {
             m_writer = writer;
+            this.localPath = localPath;
         }
 
 

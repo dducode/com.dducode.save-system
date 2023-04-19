@@ -47,10 +47,9 @@ namespace SaveSystem.Tests.Runtime {
             Debug.Log("Create object");
             yield return new WaitForSeconds(2);
 
-            var saveOperation = DataManager.SaveObjectsAsync(
+            var saveOperation = DataManager.SaveObjectAsync(
                 FILE_NAME,
-                new[] {testMono},
-                null,
+                testMono,
                 null,
                 () => Debug.Log("Mesh saved")
             );
@@ -60,10 +59,9 @@ namespace SaveSystem.Tests.Runtime {
             while (!saveOperation.IsCompleted)
                 yield return null;
 
-            var loadOperation = DataManager.LoadObjectsAsync(
+            var loadOperation = DataManager.LoadObjectAsync(
                 FILE_NAME,
-                new[] {testMono},
-                null,
+                testMono,
                 null,
                 () => Debug.Log("Mesh loaded")
             );
@@ -78,27 +76,42 @@ namespace SaveSystem.Tests.Runtime {
 
         [UnityTest]
         public IEnumerator MeshCoroutineTest () {
-            var testMono = Object.Instantiate(Resources.Load<TestMesh>(CUBE_NAME));
-            Debug.Log("Create object");
+            var objects = new TestMesh[100];
+
+            for (var i = 0; i < objects.Length; i++) {
+                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(CUBE_NAME));
+                objects[i].transform.position = Random.insideUnitSphere * 5;
+                objects[i].transform.rotation = Random.rotation;
+                yield return new WaitForFixedUpdate();
+            }
+
+            Debug.Log("Create objects");
             yield return new WaitForSeconds(2);
 
-            Debug.Log("Saving and removing a mesh");
+            Debug.Log("Saving and removing meshes");
             yield return DataManager.SaveObjectsCoroutine(
                 FILE_NAME,
-                new[] {testMono},
-                null,
-                () => Debug.Log("Mesh saved")
+                objects,
+                new Progress(),
+                () => Debug.Log("Meshes saved")
             );
-            testMono.GetComponent<MeshFilter>().mesh = null;
 
-            Debug.Log("Loading the mesh");
+            foreach (var obj in objects) {
+                obj.GetComponent<MeshFilter>().mesh = null;
+                yield return null;
+            }
+            
+            yield return new WaitForSeconds(2);
+
+            Debug.Log("Loading meshes");
             yield return DataManager.LoadObjectsCoroutine(
                 FILE_NAME,
-                new[] {testMono},
+                objects,
                 success => {
                     if (success)
-                        Debug.Log("Mesh loaded");
-                }
+                        Debug.Log("Meshes loaded");
+                },
+                new Progress()
             );
 
             yield return new WaitForSeconds(2);
