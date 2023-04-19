@@ -17,11 +17,9 @@ namespace SaveSystem {
         }
 
 
-        public async Task Write (Vector2 vector2) {
-            await Task.Run(() => {
-                m_writer.Write(vector2.x);
-                m_writer.Write(vector2.y);
-            });
+        public void Write (Vector2 vector2) {
+            m_writer.Write(vector2.x);
+            m_writer.Write(vector2.y);
         }
 
 
@@ -31,20 +29,18 @@ namespace SaveSystem {
 
 
         public async Task Write (NativeArray<Vector2> vector2Array) {
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 m_writer.Write(vector2Array.Length);
                 foreach (var vector2 in vector2Array)
-                    await Write(vector2);
+                    Write(vector2);
             });
         }
 
 
-        public async Task Write (Vector3 vector3) {
-            await Task.Run(() => {
-                m_writer.Write(vector3.x);
-                m_writer.Write(vector3.y);
-                m_writer.Write(vector3.z);
-            });
+        public void Write (Vector3 vector3) {
+            m_writer.Write(vector3.x);
+            m_writer.Write(vector3.y);
+            m_writer.Write(vector3.z);
         }
 
 
@@ -54,21 +50,19 @@ namespace SaveSystem {
 
 
         public async Task Write (NativeArray<Vector3> vector3Array) {
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 m_writer.Write(vector3Array.Length);
                 foreach (var vector3 in vector3Array)
-                    await Write(vector3);
+                    Write(vector3);
             });
         }
 
 
-        public async Task Write (Vector4 vector4) {
-            await Task.Run(() => {
-                m_writer.Write(vector4.x);
-                m_writer.Write(vector4.y);
-                m_writer.Write(vector4.z);
-                m_writer.Write(vector4.w);
-            });
+        public void Write (Vector4 vector4) {
+            m_writer.Write(vector4.x);
+            m_writer.Write(vector4.y);
+            m_writer.Write(vector4.z);
+            m_writer.Write(vector4.w);
         }
 
 
@@ -78,21 +72,19 @@ namespace SaveSystem {
 
 
         public async Task Write (NativeArray<Vector4> vector4Array) {
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 m_writer.Write(vector4Array.Length);
                 foreach (var vector4 in vector4Array)
-                    await Write(vector4);
+                    Write(vector4);
             });
         }
 
 
-        public async Task Write (Color32 color32) {
-            await Task.Run(() => {
-                m_writer.Write(color32.r);
-                m_writer.Write(color32.g);
-                m_writer.Write(color32.b);
-                m_writer.Write(color32.a);
-            });
+        public void Write (Color32 color32) {
+            m_writer.Write(color32.r);
+            m_writer.Write(color32.g);
+            m_writer.Write(color32.b);
+            m_writer.Write(color32.a);
         }
 
 
@@ -102,37 +94,35 @@ namespace SaveSystem {
 
 
         public async Task Write (NativeArray<Color32> colors32) {
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 m_writer.Write(colors32.Length);
                 foreach (var color32 in colors32)
-                    await Write(color32);
+                    Write(color32);
             });
         }
 
 
         public async Task Write (Mesh mesh) {
             var nativeMesh = new NativeMesh(mesh);
-            await Task.Run(async () => {
-                m_writer.Write(nativeMesh.name);
-                await Write(nativeMesh.vertices);
-                await Write(nativeMesh.uv);
-                await Write(nativeMesh.uv2);
-                await Write(nativeMesh.uv3);
-                await Write(nativeMesh.uv4);
-                await Write(nativeMesh.uv5);
-                await Write(nativeMesh.uv6);
-                await Write(nativeMesh.uv7);
-                await Write(nativeMesh.uv8);
-                await Write(nativeMesh.bounds.center);
-                await Write(nativeMesh.bounds.extents);
-                await Write(nativeMesh.bounds.max);
-                await Write(nativeMesh.bounds.min);
-                await Write(nativeMesh.bounds.size);
-                await Write(nativeMesh.colors32);
-                await Write(nativeMesh.normals);
-                await Write(nativeMesh.tangents);
-                await Write(nativeMesh.triangles);
-            });
+            m_writer.Write(nativeMesh.name);
+            await Write(nativeMesh.vertices);
+            await Write(nativeMesh.uv);
+            await Write(nativeMesh.uv2);
+            await Write(nativeMesh.uv3);
+            await Write(nativeMesh.uv4);
+            await Write(nativeMesh.uv5);
+            await Write(nativeMesh.uv6);
+            await Write(nativeMesh.uv7);
+            await Write(nativeMesh.uv8);
+            Write(nativeMesh.bounds.center);
+            Write(nativeMesh.bounds.extents);
+            Write(nativeMesh.bounds.max);
+            Write(nativeMesh.bounds.min);
+            Write(nativeMesh.bounds.size);
+            await Write(nativeMesh.colors32);
+            await Write(nativeMesh.normals);
+            await Write(nativeMesh.tangents);
+            await Write(nativeMesh.triangles);
             nativeMesh.Dispose();
         }
 
