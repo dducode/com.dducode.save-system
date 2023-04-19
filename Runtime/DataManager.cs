@@ -88,7 +88,7 @@ namespace SaveSystem {
             IProgress progress = null,
             Action onComplete = null
         )
-            where T : IPersistentObject {
+            where T : IPersistentObjectAsync {
             await SaveObjectsAsync(fileName, objects.ToArray(), progress, source, onComplete);
         }
 
@@ -98,28 +98,31 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         )
-            where T : IPersistentObject {
+            where T : IPersistentObjectAsync {
             if (objects.Length is 0) {
                 Debug.LogWarning("Objects for saving haven't been transferred");
                 source?.Dispose();
                 return;
             }
 
-            using var unityWriter = GetUnityWriter(fileName);
+            using var unityAsyncWriter = GetUnityAsyncWriter(fileName);
             var completedObjects = 0f;
             source ??= new CancellationTokenSource();
 
             try {
                 foreach (var obj in objects) {
-                    await Task.Run(() => obj.Save(unityWriter), source.Token);
+                    await obj.Save(unityAsyncWriter);
                     completedObjects++;
                     progress?.Show(completedObjects / objects.Length);
                 }
             }
-            catch {
-                unityWriter.Dispose();
+            catch (Exception ex) when (ex is OperationCanceledException) {
+                unityAsyncWriter.Dispose();
                 File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
                 Debug.Log("Object saving canceled. Data file deleted");
+            }
+            catch (Exception ex) {
+                Debug.LogException(ex);
             }
             finally {
                 source.Dispose();
@@ -139,7 +142,7 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         )
-            where T : IPersistentObject {
+            where T : IPersistentObjectAsync {
             return await LoadObjectsAsync(fileName, objects.ToArray(), progress, source, onComplete);
         }
 
@@ -149,16 +152,16 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         )
-            where T : IPersistentObject {
+            where T : IPersistentObjectAsync {
             if (objects.Length is 0) {
                 Debug.LogWarning("Objects for loading haven't been transferred");
                 source?.Dispose();
                 return false;
             }
 
-            using var unityReader = GetUnityReader(fileName);
+            using var unityAsyncReader = GetUnityAsyncReader(fileName);
 
-            if (unityReader is null) {
+            if (unityAsyncReader is null) {
                 source?.Dispose();
                 return false;
             }
@@ -168,15 +171,18 @@ namespace SaveSystem {
 
             try {
                 foreach (var obj in objects) {
-                    await Task.Run(() => obj.Load(unityReader), source.Token);
+                    await obj.Load(unityAsyncReader);
                     completedObjects++;
                     progress?.Show(completedObjects / objects.Length);
                 }
             }
-            catch {
-                unityReader.Dispose();
+            catch (Exception ex) when (ex is OperationCanceledException) {
+                unityAsyncReader.Dispose();
                 File.Delete(Path.Combine(Application.persistentDataPath, $"{fileName}.bytes"));
                 Debug.Log("Object loading canceled. Data file deleted");
+            }
+            catch (Exception ex) {
+                Debug.LogException(ex);
             }
             finally {
                 source.Dispose();
@@ -197,6 +203,13 @@ namespace SaveSystem {
         }
 
 
+        private static UnityAsyncWriter GetUnityAsyncWriter (string fileName) {
+            var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
+            var binaryWriter = new BinaryWriter(File.Open(localPath, FileMode.Create));
+            return new UnityAsyncWriter(binaryWriter);
+        }
+
+
         private static UnityReader GetUnityReader (string fileName) {
             var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
 
@@ -205,6 +218,17 @@ namespace SaveSystem {
 
             var binaryReader = new BinaryReader(File.Open(localPath, FileMode.Open));
             return new UnityReader(binaryReader);
+        }
+
+
+        private static UnityAsyncReader GetUnityAsyncReader (string fileName) {
+            var localPath = Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
+
+            if (!File.Exists(localPath))
+                return null;
+
+            var binaryReader = new BinaryReader(File.Open(localPath, FileMode.Open));
+            return new UnityAsyncReader(binaryReader);
         }
 
 
