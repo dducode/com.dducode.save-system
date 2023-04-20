@@ -1,8 +1,6 @@
-﻿using UnityEngine;
+﻿namespace SaveSystem.Tests.Editor {
 
-namespace SaveSystem.Tests.Editor {
-
-    public class BinaryObjectEditor : TestObjectEditor {
+    internal sealed class BinaryObjectEditor : TestObjectEditor {
 
         public override void Save (UnityWriter writer) {
             writer.Write(name);

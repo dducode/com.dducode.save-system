@@ -1,13 +1,11 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace SaveSystem.Tests.Editor {
 
-    public class SaveSystemEditorTests {
+    internal sealed class SaveSystemEditorTests {
 
         private const string FILE_NAME = "test";
 

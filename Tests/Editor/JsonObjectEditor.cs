@@ -1,8 +1,6 @@
-﻿using UnityEngine;
+﻿namespace SaveSystem.Tests.Editor {
 
-namespace SaveSystem.Tests.Editor {
-
-    public class JsonObjectEditor : TestObjectEditor {
+    internal sealed class JsonObjectEditor : TestObjectEditor {
 
         public override void Save (UnityWriter writer) {
             writer.Write(this);

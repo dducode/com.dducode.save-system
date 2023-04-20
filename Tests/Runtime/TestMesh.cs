@@ -2,7 +2,7 @@
 
 namespace SaveSystem.Tests.Runtime {
 
-    public class TestMesh : MonoBehaviour, IPersistentObject {
+    internal sealed class TestMesh : MonoBehaviour, IPersistentObject {
 
         public void Save (UnityWriter writer) {
             writer.Write(GetComponent<MeshFilter>().mesh);

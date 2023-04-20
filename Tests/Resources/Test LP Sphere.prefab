@@ -9,11 +9,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5089595724055052144}
-  - component: {fileID: 2082116081722471393}
+  - component: {fileID: 730593678625598112}
+  - component: {fileID: -4523103625963639523}
+  - component: {fileID: 7132300206280077167}
   - component: {fileID: 6197206017001272002}
   - component: {fileID: 9080484742100043894}
   m_Layer: 0
-  m_Name: Test Sphere
+  m_Name: Test LP Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -34,7 +36,19 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2082116081722471393
+--- !u!114 &730593678625598112
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3644915109800923216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 843251800fdf47c19d01b7eab57d23c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &-4523103625963639523
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -46,6 +60,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c076d916eda4ea6a289523e3662e118, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &7132300206280077167
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3644915109800923216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9185f26ff0ed410ea35044cc39df37af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!33 &6197206017001272002
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -53,7 +79,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3644915109800923216}
-  m_Mesh: {fileID: 973877516759717424, guid: 36ddaa9f707642a4fbdb3d9cb9e935e2, type: 3}
+  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!23 &9080484742100043894
 MeshRenderer:
   m_ObjectHideFlags: 0

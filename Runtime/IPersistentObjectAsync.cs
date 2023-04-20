@@ -1,11 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using Cysharp.Threading.Tasks;
 
 namespace SaveSystem {
 
     public interface IPersistentObjectAsync {
 
-        public Task Save (UnityWriter writer);
-        public Task Load (UnityReader reader);
+        public UniTask Save (UnityWriter writer);
+        public UniTask Load (UnityReader reader);
 
     }
 

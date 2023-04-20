@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -10,7 +10,7 @@ namespace SaveSystem {
     /// <summary>
     /// Adapter to class <see cref="BinaryReader"/> for simplify reading data
     /// </summary>
-    public class UnityReader : IDisposable {
+    public sealed class UnityReader : IDisposable {
 
         private readonly BinaryReader m_reader;
 
@@ -39,8 +39,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Vector2[]> ReadVector2ArrayAsync () {
-            return await Task.Run(ReadVector2Array);
+        public async UniTask<Vector2[]> ReadVector2ArrayAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadVector2Array);
+
+            await UniTask.NextFrame();
+            return ReadVector2Array();
         }
 
 
@@ -64,8 +68,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Vector3[]> ReadVector3ArrayAsync () {
-            return await Task.Run(ReadVector3Array);
+        public async UniTask<Vector3[]> ReadVector3ArrayAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadVector3Array);
+
+            await UniTask.NextFrame();
+            return ReadVector3Array();
         }
 
 
@@ -90,8 +98,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Vector4[]> ReadVector4ArrayAsync () {
-            return await Task.Run(ReadVector4Array);
+        public async UniTask<Vector4[]> ReadVector4ArrayAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadVector4Array);
+
+            await UniTask.NextFrame();
+            return ReadVector4Array();
         }
 
 
@@ -126,8 +138,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Color[]> ReadColorsAsync () {
-            return await Task.Run(ReadColors);
+        public async UniTask<Color[]> ReadColorsAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadColors);
+
+            await UniTask.NextFrame();
+            return ReadColors();
         }
 
 
@@ -152,8 +168,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Color32[]> ReadColors32Async () {
-            return await Task.Run(ReadColors32);
+        public async UniTask<Color32[]> ReadColors32Async (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadColors32);
+
+            await UniTask.NextFrame();
+            return ReadColors32();
         }
 
 
@@ -161,6 +181,7 @@ namespace SaveSystem {
             var matrix = new Matrix4x4();
             for (var i = 0; i < 16; i++)
                 matrix[i] = m_reader.ReadSingle();
+
             return matrix;
         }
 
@@ -176,8 +197,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Matrix4x4[]> ReadMatricesAsync () {
-            return await Task.Run(ReadMatrices);
+        public async UniTask<Matrix4x4[]> ReadMatricesAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadMatrices);
+
+            await UniTask.NextFrame();
+            return ReadMatrices();
         }
 
 
@@ -217,6 +242,10 @@ namespace SaveSystem {
                 uv6 = ReadVector2Array(),
                 uv7 = ReadVector2Array(),
                 uv8 = ReadVector2Array(),
+                colors32 = ReadColors32(),
+                normals = ReadVector3Array(),
+                tangents = ReadVector4Array(),
+                triangles = ReadIntArray(),
                 bounds = new Bounds {
                     center = ReadVector3(),
                     extents = ReadVector3(),
@@ -224,24 +253,77 @@ namespace SaveSystem {
                     min = ReadVector3(),
                     size = ReadVector3()
                 },
-                colors32 = ReadColors32(),
                 indexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32(),
                 indexFormat = (IndexFormat) m_reader.ReadInt32(),
-                vertexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32(),
-                normals = ReadVector3Array(),
-                tangents = ReadVector4Array(),
-                triangles = ReadIntArray()
+                vertexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32()
             };
             mesh.SetSubMeshes(subMeshes);
+
             return mesh;
         }
 
 
-        public async Task<Mesh> ReadMeshAsync () {
+        public async UniTask<Mesh> ReadMeshAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
             var subMeshesCount = m_reader.ReadInt32();
             var subMeshes = new SubMeshDescriptor[subMeshesCount];
 
-            await Task.Run(() => {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                await UniTask.RunOnThreadPool(ReadSubMeshes);
+            else {
+                await UniTask.NextFrame();
+                ReadSubMeshes();
+            }
+
+            if (asyncMode == AsyncMode.OnThreadPool)
+                await UniTask.SwitchToThreadPool();
+            var meshData = new MeshData {
+                vertices = await ReadVector3ArrayAsync(asyncMode),
+                uv = await ReadVector2ArrayAsync(asyncMode),
+                uv2 = await ReadVector2ArrayAsync(asyncMode),
+                uv3 = await ReadVector2ArrayAsync(asyncMode),
+                uv4 = await ReadVector2ArrayAsync(asyncMode),
+                uv5 = await ReadVector2ArrayAsync(asyncMode),
+                uv6 = await ReadVector2ArrayAsync(asyncMode),
+                uv7 = await ReadVector2ArrayAsync(asyncMode),
+                uv8 = await ReadVector2ArrayAsync(asyncMode),
+                colors32 = await ReadColors32Async(asyncMode),
+                normals = await ReadVector3ArrayAsync(asyncMode),
+                tangents = await ReadVector4ArrayAsync(asyncMode),
+                triangles = await ReadIntArrayAsync(asyncMode)
+            };
+            if (asyncMode == AsyncMode.OnThreadPool)
+                await UniTask.SwitchToMainThread();
+            var mesh = new Mesh {
+                name = m_reader.ReadString(),
+                vertices = meshData.vertices,
+                uv = meshData.uv,
+                uv2 = meshData.uv2,
+                uv3 = meshData.uv3,
+                uv4 = meshData.uv4,
+                uv5 = meshData.uv5,
+                uv6 = meshData.uv6,
+                uv7 = meshData.uv7,
+                uv8 = meshData.uv8,
+                colors32 = meshData.colors32,
+                normals = meshData.normals,
+                tangents = meshData.tangents,
+                triangles = meshData.triangles,
+                bounds = new Bounds {
+                    center = ReadVector3(),
+                    extents = ReadVector3(),
+                    max = ReadVector3(),
+                    min = ReadVector3(),
+                    size = ReadVector3(),
+                },
+                indexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32(),
+                indexFormat = (IndexFormat) m_reader.ReadInt32(),
+                vertexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32()
+            };
+            mesh.SetSubMeshes(subMeshes);
+
+            return mesh;
+
+            void ReadSubMeshes () {
                 for (var i = 0; i < subMeshesCount; i++) {
                     subMeshes[i] = new SubMeshDescriptor {
                         baseVertex = m_reader.ReadInt32(),
@@ -259,36 +341,7 @@ namespace SaveSystem {
                         vertexCount = m_reader.ReadInt32()
                     };
                 }
-            });
-
-            var mesh = new Mesh {
-                name = m_reader.ReadString(),
-                vertices = await ReadVector3ArrayAsync(),
-                uv = await ReadVector2ArrayAsync(),
-                uv2 = await ReadVector2ArrayAsync(),
-                uv3 = await ReadVector2ArrayAsync(),
-                uv4 = await ReadVector2ArrayAsync(),
-                uv5 = await ReadVector2ArrayAsync(),
-                uv6 = await ReadVector2ArrayAsync(),
-                uv7 = await ReadVector2ArrayAsync(),
-                uv8 = await ReadVector2ArrayAsync(),
-                bounds = new Bounds {
-                    center = ReadVector3(),
-                    extents = ReadVector3(),
-                    max = ReadVector3(),
-                    min = ReadVector3(),
-                    size = ReadVector3(),
-                },
-                colors32 = await ReadColors32Async(),
-                indexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32(),
-                indexFormat = (IndexFormat) m_reader.ReadInt32(),
-                vertexBufferTarget = (GraphicsBuffer.Target) m_reader.ReadInt32(),
-                normals = await ReadVector3ArrayAsync(),
-                tangents = await ReadVector4ArrayAsync(),
-                triangles = ReadIntArray()
-            };
-            mesh.SetSubMeshes(subMeshes);
-            return mesh;
+            }
         }
 
 
@@ -303,12 +356,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<Mesh[]> ReadMeshesAsync () {
+        public async UniTask<Mesh[]> ReadMeshesAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
             var length = m_reader.ReadInt32();
             var meshes = new Mesh[length];
 
             for (var i = 0; i < length; i++)
-                meshes[i] = await ReadMeshAsync();
+                meshes[i] = await ReadMeshAsync(asyncMode);
 
             return meshes;
         }
@@ -335,8 +388,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<List<T>> ReadObjectsListAsync<T> () {
-            return await Task.Run(ReadObjectsList<T>);
+        public async UniTask<List<T>> ReadObjectsListAsync<T> (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadObjectsList<T>);
+
+            await UniTask.NextFrame();
+            return ReadObjectsList<T>();
         }
 
 
@@ -351,8 +408,12 @@ namespace SaveSystem {
         }
 
 
-        public async Task<T[]> ReadObjectsArrayAsync<T> () {
-            return await Task.Run(ReadObjectsArray<T>);
+        public async UniTask<T[]> ReadObjectsArrayAsync<T> (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadObjectsArray<T>);
+
+            await UniTask.NextFrame();
+            return ReadObjectsArray<T>();
         }
 
         #endregion
@@ -372,6 +433,15 @@ namespace SaveSystem {
                 bytes[i] = m_reader.ReadByte();
 
             return bytes;
+        }
+
+
+        public async UniTask<byte[]> ReadBytesAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadBytes);
+
+            await UniTask.NextFrame();
+            return ReadBytes();
         }
 
 
@@ -404,6 +474,15 @@ namespace SaveSystem {
                 intArray[i] = m_reader.ReadInt32();
 
             return intArray;
+        }
+
+
+        public async UniTask<int[]> ReadIntArrayAsync (AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                return await UniTask.RunOnThreadPool(ReadIntArray);
+
+            await UniTask.NextFrame();
+            return ReadIntArray();
         }
 
 

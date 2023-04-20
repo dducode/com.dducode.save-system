@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -10,7 +10,7 @@ namespace SaveSystem {
     /// <summary>
     /// Adapter to class <see cref="BinaryWriter"/> for simplify writing data
     /// </summary>
-    public class UnityWriter : IDisposable {
+    public sealed class UnityWriter : IDisposable {
 
         private readonly BinaryWriter m_writer;
         public readonly string localPath;
@@ -35,8 +35,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Vector2[] vector2Array) {
-            await Task.Run(() => { Write(vector2Array); });
+        public async UniTask WriteAsync (Vector2[] vector2Array, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(vector2Array); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(vector2Array);
         }
 
 
@@ -54,8 +60,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Vector3[] vector3Array) {
-            await Task.Run(() => { Write(vector3Array); });
+        public async UniTask WriteAsync (Vector3[] vector3Array, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(vector3Array); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(vector3Array);
         }
 
 
@@ -74,8 +86,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Vector4[] vector4Array) {
-            await Task.Run(() => { Write(vector4Array); });
+        public async UniTask WriteAsync (Vector4[] vector4Array, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(vector4Array); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(vector4Array);
         }
 
 
@@ -102,8 +120,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Color[] colors) {
-            await Task.Run(() => { Write(colors); });
+        public async UniTask WriteAsync (Color[] colors, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(colors); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(colors);
         }
 
 
@@ -122,8 +146,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Color32[] colors32) {
-            await Task.Run(() => { Write(colors32); });
+        public async UniTask WriteAsync (Color32[] colors32, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(colors32); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(colors32);
         }
 
 
@@ -140,8 +170,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Matrix4x4[] matrices) {
-            await Task.Run(() => { Write(matrices); });
+        public async UniTask WriteAsync (Matrix4x4[] matrices, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(matrices); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(matrices);
         }
 
 
@@ -179,27 +215,62 @@ namespace SaveSystem {
             Write(mesh.uv6);
             Write(mesh.uv7);
             Write(mesh.uv8);
+            Write(mesh.colors32);
+            Write(mesh.normals);
+            Write(mesh.tangents);
+            Write(mesh.triangles);
             Write(mesh.bounds.center);
             Write(mesh.bounds.extents);
             Write(mesh.bounds.max);
             Write(mesh.bounds.min);
             Write(mesh.bounds.size);
-            Write(mesh.colors32);
             m_writer.Write((int) mesh.indexBufferTarget);
             m_writer.Write((int) mesh.indexFormat);
             m_writer.Write((int) mesh.vertexBufferTarget);
-            Write(mesh.normals);
-            Write(mesh.tangents);
-            Write(mesh.triangles);
         }
 
 
-        public async Task WriteAsync (Mesh mesh) {
+        public async UniTask WriteAsync (Mesh mesh, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
             var subMeshes = new SubMeshDescriptor[mesh.subMeshCount];
             for (var i = 0; i < subMeshes.Length; i++)
                 subMeshes[i] = mesh.GetSubMesh(i);
 
-            await Task.Run(() => {
+            if (asyncMode == AsyncMode.OnThreadPool)
+                await UniTask.RunOnThreadPool(WriteSubMeshes);
+            else {
+                await UniTask.NextFrame();
+                WriteSubMeshes();
+            }
+
+            var meshData = new MeshData(mesh);
+            if (asyncMode == AsyncMode.OnThreadPool)
+                await UniTask.SwitchToThreadPool();
+            await WriteAsync(meshData.vertices, asyncMode);
+            await WriteAsync(meshData.uv, asyncMode);
+            await WriteAsync(meshData.uv2, asyncMode);
+            await WriteAsync(meshData.uv3, asyncMode);
+            await WriteAsync(meshData.uv4, asyncMode);
+            await WriteAsync(meshData.uv5, asyncMode);
+            await WriteAsync(meshData.uv6, asyncMode);
+            await WriteAsync(meshData.uv7, asyncMode);
+            await WriteAsync(meshData.uv8, asyncMode);
+            await WriteAsync(meshData.colors32, asyncMode);
+            await WriteAsync(meshData.normals, asyncMode);
+            await WriteAsync(meshData.tangents, asyncMode);
+            await WriteAsync(meshData.triangles, asyncMode);
+            if (asyncMode == AsyncMode.OnThreadPool)
+                await UniTask.SwitchToMainThread();
+            m_writer.Write(mesh.name);
+            Write(mesh.bounds.center);
+            Write(mesh.bounds.extents);
+            Write(mesh.bounds.max);
+            Write(mesh.bounds.min);
+            Write(mesh.bounds.size);
+            m_writer.Write((int) mesh.indexBufferTarget);
+            m_writer.Write((int) mesh.indexFormat);
+            m_writer.Write((int) mesh.vertexBufferTarget);
+
+            void WriteSubMeshes () {
                 m_writer.Write(subMeshes.Length);
 
                 foreach (var subMesh in subMeshes) {
@@ -215,30 +286,7 @@ namespace SaveSystem {
                     m_writer.Write((int) subMesh.topology);
                     m_writer.Write(subMesh.vertexCount);
                 }
-            });
-
-            m_writer.Write(mesh.name);
-            await WriteAsync(mesh.vertices);
-            await WriteAsync(mesh.uv);
-            await WriteAsync(mesh.uv2);
-            await WriteAsync(mesh.uv3);
-            await WriteAsync(mesh.uv4);
-            await WriteAsync(mesh.uv5);
-            await WriteAsync(mesh.uv6);
-            await WriteAsync(mesh.uv7);
-            await WriteAsync(mesh.uv8);
-            Write(mesh.bounds.center);
-            Write(mesh.bounds.extents);
-            Write(mesh.bounds.max);
-            Write(mesh.bounds.min);
-            Write(mesh.bounds.size);
-            await WriteAsync(mesh.colors32);
-            m_writer.Write((int) mesh.indexBufferTarget);
-            m_writer.Write((int) mesh.indexFormat);
-            m_writer.Write((int) mesh.vertexBufferTarget);
-            await WriteAsync(mesh.normals);
-            await WriteAsync(mesh.tangents);
-            Write(mesh.triangles);
+            }
         }
 
 
@@ -249,10 +297,10 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync (Mesh[] meshes) {
+        public async UniTask WriteAsync (Mesh[] meshes, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
             m_writer.Write(meshes.Length);
             foreach (var mesh in meshes)
-                await WriteAsync(mesh);
+                await WriteAsync(mesh, asyncMode);
         }
 
         #endregion
@@ -273,8 +321,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync<T> (List<T> listObjects) {
-            await Task.Run(() => { Write(listObjects); });
+        public async UniTask WriteAsync<T> (List<T> listObjects, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(listObjects); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(listObjects);
         }
 
 
@@ -285,8 +339,14 @@ namespace SaveSystem {
         }
 
 
-        public async Task WriteAsync<T> (T[] arrayObjects) {
-            await Task.Run(() => { Write(arrayObjects); });
+        public async UniTask WriteAsync<T> (T[] arrayObjects, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(arrayObjects); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(arrayObjects);
         }
 
         #endregion
@@ -302,6 +362,17 @@ namespace SaveSystem {
             m_writer.Write(bytes.Length);
             foreach (var byteValue in bytes)
                 m_writer.Write(byteValue);
+        }
+
+
+        public async UniTask WriteAsync (byte[] bytes, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(bytes); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(bytes);
         }
 
 
@@ -326,6 +397,17 @@ namespace SaveSystem {
             m_writer.Write(ints.Length);
             foreach (var intValue in ints)
                 m_writer.Write(intValue);
+        }
+
+
+        public async UniTask WriteAsync (int[] intValues, AsyncMode asyncMode = AsyncMode.OnThreadPool) {
+            if (asyncMode == AsyncMode.OnThreadPool) {
+                await UniTask.RunOnThreadPool(() => { Write(intValues); });
+                return;
+            }
+
+            await UniTask.NextFrame();
+            Write(intValues);
         }
 
 

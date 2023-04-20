@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SaveSystem.Tests.Editor {
 
-    public abstract class TestObjectEditor : IPersistentObject {
+    internal abstract class TestObjectEditor : IPersistentObject {
         
         public string name;
         public Vector3 position;
