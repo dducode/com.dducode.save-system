@@ -124,6 +124,8 @@ namespace SaveSystem {
 
             try {
                 foreach (var obj in objects) {
+                    if (source.IsCancellationRequested)
+                        throw new OperationCanceledException();
                     await obj.Save(unityWriter);
                     completedTasks++;
                     progress?.Report(completedTasks / objects.Length);
@@ -197,6 +199,8 @@ namespace SaveSystem {
 
             try {
                 foreach (var obj in objects) {
+                    if (source.IsCancellationRequested)
+                        throw new OperationCanceledException();
                     await obj.Load(unityReader);
                     completesTasks++;
                     progress?.Report(completesTasks / objects.Length);
