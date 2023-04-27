@@ -1,16 +1,37 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace SaveSystem.Tests.Runtime {
 
     internal sealed class TestMesh : MonoBehaviour, IPersistentObject {
 
+        private MeshFilter m_meshFilter;
+        private MeshData m_meshData;
+
+
         public void Save (UnityWriter writer) {
-            writer.Write(GetComponent<MeshFilter>().mesh);
+            writer.Write(m_meshData);
         }
 
 
         public void Load (UnityReader reader) {
-            GetComponent<MeshFilter>().mesh = reader.ReadMesh();
+            m_meshData = reader.ReadMesh();
+        }
+
+
+        public void RemoveMesh () {
+            m_meshFilter.mesh = null;
+        }
+
+
+        public void SetMesh () {
+            m_meshFilter.mesh = m_meshData;
+        }
+
+
+        private void Awake () {
+            m_meshFilter = GetComponent<MeshFilter>();
+            m_meshData = m_meshFilter.mesh;
         }
 
     }

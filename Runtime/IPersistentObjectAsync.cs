@@ -4,8 +4,8 @@ namespace SaveSystem {
 
     public interface IPersistentObjectAsync {
 
-        public UniTask Save (UnityWriter writer);
-        public UniTask Load (UnityReader reader);
+        public UniTask Save (UnityAsyncWriter asyncWriter);
+        public UniTask Load (UnityAsyncReader asyncReader);
 
     }
 

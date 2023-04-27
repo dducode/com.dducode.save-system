@@ -24,11 +24,11 @@ namespace SaveSystem.Tests.Runtime {
 
 
         [UnityTest]
-        public IEnumerator MeshAsyncCancelSaveTest () {
-            var objects = new TestMeshAsync[200];
+        public IEnumerator MeshAsyncCancelSaveTest () => UniTask.ToCoroutine(async () => {
+            var objects = new TestMeshAdvanced[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsync>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAdvanced>(LP_SPHERE_NAME));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
@@ -36,7 +36,7 @@ namespace SaveSystem.Tests.Runtime {
 
             Debug.Log("Start saving");
             var cancellationSource = new CancellationTokenSource();
-            var saveOperation = DataManager.SaveObjectsAsync(
+            var saveOperation = DataManager.SaveObjectsAsyncAdvanced(
                 FILE_NAME,
                 objects,
                 null,
@@ -51,24 +51,23 @@ namespace SaveSystem.Tests.Runtime {
             Debug.Log("Attempt to cancel save");
             cancellationSource.Cancel();
 
-            while (saveOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-        }
+            await saveOperation;
+        });
 
 
         [UnityTest]
-        public IEnumerator MeshAsyncCancelLoadTest () {
-            var objects = new TestMeshAsync[200];
+        public IEnumerator MeshAsyncCancelLoadTest () => UniTask.ToCoroutine(async () => {
+            var objects = new TestMeshAdvanced[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsync>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAdvanced>(LP_SPHERE_NAME));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            var saveOperation = DataManager.SaveObjectsAsync(
+            await DataManager.SaveObjectsAsyncAdvanced(
                 FILE_NAME,
                 objects,
                 null,
@@ -80,13 +79,9 @@ namespace SaveSystem.Tests.Runtime {
                 }
             );
 
-
-            while (saveOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-
             Debug.Log("Start loading");
             var cancellationSource = new CancellationTokenSource();
-            var loadOperation = DataManager.LoadObjectsAsync(
+            var loadOperation = DataManager.LoadObjectsAsyncAdvanced(
                 FILE_NAME,
                 objects,
                 null,
@@ -97,17 +92,16 @@ namespace SaveSystem.Tests.Runtime {
             Debug.Log("Attempt to cancel load");
             cancellationSource.Cancel();
 
-            while (loadOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-        }
+            await loadOperation;
+        });
 
 
         [TearDown]
         public void EndTest () {
-            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = typeof(SaveSystemEditor).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
 
-            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+            method = typeof(SaveSystemEditor).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
             Debug.Log("End test");
         }

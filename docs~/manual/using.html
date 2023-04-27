@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Using Save System </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Using Save System ">
+      
+      <link rel="icon" href="../images/icon.png">
+      <link rel="stylesheet" href="../styles/docfx.min.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      <meta name="docfx:docurl" content="https://github.com/dducode/com.dducode.save-system">
+
+      <script>
+        MathJax = {
+          options: {
+            processHtmlClass: ['tex2jax_process', 'math']
+          }
+        };
+      </script>
+
+      <script type="text/javascript" src="../styles/docfx.min.js"></script>
+      <script type="text/javascript" src="../styles/main.js"></script>
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="using-save-system">Using Save System</h1>
+
+<p>Saving and loading data consist of the following steps:</p>
+<ul>
+<li>Implement the <a href="../api/SaveSystem.IPersistentObject.html">IPersistentObject</a>
+or <a href="../api/SaveSystem.IPersistentObjectAsync.html">IPersistentObjectAsync</a>
+interface in your object</li>
+<li>Implement Save and Load methods in it:
+<ul>
+<li>Write down data in the save method by using <a href="../api/SaveSystem.UnityWriter.html">UnityWriter</a></li>
+<li>Read data in the load method by using <a href="../api/SaveSystem.UnityReader.html">UnityReader</a></li>
+</ul>
+</li>
+<li>Pass the object to the <a href="../api/SaveSystem.DataManager.html">DataManager:</a>
+<ul>
+<li>Pass it to SaveObject method for saving</li>
+<li>Or pass it to LoadObject to load</li>
+</ul>
+</li>
+</ul>
+<p>See <a href="saving-and-loading.html">saving and loading data</a>
+for more information about using of the DataManager</p>
+<p>Then see <a href="writing-and-reading.html">writing and reading data</a>
+for more about of the UnityWriter and the UnityReader</p>
+<p>And at the end see more information about asynchronous
+data management in <a href="async-management.html">this manual</a></p>
+</article>
+
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+        
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <p>Copyright © 2023 Denis Dmitriev</p><p>Made with <a href="https://dotnet.github.io/docfx">docfx</a></p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

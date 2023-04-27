@@ -1,20 +1,17 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Reflection;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using Debug = UnityEngine.Debug;
-
 
 namespace SaveSystem.Tests.Runtime {
 
-    internal sealed class MeshTests {
+    public class MeshTests {
 
         private const string FILE_NAME = "test";
+        private const string SETTINGS = "test settings";
         private const string LP_SPHERE_NAME = "Test LP Sphere";
-        private const string HP_SPHERE_NAME = "Test HP Sphere";
 
 
         [SetUp]
@@ -44,155 +41,93 @@ namespace SaveSystem.Tests.Runtime {
 
 
         [UnityTest]
-        public IEnumerator HPMeshAsyncOnThreadPoolTest () {
-            var testMono = Object.Instantiate(Resources.Load<TestMeshAsync>(HP_SPHERE_NAME));
-            Debug.Log("Create object");
-
-            Debug.Log("Start saving");
-            var saveOperation = DataManager.SaveObjectAsync(
-                FILE_NAME,
-                testMono,
-                null,
-                () => {
-                    testMono.GetComponent<MeshFilter>().mesh = null;
-                    Debug.Log("Mesh saved and removed");
-                });
-
-            while (saveOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-
-            Debug.Log("Start loading");
-            var loadOperation = DataManager.LoadObjectAsync(
-                FILE_NAME,
-                testMono,
-                null,
-                () => Debug.Log("Mesh loaded")
-            );
-
-            while (loadOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-        }
-
-
-        [UnityTest]
-        public IEnumerator HPMeshAsyncOnPlayerLoopTest () {
-            var testMono = Object.Instantiate(Resources.Load<TestMeshUnityAsync>(HP_SPHERE_NAME));
-            Debug.Log("Create object");
-
-            Debug.Log("Start saving");
-            var saveOperation = DataManager.SaveObjectAsync(
-                FILE_NAME,
-                testMono,
-                null,
-                () => {
-                    testMono.GetComponent<MeshFilter>().mesh = null;
-                    Debug.Log("Mesh saved and removed");
-                });
-
-            while (saveOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-
-            Debug.Log("Start loading");
-            var loadOperation = DataManager.LoadObjectAsync(
-                FILE_NAME,
-                testMono,
-                null,
-                () => Debug.Log("Mesh loaded")
-            );
-
-            while (loadOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-        }
-
-
-        [UnityTest]
-        public IEnumerator LPMeshesAsyncOnThreadPoolTest () {
-            var objects = new TestMeshAsync[200];
+        public IEnumerator MeshesAsyncOnThreadPoolTest () => UniTask.ToCoroutine(async () => {
+            var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsync>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LP_SPHERE_NAME));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            var saveOperation = DataManager.SaveObjectsAsync(
+            await DataManager.SaveObjectsAsync(
                 FILE_NAME,
                 objects,
+                AsyncMode.OnThreadPool,
                 null,
                 null,
                 () => {
                     foreach (var obj in objects)
-                        obj.GetComponent<MeshFilter>().mesh = null;
+                        obj.RemoveMesh();
                     Debug.Log("Meshes saved and removed");
                 }
             );
 
-            while (saveOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-
             Debug.Log("Start loading");
-            var loadOperation = DataManager.LoadObjectsAsync(
+            await DataManager.LoadObjectsAsync(
                 FILE_NAME,
                 objects,
+                AsyncMode.OnThreadPool,
                 null,
                 null,
-                () => Debug.Log("Meshes loaded")
+                () => {
+                    foreach (var obj in objects)
+                        obj.SetMesh();
+                    Debug.Log("Meshes loaded");
+                }
             );
-
-            while (loadOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-        }
+        });
 
 
         [UnityTest]
-        public IEnumerator LPMeshesAsyncOnPlayerLoopTest () {
-            var objects = new TestMeshUnityAsync[200];
+        public IEnumerator MeshesAsyncOnPlayerLoopTest () => UniTask.ToCoroutine(async () => {
+            var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMeshUnityAsync>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LP_SPHERE_NAME));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            var saveOperation = DataManager.SaveObjectsAsync(
+            await DataManager.SaveObjectsAsync(
                 FILE_NAME,
                 objects,
+                AsyncMode.OnPlayerLoop,
                 null,
                 null,
                 () => {
                     foreach (var obj in objects)
-                        obj.GetComponent<MeshFilter>().mesh = null;
+                        obj.RemoveMesh();
                     Debug.Log("Meshes saved and removed");
                 }
             );
 
-            while (saveOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-
             Debug.Log("Start loading");
-            var loadOperation = DataManager.LoadObjectsAsync(
+            await DataManager.LoadObjectsAsync(
                 FILE_NAME,
                 objects,
+                AsyncMode.OnPlayerLoop,
                 null,
                 null,
-                () => Debug.Log("Meshes loaded")
+                () => {
+                    foreach (var obj in objects)
+                        obj.SetMesh();
+                    Debug.Log("Meshes loaded");
+                }
             );
-
-            while (loadOperation.Status == UniTaskStatus.Pending)
-                yield return null;
-        }
+        });
 
 
         [TearDown]
         public void EndTest () {
-            var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = typeof(SaveSystemEditor).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
 
-            method = typeof(DataManager).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
+            method = typeof(SaveSystemEditor).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
             Debug.Log("End test");
         }

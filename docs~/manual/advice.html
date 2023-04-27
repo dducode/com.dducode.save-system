@@ -1,0 +1,162 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Backward compatibility advice </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Backward compatibility advice ">
+      
+      <link rel="icon" href="../images/icon.png">
+      <link rel="stylesheet" href="../styles/docfx.min.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      <meta name="docfx:docurl" content="https://github.com/dducode/com.dducode.save-system">
+
+      <script>
+        MathJax = {
+          options: {
+            processHtmlClass: ['tex2jax_process', 'math']
+          }
+        };
+      </script>
+
+      <script type="text/javascript" src="../styles/docfx.min.js"></script>
+      <script type="text/javascript" src="../styles/main.js"></script>
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="backward-compatibility-advice">Backward compatibility advice</h1>
+
+<p>For backward compatibility of your data files,
+it is recommended define the data reading logic based
+on the data file version. For this, you will write a version
+of the file, then read its from the data
+file and at the end reading data depending on the file
+version</p>
+<p>You can do it into any class by using any data handler.
+You can use
+<a href="https://learn.microsoft.com/en-us/dotnet/api/system.version?view=net-8.0">Version</a>
+class from System namespace and bind the file version to an
+application version</p>
+<pre><code class="lang-csharp">private readonly Version m_currentVersion = new Version(Application.version);
+</code></pre>
+<p>Let's say you decided to add some data to persist and then
+read its.
+If you read the old file which doesn't contain this data,
+you will get the
+<a href="https://learn.microsoft.com/en-us/dotnet/api/system.io.endofstreamexception?view=net-6.0">EndOfStreamException</a>,
+because the UnityReader will try to read more bytes
+than the data file contains.</p>
+<p>The following code example shows how to read data
+depending on the file version</p>
+<pre><code class="lang-csharp">private readonly Version m_oldVersion1 = new Version(&quot;1.0.0&quot;);
+private readonly Version m_oldVersion2 = new Versiom(&quot;1.1.0&quot;);
+private readonly Version m_currentVersion = 
+    new Version(Application.version); // 1.2.0
+
+
+public void Save (UnityWriter writer) {
+    writer.Write(m_currentVersion);
+    // other actions
+}
+
+
+public void Load (UnityReader reader) {
+    var readVersion = reader.ReadVersion();
+
+    if (readVersion &gt;= m_oldVersion1) {
+        // performing some actions depending on the file version
+    }
+    
+    // other actions
+    
+    if (readVersion &gt;= m_oldVersion2) {
+        // performing some actions depending on the file version
+    }
+    
+    // other actions
+    
+    if (readVersion == m_currentVersion) {
+        // performing some actions depending on the file version
+    }
+}
+</code></pre>
+<p>This is where you store old versions of your file, read
+the version of the data file, compare it to old versions and
+current version and read other data based on
+the read file version.</p>
+<p>You can choose an other way for persist the old versions
+(ex. in StreamingAssets folder in json file, or in
+some other way). The main thing is that you was comparing
+the file version to the old versions and the current one</p>
+</article>
+
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+        
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <p>Copyright © 2023 Denis Dmitriev</p><p>Made with <a href="https://dotnet.github.io/docfx">docfx</a></p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

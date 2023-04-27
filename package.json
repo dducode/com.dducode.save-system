@@ -1,12 +1,15 @@
 {
-  "name": "com.didenis.savesystem",
-  "version": "1.3.0",
+  "name": "com.dducode.save-system",
+  "version": "1.4.0",
   "displayName": "Save System",
   "unity": "2021.3",
   "description": "Use this save system to save and load your game objects",
-  "documentationUrl": "https://github.com/DIDenis/com.didenis.save-system#how-to-use",
-  "licensesUrl": "https://github.com/DIDenis/com.didenis.save-system/blob/master/LICENSE.md",
-  "changelogUrl": "https://github.com/DIDenis/com.didenis.save-system/blob/master/CHANGELOG.md",
+  "documentationUrl": "https://dducode.github.io/com.dducode.save-system/index.html",
+  "licensesUrl": "https://dducode.github.io/com.dducode.save-system/license/LICENSE.html",
+  "changelogUrl": "https://dducode.github.io/com.dducode.save-system/changelog/CHANGELOG.html",
+  "dependencies": {
+    "com.cysharp.unitask" : "2.3.3"
+  },
   "author": {
     "name": "Denis",
     "email": "denisdmitriev7851@gmail.com"

@@ -1,0 +1,537 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class UnityAsyncReader
+ </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class UnityAsyncReader
+ ">
+      
+      <link rel="icon" href="../images/icon.png">
+      <link rel="stylesheet" href="../styles/docfx.min.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+
+      <script>
+        MathJax = {
+          options: {
+            processHtmlClass: ['tex2jax_process', 'math']
+          }
+        };
+      </script>
+
+      <script type="text/javascript" src="../styles/docfx.min.js"></script>
+      <script type="text/javascript" src="../styles/main.js"></script>
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="SaveSystem.UnityAsyncReader">
+
+
+
+  <h1 id="SaveSystem_UnityAsyncReader" data-uid="SaveSystem.UnityAsyncReader" class="text-break">Class UnityAsyncReader
+</h1>
+  <div class="markdown level0 summary"><p>Adapter to class <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.binaryreader">BinaryReader</a> for simplify reading data async</p>
+</div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="inheritance">
+    <h5>Inheritance</h5>
+    <div class="level0"><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+    <div class="level1"><span class="xref">UnityAsyncReader</span></div>
+  </div>
+  <div class="implements">
+    <h5>Implements</h5>
+    <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+  </div>
+  <h6><strong>Namespace</strong>: <a class="xref" href="SaveSystem.html">SaveSystem</a></h6>
+  <h6><strong>Assembly</strong>: SaveSystem.dll</h6>
+  <h5 id="SaveSystem_UnityAsyncReader_syntax">Syntax</h5>
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class UnityAsyncReader : IDisposable</code></pre>
+  </div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="SaveSystem_UnityAsyncReader_Dispose_" data-uid="SaveSystem.UnityAsyncReader.Dispose*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_Dispose" data-uid="SaveSystem.UnityAsyncReader.Dispose">
+  Dispose()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadBytes_" data-uid="SaveSystem.UnityAsyncReader.ReadBytes*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadBytes" data-uid="SaveSystem.UnityAsyncReader.ReadBytes">
+  ReadBytes()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;byte[]&gt; ReadBytes()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadColors_" data-uid="SaveSystem.UnityAsyncReader.ReadColors*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadColors" data-uid="SaveSystem.UnityAsyncReader.ReadColors">
+  ReadColors()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;Color[]&gt; ReadColors()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<span class="xref">Color</span>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadColors32_" data-uid="SaveSystem.UnityAsyncReader.ReadColors32*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadColors32" data-uid="SaveSystem.UnityAsyncReader.ReadColors32">
+  ReadColors32()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;Color32[]&gt; ReadColors32()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<span class="xref">Color32</span>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadFloatArray_" data-uid="SaveSystem.UnityAsyncReader.ReadFloatArray*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadFloatArray" data-uid="SaveSystem.UnityAsyncReader.ReadFloatArray">
+  ReadFloatArray()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;float[]&gt; ReadFloatArray()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadIntArray_" data-uid="SaveSystem.UnityAsyncReader.ReadIntArray*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadIntArray" data-uid="SaveSystem.UnityAsyncReader.ReadIntArray">
+  ReadIntArray()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;int[]&gt; ReadIntArray()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadMatrices_" data-uid="SaveSystem.UnityAsyncReader.ReadMatrices*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadMatrices" data-uid="SaveSystem.UnityAsyncReader.ReadMatrices">
+  ReadMatrices()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;Matrix4x4[]&gt; ReadMatrices()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<span class="xref">Matrix4x4</span>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadMesh_" data-uid="SaveSystem.UnityAsyncReader.ReadMesh*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadMesh_System_Int32_" data-uid="SaveSystem.UnityAsyncReader.ReadMesh(System.Int32)">
+  ReadMesh(int)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;MeshData&gt; ReadMesh(int uvChannels = 1)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>uvChannels</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<a class="xref" href="SaveSystem.MeshData.html">MeshData</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadObjects_" data-uid="SaveSystem.UnityAsyncReader.ReadObjects*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadObjects__1" data-uid="SaveSystem.UnityAsyncReader.ReadObjects``1">
+  ReadObjects&lt;T&gt;()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;T[]&gt; ReadObjects&lt;T&gt;()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;T[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadVector2Array_" data-uid="SaveSystem.UnityAsyncReader.ReadVector2Array*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadVector2Array" data-uid="SaveSystem.UnityAsyncReader.ReadVector2Array">
+  ReadVector2Array()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;Vector2[]&gt; ReadVector2Array()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<span class="xref">Vector2</span>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadVector3Array_" data-uid="SaveSystem.UnityAsyncReader.ReadVector3Array*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadVector3Array" data-uid="SaveSystem.UnityAsyncReader.ReadVector3Array">
+  ReadVector3Array()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;Vector3[]&gt; ReadVector3Array()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<span class="xref">Vector3</span>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadVector4Array_" data-uid="SaveSystem.UnityAsyncReader.ReadVector4Array*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadVector4Array" data-uid="SaveSystem.UnityAsyncReader.ReadVector4Array">
+  ReadVector4Array()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public UniTask&lt;Vector4[]&gt; ReadVector4Array()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">UniTask</span>&lt;<span class="xref">Vector4</span>[]&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="SaveSystem_UnityAsyncReader_ReadVersion_" data-uid="SaveSystem.UnityAsyncReader.ReadVersion*"></a>
+
+  <h3 id="SaveSystem_UnityAsyncReader_ReadVersion" data-uid="SaveSystem.UnityAsyncReader.ReadVersion">
+  ReadVersion()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Version ReadVersion()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.version">Version</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+
+        
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <p>Copyright © 2023 Denis Dmitriev</p><p>Made with <a href="https://dotnet.github.io/docfx">docfx</a></p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

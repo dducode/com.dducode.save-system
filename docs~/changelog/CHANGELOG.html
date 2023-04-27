@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Changelog </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Changelog ">
+      
+      <link rel="icon" href="../images/icon.png">
+      <link rel="stylesheet" href="../styles/docfx.min.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      <meta name="docfx:docurl" content="https://github.com/dducode/com.dducode.save-system">
+
+      <script>
+        MathJax = {
+          options: {
+            processHtmlClass: ['tex2jax_process', 'math']
+          }
+        };
+      </script>
+
+      <script type="text/javascript" src="../styles/docfx.min.js"></script>
+      <script type="text/javascript" src="../styles/main.js"></script>
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="changelog">Changelog</h1>
+
+<h2 id="140---2023-04-22">[1.4.0] - 2023-04-22</h2>
+<h3 id="added">Added</h3>
+<ul>
+<li>Added asynchronous data handling:
+<ul>
+<li>Added a new interface - the IPersistentObjectAsync for
+asynchronous handling of data</li>
+<li>Added the UnityAsyncWriter and UnityAsyncReader handlers -
+asynchronous handlers of data</li>
+<li>Expanded the DataManager - added simple and
+advanced asynchronous methods to save and load objects</li>
+</ul>
+</li>
+</ul>
+<h3 id="changed">Changed</h3>
+<ul>
+<li>Removed write and read meshes array methods</li>
+<li>Removed methods for writing and reading a list of objects.
+Instead, use the write and read methods of an array of objects.</li>
+<li>Removed methods for saving and loading a list of objects from the DataManager.
+Instead, use the save and load methods of an array of objects.</li>
+</ul>
+<h2 id="130---2023-04-17">[1.3.0] - 2023-04-17</h2>
+<h3 id="added-1">Added</h3>
+<ul>
+<li>Added write and read mesh and meshes array methods</li>
+<li>Added methods for writing and reading arrays of
+basic data types and unity structures</li>
+</ul>
+<h3 id="changed-1">Changed</h3>
+<ul>
+<li>Removed methods for writing and reading MonoBehaviour classes.
+Use SaveObject method instead and implement the
+IPersistentObject interface in your MonoBehaviour classes</li>
+</ul>
+<h2 id="120---2023-04-15">[1.2.0] - 2023-04-15</h2>
+<h3 id="added-2">Added</h3>
+<ul>
+<li>Added methods for writing and reading unity
+structures such as Color32, Matrix4X4, Vector2, Vector4.</li>
+<li>Added methods for writing and reading classes
+which inherits from MonoBehaviour</li>
+</ul>
+<h3 id="changed-2">Changed</h3>
+<ul>
+<li>Renamed &quot;ReadPosition&quot; method to &quot;ReadVector3&quot;
+(in UnityReader class)</li>
+</ul>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>Fixed problem with writing data to file. UnityWriter
+was leaving &quot;trash&quot; bytes at the end of the file if it wrote
+fewer bytes than the file contains</li>
+</ul>
+<h2 id="111---2023-04-14">[1.1.1] - 2023-04-14</h2>
+<h3 id="added-3">Added</h3>
+<ul>
+<li>Added displaying of size of data
+(in &quot;Data Manager / Get Data Size&quot; menu in editor)</li>
+</ul>
+<h2 id="110---2023-04-14">[1.1.0] - 2023-04-14</h2>
+<h3 id="added-4">Added</h3>
+<ul>
+<li>Added support of saving single object and list
+of objects</li>
+</ul>
+<h2 id="100---2023-04-13">[1.0.0] - 2023-04-13</h2>
+<h3 id="added-5">Added</h3>
+<ul>
+<li>Create package</li>
+</ul>
+</article>
+
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+        
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <p>Copyright © 2023 Denis Dmitriev</p><p>Made with <a href="https://dotnet.github.io/docfx">docfx</a></p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

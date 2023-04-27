@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Asynchronous management </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Asynchronous management ">
+      
+      <link rel="icon" href="../images/icon.png">
+      <link rel="stylesheet" href="../styles/docfx.min.css">
+      <link rel="stylesheet" href="../styles/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      <meta name="docfx:docurl" content="https://github.com/dducode/com.dducode.save-system">
+
+      <script>
+        MathJax = {
+          options: {
+            processHtmlClass: ['tex2jax_process', 'math']
+          }
+        };
+      </script>
+
+      <script type="text/javascript" src="../styles/docfx.min.js"></script>
+      <script type="text/javascript" src="../styles/main.js"></script>
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/logo.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="asynchronous-management">Asynchronous management</h1>
+
+<p>DataManager can also save and load
+objects asynchronously. For example, if you're generating a
+heavy mesh and want to write down it, you wouldn't want to do
+it at runtime, else your game will freeze.</p>
+<p>To do it you can persist MyGenerator by using SaveObjectAsync
+method. You can await it or continue</p>
+<pre><code class="lang-csharp">public async void Saving () {
+    await DataManager.SaveObjectAsync(fileName, myGenerator, AsyncMode.OnThreadPool);
+    // some actions
+}
+
+// or
+
+public void Saving () {
+    DataManager.SaveObjectAsync(fileName, myGenerator, AsyncMode.OnThreadPool);
+    // some actions
+}
+</code></pre>
+<p>And then in MyGenerator you can write the mesh</p>
+<pre><code class="lang-csharp">public void Save (UnityWriter writer) {
+    writer.Write(m_meshData);
+}
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Before write down the mesh, you must get
+<a href="../api/SaveSystem.MeshData.html">MeshData</a>
+struct inside an other method and save it
+as class field to pass it to writer.Write method.
+You just can cast Mesh to MeshData, ex.</p>
+<pre><code class="lang-csharp">public class MyGenerator : IPersistentObject {
+
+  private MeshData m_meshData;
+  private Mesh m_generatedMesh;
+
+
+  public void PreSave () {
+      m_meshData = m_generatedMesh;
+  }
+  
+  // other actions
+}
+</code></pre>
+</div>
+<p>For more information about AsyncMode, see the chapter
+<a href="async-modes.html">async modes</a></p>
+<p>If you are saving a lot of objects, you can observe the
+progress by passing a object to the DataManager which implement
+the <a href="https://learn.microsoft.com/en-us/dotnet/api/system.iprogress-1?view=net-7.0">IProgress&lt;float&gt;</a>
+interface</p>
+<pre><code class="lang-csharp">var progress = new Progress(); // it implements the IProgress&lt;float&gt; interface
+await DataManager.SaveObjectsAsync(
+    fileName, 
+    myObjects, 
+    AsyncMode.OnThreadPool, 
+    progress
+);
+</code></pre>
+<p>Also you can cancel operation by passing the cancellation
+token source to the DataManager</p>
+<pre><code class="lang-csharp">var source = new CancellationTokenSource();
+DataManager.SaveObjectsAsync(
+    fileName, 
+    myObjects, 
+    AsyncMode.OnThreadPool, 
+    progress: null, 
+    source
+);
+// some actions
+source.Cancel();
+</code></pre>
+<p>If you cancel the save, DataManager will delete
+the save file.</p>
+<p>Finally you can pass a lambda to the manager. The lambda
+will be called after the completion of the process</p>
+<pre><code class="lang-csharp">DataManager.SaveObjectsAsync(
+    fileName, 
+    myObjects, 
+    AsyncMode.OnThreadPool, 
+    progress: null, 
+    source: null, 
+    () =&gt; Debug.Log(&quot;Objects saved&quot;)
+);
+</code></pre>
+<p>When you load objects, you can await the result in the same
+way as when you load objects synchronously</p>
+<pre><code class="lang-csharp">public async void Loading () {
+    if (await DataManager.LoadObjectsAsync(fileName, myObjects, AsyncMode.OnThreadPool)) {
+        // some actions
+    }
+}
+</code></pre>
+</article>
+
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+        
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <p>Copyright © 2023 Denis Dmitriev</p><p>Made with <a href="https://dotnet.github.io/docfx">docfx</a></p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

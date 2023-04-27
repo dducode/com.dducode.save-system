@@ -1,0 +1,436 @@
+{
+  "homepages": [],
+  "source_base_path": "c:/UnityProjects/UnityPackages/Assets/com.dducode.save-system/docfx~",
+  "xrefmap": "xrefmap.yml",
+  "files": [
+    {
+      "type": "Resource",
+      "output": {
+        "resource": {
+          "relative_path": "index.json"
+        }
+      }
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.AsyncMode.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.AsyncMode.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.DataManager.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.DataManager.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.IPersistentObject.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.IPersistentObject.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.IPersistentObjectAsync.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.IPersistentObjectAsync.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.MeshData.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.MeshData.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.UnityAsyncReader.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.UnityAsyncReader.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.UnityAsyncWriter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.UnityAsyncWriter.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.UnityReader.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.UnityReader.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.UnityWriter.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.UnityWriter.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/SaveSystem.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/SaveSystem.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "api/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/toc.html"
+        },
+        ".json": {
+          "relative_path": "api/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "changelog/CHANGELOG.md",
+      "output": {
+        ".html": {
+          "relative_path": "changelog/CHANGELOG.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "changelog/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "changelog/toc.html"
+        },
+        ".json": {
+          "relative_path": "changelog/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_1.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_1.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_2.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_2.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_3.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_3.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_4.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_4.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_5.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_5.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_6.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_6.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_7.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_7.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/Screenshot_8.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/Screenshot_8.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/icon.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/icon.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "images/logo.png",
+      "output": {
+        "resource": {
+          "relative_path": "images/logo.png"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "index.md",
+      "output": {
+        ".html": {
+          "relative_path": "index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "license/LICENSE.md",
+      "output": {
+        ".html": {
+          "relative_path": "license/LICENSE.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "license/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "license/toc.html"
+        },
+        ".json": {
+          "relative_path": "license/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/advanced.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/advanced.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/advice.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/advice.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/async-management.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/async-management.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/async-modes.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/async-modes.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/in-editor.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/in-editor.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/installing.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/installing.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/intro.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/intro.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/objects-control.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/objects-control.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/saving-and-loading.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/saving-and-loading.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "manual/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "manual/toc.html"
+        },
+        ".json": {
+          "relative_path": "manual/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/using.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/using.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "manual/writing-and-reading.md",
+      "output": {
+        ".html": {
+          "relative_path": "manual/writing-and-reading.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "toc.html"
+        },
+        ".json": {
+          "relative_path": "toc.json"
+        }
+      },
+      "version": ""
+    }
+  ],
+  "version_info": {},
+  "groups": [
+    {
+      "xrefmap": "xrefmap.yml"
+    }
+  ]
+}

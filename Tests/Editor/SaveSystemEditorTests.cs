@@ -62,7 +62,7 @@ namespace SaveSystem.Tests.Editor {
                 objectList.Add(binaryObject);
             }
 
-            DataManager.SaveObjects(FILE_NAME, objectList);
+            DataManager.SaveObjects(FILE_NAME, objectList.ToArray());
 
             var method = typeof(DataManager).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
