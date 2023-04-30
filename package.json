@@ -4,9 +4,9 @@
   "displayName": "Save System",
   "unity": "2021.3",
   "description": "Use this save system to save and load your game objects",
-  "documentationUrl": "https://dducode.github.io/com.dducode.save-system/index.html",
-  "licensesUrl": "https://dducode.github.io/com.dducode.save-system/license/LICENSE.html",
-  "changelogUrl": "https://dducode.github.io/com.dducode.save-system/changelog/CHANGELOG.html",
+  "documentationUrl": "https://dducode.github.io/save-system-docs/index.html",
+  "licensesUrl": "https://dducode.github.io/save-system-docs/license/LICENSE.html",
+  "changelogUrl": "https://dducode.github.io/save-system-docs/changelog/CHANGELOG.html",
   "dependencies": {
     "com.cysharp.unitask" : "2.3.3"
   },

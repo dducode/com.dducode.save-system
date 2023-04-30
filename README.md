@@ -1,22 +1,22 @@
-<div style="text-align: center">
+<p align="center">
 
 ![](images~/logo.png)
 
-</div>
+</p>
 
 # Save System
 
-See [docs](https://dducode.github.io/com.dducode.save-system/index.html) 
+See [docs](https://dducode.github.io/save-system-docs/)
 to learn how to use the save system:
 
-* See [manual](https://dducode.github.io/com.dducode.save-system/manual/intro.html) 
-for quick start
-* See [this page](https://dducode.github.io/com.dducode.save-system/manual/installing.html)
-to learn how to install the system
-* See [Scripting API](ttps://dducode.github.io/com.dducode.save-system/api/index.html) 
-to more details of system usage
-* See [Cnangelog](https://dducode.github.io/com.dducode.save-system/changelog/CHANGELOG.html) 
-to know latest changes in the system
+* See [manual](https://dducode.github.io/save-system-docs/manual/intro.html)
+  for quick start
+* See [this page](https://dducode.github.io/save-system-docs/manual/installing.html)
+  to learn how to install the system
+* See [Scripting API](https://dducode.github.io/save-system-docs/api/index.html)
+  to more details of system usage
+* See [Changelog](https://dducode.github.io/save-system-docs/changelog/CHANGELOG.html)
+  to know latest changes in the system
 
 ## About Save System
 
