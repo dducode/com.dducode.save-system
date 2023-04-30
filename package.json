@@ -7,9 +7,6 @@
   "documentationUrl": "https://dducode.github.io/save-system-docs/index.html",
   "licensesUrl": "https://dducode.github.io/save-system-docs/license/LICENSE.html",
   "changelogUrl": "https://dducode.github.io/save-system-docs/changelog/CHANGELOG.html",
-  "dependencies": {
-    "com.cysharp.unitask" : "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask"
-  },
   "author": {
     "name": "Denis",
     "email": "denisdmitriev7851@gmail.com"
