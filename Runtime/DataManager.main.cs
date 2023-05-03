@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -20,7 +19,7 @@ namespace SaveSystem {
         /// <param name="obj"> the object which will be saved </param>
         public static void SaveObject<T> (string fileName, T obj) where T : IPersistentObject {
             if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(SAVING_OPERATION));
+                Debug.LogError(ObjectIsNullMessage(nameof(SaveObject)));
                 return;
             }
 
@@ -34,15 +33,8 @@ namespace SaveSystem {
         /// <param name="fileName"> the file where the object data will be saved </param>
         /// <param name="objects"> the objects which will be saved </param>
         public static void SaveObjects<T> (string fileName, T[] objects) where T : IPersistentObject {
-            if (objects is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(SAVING_OPERATION));
+            if (!ArrayIsValid(objects as object[], nameof(SaveObjects)))
                 return;
-            }
-
-            if (objects.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(SAVING_OPERATION));
-                return;
-            }
 
             using var unityWriter = GetUnityWriter(fileName);
 
@@ -64,7 +56,7 @@ namespace SaveSystem {
         /// <returns> Returns true if there is saved data, otherwise false </returns>
         public static bool LoadObject<T> (string fileName, T obj) where T : IPersistentObject {
             if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(LOADING_OPERATION));
+                Debug.LogError(ObjectIsNullMessage(nameof(LoadObject)));
                 return false;
             }
 
@@ -79,15 +71,8 @@ namespace SaveSystem {
         /// <param name="objects"> the objects which will be load </param>
         /// <returns> Returns true if there is saved data, otherwise false </returns>
         public static bool LoadObjects<T> (string fileName, T[] objects) where T : IPersistentObject {
-            if (objects is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(LOADING_OPERATION));
+            if (!ArrayIsValid(objects as object[], nameof(LoadObjects)))
                 return false;
-            }
-
-            if (objects.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(LOADING_OPERATION));
-                return false;
-            }
 
             using var unityReader = GetUnityReader(fileName);
 
@@ -119,7 +104,7 @@ namespace SaveSystem {
             Action onComplete = null
         ) where T : IPersistentObject {
             if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(SAVING_OPERATION));
+                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectAsync)));
                 return;
             }
 
@@ -140,66 +125,15 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObject {
-            if (objects is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(SAVING_OPERATION));
+            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsAsync))) {
                 source?.Dispose();
                 return;
             }
 
-            if (objects.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(SAVING_OPERATION));
-                source?.Dispose();
-                return;
-            }
-            
             await using var unityWriter = GetUnityWriter(fileName);
 
-            var completedTasks = 0f;
-            source ??= new CancellationTokenSource();
-
-            try {
-                switch (asyncMode) {
-                    case AsyncMode.OnThreadPool:
-                        await UniTask.RunOnThreadPool(() => SavingObjects(source, unityWriter));
-                        break;
-                    case AsyncMode.OnPlayerLoop:
-                        await SavingObjects(source, unityWriter);
-                        break;
-                    default: {
-                        throw new NotImplementedException(
-                            AsyncModeIsNotImplementMessage(asyncMode, nameof(SaveObjectsAsync))
-                        );
-                    }
-                }
-                
+            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityWriter, progress, source))
                 onComplete?.Invoke();
-            }
-            catch (Exception ex) when (ex is OperationCanceledException) {
-                await unityWriter.DisposeAsync();
-                File.Delete(unityWriter.localPath);
-                Debug.LogWarning(CancelSavingMessage);
-            }
-            catch (Exception ex) {
-                Debug.LogException(ex);
-            }
-            finally {
-                source.Dispose();
-            }
-
-            async UniTask SavingObjects (
-                CancellationTokenSource tokenSource,
-                UnityWriter writer
-            ) {
-                foreach (var obj in objects) {
-                    if (tokenSource.IsCancellationRequested)
-                        throw new OperationCanceledException();
-                    obj.Save(writer);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Length);
-                    if (asyncMode == AsyncMode.OnPlayerLoop)
-                        await UniTask.NextFrame(tokenSource.Token);
-                }
-            }
         }
 
         #endregion
@@ -221,7 +155,7 @@ namespace SaveSystem {
             Action onComplete = null
         ) where T : IPersistentObject {
             if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(LOADING_OPERATION));
+                Debug.LogError(ObjectIsNullMessage(nameof(LoadObjectAsync)));
                 return false;
             }
 
@@ -242,14 +176,7 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObject {
-            if (objects is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(LOADING_OPERATION));
-                source?.Dispose();
-                return false;
-            }
-
-            if (objects.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(LOADING_OPERATION));
+            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsAsync))) {
                 source?.Dispose();
                 return false;
             }
@@ -261,53 +188,12 @@ namespace SaveSystem {
                 return false;
             }
 
-            var completesTasks = 0f;
-            source ??= new CancellationTokenSource();
-
-            try {
-                switch (asyncMode) {
-                    case AsyncMode.OnThreadPool:
-                        await UniTask.RunOnThreadPool(() => LoadingObjects(source, unityReader));
-                        break;
-                    case AsyncMode.OnPlayerLoop:
-                        await LoadingObjects(source, unityReader);
-                        break;
-                    default: {
-                        throw new NotImplementedException(
-                            AsyncModeIsNotImplementMessage(asyncMode, nameof(LoadObjectsAsync))
-                        );
-                    }
-                }
-
+            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityReader, progress, source)) {
                 onComplete?.Invoke();
                 return true;
             }
-            catch (Exception ex) when (ex is OperationCanceledException) {
-                Debug.Log(CancelLoadingMessage);
-                return false;
-            }
-            catch (Exception ex) {
-                Debug.LogException(ex);
-                return false;
-            }
-            finally {
-                source.Dispose();
-            }
 
-            async UniTask LoadingObjects (
-                CancellationTokenSource tokenSource,
-                UnityReader reader
-            ) {
-                foreach (var obj in objects) {
-                    if (tokenSource.IsCancellationRequested)
-                        throw new OperationCanceledException();
-                    obj.Load(reader);
-                    completesTasks++;
-                    progress?.Report(completesTasks / objects.Length);
-                    if (asyncMode == AsyncMode.OnPlayerLoop)
-                        await UniTask.NextFrame(tokenSource.Token);
-                }
-            }
+            return false;
         }
 
         #endregion
@@ -324,7 +210,7 @@ namespace SaveSystem {
             Action onComplete = null
         ) where T : IPersistentObjectAsync {
             if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(SAVING_OPERATION));
+                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectAsyncAdvanced)));
                 return;
             }
 
@@ -341,45 +227,15 @@ namespace SaveSystem {
             Action onComplete = null
         )
             where T : IPersistentObjectAsync {
-            if (objects is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(SAVING_OPERATION));
-                source?.Dispose();
-                return;
-            }
-
-            if (objects.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(SAVING_OPERATION));
+            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsAsyncAdvanced))) {
                 source?.Dispose();
                 return;
             }
 
             await using var unityAsyncWriter = GetUnityAsyncWriter(fileName);
 
-            var completedTasks = 0f;
-            source ??= new CancellationTokenSource();
-
-            try {
-                foreach (var obj in objects) {
-                    if (source.IsCancellationRequested)
-                        throw new OperationCanceledException();
-                    await obj.Save(unityAsyncWriter);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Length);
-                }
-
+            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncWriter, progress, source))
                 onComplete?.Invoke();
-            }
-            catch (Exception ex) when (ex is OperationCanceledException) {
-                await unityAsyncWriter.DisposeAsync();
-                File.Delete(unityAsyncWriter.localPath);
-                Debug.LogWarning(CancelSavingMessage);
-            }
-            catch (Exception ex) {
-                Debug.LogException(ex);
-            }
-            finally {
-                source.Dispose();
-            }
         }
 
         #endregion
@@ -396,7 +252,7 @@ namespace SaveSystem {
             Action onComplete = null
         ) where T : IPersistentObjectAsync {
             if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(LOADING_OPERATION));
+                Debug.LogError(ObjectIsNullMessage(nameof(LoadObjectAsyncAdvanced)));
                 return false;
             }
 
@@ -413,14 +269,7 @@ namespace SaveSystem {
             Action onComplete = null
         )
             where T : IPersistentObjectAsync {
-            if (objects is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(LOADING_OPERATION));
-                source?.Dispose();
-                return false;
-            }
-
-            if (objects.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(LOADING_OPERATION));
+            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsAsyncAdvanced))) {
                 source?.Dispose();
                 return false;
             }
@@ -432,35 +281,214 @@ namespace SaveSystem {
                 return false;
             }
 
-            var completedTasks = 0f;
-            source ??= new CancellationTokenSource();
-
-            try {
-                foreach (var obj in objects) {
-                    if (source.IsCancellationRequested)
-                        throw new OperationCanceledException();
-                    await obj.Load(unityAsyncReader);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Length);
-                }
-
+            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncReader, progress, source)) {
                 onComplete?.Invoke();
                 return true;
             }
-            catch (Exception ex) when (ex is OperationCanceledException) {
-                Debug.Log(CancelLoadingMessage);
-                return false;
+
+            return false;
+        }
+
+        #endregion
+
+
+
+        #region SavingRemote
+
+        public static async UniTask SaveObjectRemote<T> (
+            string url,
+            T obj,
+            AsyncMode asyncMode,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObject {
+            if (obj is null) {
+                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectRemote)));
+                return;
             }
-            catch (Exception ex) {
-                Debug.LogException(ex);
-                return false;
+
+            await SaveObjectsRemote(url, new[] {obj}, asyncMode, null, source, onComplete);
+        }
+
+
+        public static async UniTask SaveObjectsRemote<T> (
+            string url,
+            T[] objects,
+            AsyncMode asyncMode,
+            IProgress<float> progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObject {
+            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsRemote))) {
+                source?.Dispose();
+                return;
             }
-            finally {
-                source.Dispose();
+
+            await using var unityWriter = GetUnityWriterRemote();
+
+            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityWriter, progress, source)) {
+                await unityWriter.DisposeAsync();
+                await SendDataToRemote(url);
+                onComplete?.Invoke();
             }
         }
 
         #endregion
+
+
+
+        #region LoadingRemote
+
+        public static async UniTask<bool> LoadObjectRemote<T> (
+            string url,
+            T obj,
+            AsyncMode asyncMode,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObject {
+            if (obj is null) {
+                Debug.LogError(ObjectIsNullMessage(nameof(LoadObjectRemote)));
+                return false;
+            }
+
+            return await LoadObjectsRemote(url, new[] {obj}, asyncMode, null, source, onComplete);
+        }
+
+
+        public static async UniTask<bool> LoadObjectsRemote<T> (
+            string url,
+            T[] objects,
+            AsyncMode asyncMode,
+            IProgress<float> progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObject {
+            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsRemote))) {
+                source?.Dispose();
+                return false;
+            }
+
+            using var unityReader = await GetUnityReaderRemote(url);
+
+            if (unityReader is null) {
+                source?.Dispose();
+                return false;
+            }
+
+            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityReader, progress, source)) {
+                onComplete?.Invoke();
+                return true;
+            }
+
+            return false;
+        }
+
+        #endregion
+
+
+
+        #region SavingRemoteAdvanced
+
+        public static async UniTask SaveObjectRemoteAdvanced<T> (
+            string url,
+            T obj,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (obj is null) {
+                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectRemoteAdvanced)));
+                return;
+            }
+
+            await SaveObjectsRemoteAdvanced(url, new[] {obj}, null, source, onComplete);
+        }
+
+
+        public static async UniTask SaveObjectsRemoteAdvanced<T> (
+            string url,
+            T[] objects,
+            IProgress<float> progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsRemoteAdvanced))) {
+                source?.Dispose();
+                return;
+            }
+
+            await using var unityAsyncWriter = GetUnityAsyncWriterRemote();
+
+            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncWriter, progress, source)) {
+                await unityAsyncWriter.DisposeAsync();
+                await SendDataToRemote(url);
+                onComplete?.Invoke();
+            }
+        }
+
+        #endregion
+
+
+
+        #region LoadingRemoteAdvanced
+
+        public static async UniTask<bool> LoadObjectRemoteAdvanced<T> (
+            string url,
+            T obj,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (obj is null) {
+                source?.Dispose();
+                return false;
+            }
+
+            return await LoadObjectsRemoteAdvanced(url, new[] {obj}, null, source, onComplete);
+        }
+
+
+        public static async UniTask<bool> LoadObjectsRemoteAdvanced<T> (
+            string url,
+            T[] objects,
+            IProgress<float> progress = null,
+            CancellationTokenSource source = null,
+            Action onComplete = null
+        ) where T : IPersistentObjectAsync {
+            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsRemoteAdvanced))) {
+                source?.Dispose();
+                return false;
+            }
+
+            using var unityAsyncReader = await GetUnityAsyncReaderRemote(url);
+
+            if (unityAsyncReader is null) {
+                source?.Dispose();
+                return false;
+            }
+
+            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncReader, progress, source)) {
+                onComplete?.Invoke();
+                return true;
+            }
+
+            return false;
+        }
+
+        #endregion
+
+
+
+        private static bool ArrayIsValid (object[] array, string methodName) {
+            if (array is null) {
+                Debug.LogError(ObjectsArrayIsNullMessage(methodName));
+                return false;
+            }
+            else if (array.Length is 0) {
+                Debug.LogWarning(ObjectsArrayIsEmptyMessage(methodName));
+                return false;
+            }
+
+            return true;
+        }
 
     }
 

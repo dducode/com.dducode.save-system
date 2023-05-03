@@ -18,12 +18,14 @@ namespace SaveSystem {
 
 
         private static UnityReader GetUnityReader (string fileName) {
-            return new UnityReader(GetBinaryReader(fileName));
+            var binaryReader = GetBinaryReader(fileName);
+            return binaryReader is null ? null : new UnityReader(binaryReader);
         }
 
 
         private static UnityAsyncReader GetUnityAsyncReader (string fileName) {
-            return new UnityAsyncReader(GetBinaryReader(fileName));
+            var binaryReader = GetBinaryReader(fileName);
+            return binaryReader is null ? null : new UnityAsyncReader(binaryReader);
         }
 
 
@@ -44,11 +46,6 @@ namespace SaveSystem {
 
         private static string GetPersistentPath (string fileName) {
             return Path.Combine(Application.persistentDataPath, $"{fileName}.bytes");
-        }
-
-
-        private static string GetTempPath () {
-            return Path.Combine(Application.temporaryCachePath, "temp.bytes");
         }
 
     }

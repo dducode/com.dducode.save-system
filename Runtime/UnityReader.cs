@@ -8,7 +8,7 @@ namespace SaveSystem {
     /// <summary>
     /// Adapter to class <see cref="BinaryReader"></see> for simplify reading data
     /// </summary>
-    public sealed class UnityReader : IDisposable {
+    public sealed class UnityReader : IUnityHandler {
 
         private readonly BinaryReader m_reader;
 

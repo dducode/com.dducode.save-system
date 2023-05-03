@@ -9,7 +9,7 @@ namespace SaveSystem {
     /// <summary>
     /// Adapter to class <see cref="BinaryWriter"></see> for simplify writing data async
     /// </summary>
-    public sealed class UnityAsyncWriter : IDisposable, IAsyncDisposable {
+    public sealed class UnityAsyncWriter : IUnityAsyncHandler, IAsyncDisposable {
 
         private readonly BinaryWriter m_writer;
         public readonly string localPath;

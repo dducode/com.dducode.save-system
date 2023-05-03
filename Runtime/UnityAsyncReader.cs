@@ -9,7 +9,7 @@ namespace SaveSystem {
     /// <summary>
     /// Adapter to class <see cref="BinaryReader"></see> for simplify reading data async
     /// </summary>
-    public sealed class UnityAsyncReader : IDisposable {
+    public sealed class UnityAsyncReader : IUnityAsyncHandler {
 
         private readonly BinaryReader m_reader;
 
