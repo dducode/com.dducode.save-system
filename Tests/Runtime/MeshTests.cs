@@ -1,17 +1,17 @@
 ﻿using System.Collections;
-using System.Reflection;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using SaveSystem.Handlers;
+using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace SaveSystem.Tests.Runtime {
+namespace SaveSystem.Tests {
 
-    public class MeshTests {
+    internal sealed class MeshTests {
 
-        private const string FILE_NAME = "test";
-        private const string SETTINGS = "test settings";
-        private const string LP_SPHERE_NAME = "Test LP Sphere";
+        private const string FilePath = "test.bytes";
+        private const string LpSphereName = "Test LP Sphere";
 
 
         [SetUp]
@@ -25,16 +25,17 @@ namespace SaveSystem.Tests.Runtime {
 
         [UnityTest]
         public IEnumerator MeshTest () {
-            var testMono = Object.Instantiate(Resources.Load<TestMesh>(LP_SPHERE_NAME));
+            TestMesh testMono = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
             Debug.Log("Create object");
             yield return new WaitForSeconds(2);
 
-            DataManager.SaveObject(FILE_NAME, testMono);
+            ObjectHandler objectHandler = HandlersProvider.CreateObjectHandler(testMono, FilePath);
+            objectHandler.Save();
             testMono.GetComponent<MeshFilter>().mesh = null;
             Debug.Log("Save and remove mesh");
             yield return new WaitForSeconds(2);
 
-            DataManager.LoadObject(FILE_NAME, testMono);
+            objectHandler.Load();
             Debug.Log("Load mesh");
             yield return new WaitForSeconds(2);
         }
@@ -45,39 +46,31 @@ namespace SaveSystem.Tests.Runtime {
             var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
+            ObjectHandler objectHandler = HandlersProvider.CreateObjectHandler(objects, FilePath);
             Debug.Log("Start saving");
-            await DataManager.SaveObjectsAsync(
-                FILE_NAME,
-                objects,
-                AsyncMode.OnThreadPool,
-                null,
-                null,
-                () => {
-                    foreach (var obj in objects)
+            await objectHandler
+               .OnThreadPool()
+               .OnComplete(_ => {
+                    foreach (TestMesh obj in objects)
                         obj.RemoveMesh();
                     Debug.Log("Meshes saved and removed");
-                }
-            );
+                })
+               .SaveAsync();
 
             Debug.Log("Start loading");
-            await DataManager.LoadObjectsAsync(
-                FILE_NAME,
-                objects,
-                AsyncMode.OnThreadPool,
-                null,
-                null,
-                () => {
-                    foreach (var obj in objects)
+            await objectHandler
+               .OnComplete(_ => {
+                    foreach (TestMesh obj in objects)
                         obj.SetMesh();
                     Debug.Log("Meshes loaded");
-                }
-            );
+                })
+               .LoadAsync();
         });
 
 
@@ -86,49 +79,37 @@ namespace SaveSystem.Tests.Runtime {
             var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            await DataManager.SaveObjectsAsync(
-                FILE_NAME,
-                objects,
-                AsyncMode.OnPlayerLoop,
-                null,
-                null,
-                () => {
-                    foreach (var obj in objects)
+            ObjectHandler objectHandler = HandlersProvider
+               .CreateObjectHandler(objects, FilePath)
+               .OnPlayerLoop()
+               .OnComplete(_ => {
+                    foreach (TestMesh obj in objects)
                         obj.RemoveMesh();
                     Debug.Log("Meshes saved and removed");
-                }
-            );
+                });
+            await objectHandler.SaveAsync();
 
             Debug.Log("Start loading");
-            await DataManager.LoadObjectsAsync(
-                FILE_NAME,
-                objects,
-                AsyncMode.OnPlayerLoop,
-                null,
-                null,
-                () => {
-                    foreach (var obj in objects)
+            await objectHandler
+               .OnComplete(_ => {
+                    foreach (TestMesh obj in objects)
                         obj.SetMesh();
                     Debug.Log("Meshes loaded");
-                }
-            );
+                })
+               .LoadAsync();
         });
 
 
         [TearDown]
         public void EndTest () {
-            var method = typeof(SaveSystemEditor).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
-            method?.Invoke(null, new object[] { });
-
-            method = typeof(SaveSystemEditor).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
-            method?.Invoke(null, new object[] { });
+            DataManager.DeleteAllData();
             Debug.Log("End test");
         }
 

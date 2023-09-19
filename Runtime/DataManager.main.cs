@@ -1,44 +1,47 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.InternalServices;
+using SaveSystem.UnityHandlers;
 using UnityEngine;
+
 
 namespace SaveSystem {
 
     /// <summary>
-    /// Main class for handling objects
+    /// Main class for handling data
     /// </summary>
     public static partial class DataManager {
+
+        private const string ObsoleteMessage =
+            "It's the obsolete method and it may be removed later. Use methods of the HandlersProvider class instead this";
+
+
 
         #region Saving
 
         /// <summary>
         /// Save one object
         /// </summary>
-        /// <param name="fileName"> the file where the object data will be saved </param>
+        /// <param name="filePath"> the file where the object data will be saved </param>
         /// <param name="obj"> the object which will be saved </param>
-        public static void SaveObject<T> (string fileName, T obj) where T : IPersistentObject {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(SaveObject)));
-                return;
-            }
-
-            SaveObjects(fileName, new[] {obj});
+        public static void SaveObject<T> (string filePath, T obj) where T : IPersistentObject {
+            SaveObjects(filePath, new[] {obj});
         }
 
 
         /// <summary>
         /// Save many objects
         /// </summary>
-        /// <param name="fileName"> the file where the object data will be saved </param>
+        /// <param name="filePath"> the file where the object data will be saved </param>
         /// <param name="objects"> the objects which will be saved </param>
-        public static void SaveObjects<T> (string fileName, T[] objects) where T : IPersistentObject {
-            if (!ArrayIsValid(objects as object[], nameof(SaveObjects)))
-                return;
+        public static void SaveObjects<T> (string filePath, IEnumerable<T> objects)
+            where T : IPersistentObject {
+            using UnityWriter unityWriter = UnityWriter.GetLocal(filePath);
 
-            using var unityWriter = GetUnityWriter(fileName);
-
-            foreach (var obj in objects)
+            foreach (T obj in objects)
                 obj.Save(unityWriter);
         }
 
@@ -51,35 +54,28 @@ namespace SaveSystem {
         /// <summary>
         /// Load one object
         /// </summary>
-        /// <param name="fileName"> the file whereof the object data will be load </param>
+        /// <param name="filePath"> the file whereof the object data will be load </param>
         /// <param name="obj"> the object which will be load </param>
         /// <returns> Returns true if there is saved data, otherwise false </returns>
-        public static bool LoadObject<T> (string fileName, T obj) where T : IPersistentObject {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(LoadObject)));
-                return false;
-            }
-
-            return LoadObjects(fileName, new[] {obj});
+        public static bool LoadObject<T> (string filePath, T obj) where T : IPersistentObject {
+            return LoadObjects(filePath, new[] {obj});
         }
 
 
         /// <summary>
         /// Load many objects
         /// </summary>
-        /// <param name="fileName"> the file whereof the object data will be load </param>
+        /// <param name="filePath"> the file whereof the object data will be load </param>
         /// <param name="objects"> the objects which will be load </param>
         /// <returns> Returns true if there is saved data, otherwise false </returns>
-        public static bool LoadObjects<T> (string fileName, T[] objects) where T : IPersistentObject {
-            if (!ArrayIsValid(objects as object[], nameof(LoadObjects)))
-                return false;
-
-            using var unityReader = GetUnityReader(fileName);
+        public static bool LoadObjects<T> (string filePath, IEnumerable<T> objects)
+            where T : IPersistentObject {
+            using UnityReader unityReader = UnityReader.GetLocal(filePath);
 
             if (unityReader is null)
                 return false;
 
-            foreach (var obj in objects)
+            foreach (T obj in objects)
                 obj.Load(unityReader);
 
             return true;
@@ -96,19 +92,15 @@ namespace SaveSystem {
         /// </summary>
         /// <exception cref="OperationCanceledException"> throws when saving is canceled </exception>
         /// <inheritdoc cref="SaveObject{T}"/>
+        [Obsolete(ObsoleteMessage)]
         public static async UniTask SaveObjectAsync<T> (
-            string fileName,
+            string filePath,
             T obj,
             AsyncMode asyncMode,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObject {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectAsync)));
-                return;
-            }
-
-            await SaveObjectsAsync(fileName, new[] {obj}, asyncMode, null, source, onComplete);
+            await SaveObjectsAsync(filePath, new[] {obj}, asyncMode, null, source, onComplete);
         }
 
 
@@ -117,22 +109,18 @@ namespace SaveSystem {
         /// </summary>
         /// <exception cref="OperationCanceledException"> throws when saving is canceled </exception>
         /// <inheritdoc cref="SaveObjects{T}"/>
+        [Obsolete(ObsoleteMessage)]
         public static async UniTask SaveObjectsAsync<T> (
-            string fileName,
+            string filePath,
             T[] objects,
             AsyncMode asyncMode,
             IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObject {
-            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsAsync))) {
-                source?.Dispose();
-                return;
-            }
+            await using UnityWriter unityWriter = UnityWriter.GetLocal(filePath);
 
-            await using var unityWriter = GetUnityWriter(fileName);
-
-            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityWriter, progress, source))
+            if (await InternalHandling.TryHandleObjectsAsync(objects, asyncMode, unityWriter, progress, source))
                 onComplete?.Invoke();
         }
 
@@ -147,19 +135,15 @@ namespace SaveSystem {
         /// </summary>
         /// <exception cref="OperationCanceledException"> throws when loading is canceled </exception>
         /// <inheritdoc cref="LoadObject{T}"/>
+        [Obsolete(ObsoleteMessage)]
         public static async UniTask<bool> LoadObjectAsync<T> (
-            string fileName,
+            string filePath,
             T obj,
             AsyncMode asyncMode,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObject {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(LoadObjectAsync)));
-                return false;
-            }
-
-            return await LoadObjectsAsync(fileName, new[] {obj}, asyncMode, null, source, onComplete);
+            return await LoadObjectsAsync(filePath, new[] {obj}, asyncMode, null, source, onComplete);
         }
 
 
@@ -168,27 +152,23 @@ namespace SaveSystem {
         /// </summary>
         /// <exception cref="OperationCanceledException"> throws when loading is canceled </exception>
         /// <inheritdoc cref="LoadObjects{T}"/>
+        [Obsolete(ObsoleteMessage)]
         public static async UniTask<bool> LoadObjectsAsync<T> (
-            string fileName,
+            string filePath,
             T[] objects,
             AsyncMode asyncMode,
             IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) where T : IPersistentObject {
-            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsAsync))) {
-                source?.Dispose();
-                return false;
-            }
-
-            using var unityReader = GetUnityReader(fileName);
+            using UnityReader unityReader = UnityReader.GetLocal(filePath);
 
             if (unityReader is null) {
                 source?.Dispose();
                 return false;
             }
 
-            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityReader, progress, source)) {
+            if (await InternalHandling.TryHandleObjectsAsync(objects, asyncMode, unityReader, progress, source)) {
                 onComplete?.Invoke();
                 return true;
             }
@@ -200,294 +180,81 @@ namespace SaveSystem {
 
 
 
-        #region SavingAsyncAdvanced
-
-        /// <inheritdoc cref="SaveObjectAsync{T}"/>
-        public static async UniTask SaveObjectAsyncAdvanced<T> (
-            string fileName,
-            T obj,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectAsyncAdvanced)));
-                return;
-            }
-
-            await SaveObjectsAsyncAdvanced(fileName, new[] {obj}, null, source, onComplete);
+        /// <returns> Returns the size of the data in bytes </returns>
+        public static long GetDataSize () {
+            return GetDataSize(Application.persistentDataPath);
         }
 
 
-        /// <inheritdoc cref="SaveObjectsAsync{T}"/>
-        public static async UniTask SaveObjectsAsyncAdvanced<T> (
-            string fileName,
-            T[] objects,
-            IProgress<float> progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        )
-            where T : IPersistentObjectAsync {
-            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsAsyncAdvanced))) {
-                source?.Dispose();
-                return;
-            }
-
-            await using var unityAsyncWriter = GetUnityAsyncWriter(fileName);
-
-            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncWriter, progress, source))
-                onComplete?.Invoke();
-        }
-
-        #endregion
-
-
-
-        #region LoadingAsyncAdvanced
-
-        /// <inheritdoc cref="LoadObjectAsync{T}"/>
-        public static async UniTask<bool> LoadObjectAsyncAdvanced<T> (
-            string fileName,
-            T obj,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(LoadObjectAsyncAdvanced)));
-                return false;
-            }
-
-            return await LoadObjectsAsyncAdvanced(fileName, new[] {obj}, null, source, onComplete);
+        /// <returns> Returns the formatted total data size </returns>
+        /// <example>
+        /// "64 Bytes", "10.54 KBytes", "0.93 MBytes"
+        /// </example>
+        public static string GetFormattedDataSize () {
+            return GetFormattedDataSize(GetDataSize());
         }
 
 
-        /// <inheritdoc cref="LoadObjectsAsync{T}"/>
-        public static async UniTask<bool> LoadObjectsAsyncAdvanced<T> (
-            string fileName,
-            T[] objects,
-            IProgress<float> progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        )
-            where T : IPersistentObjectAsync {
-            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsAsyncAdvanced))) {
-                source?.Dispose();
-                return false;
-            }
-
-            using var unityAsyncReader = GetUnityAsyncReader(fileName);
-
-            if (unityAsyncReader is null) {
-                source?.Dispose();
-                return false;
-            }
-
-            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncReader, progress, source)) {
-                onComplete?.Invoke();
-                return true;
-            }
-
-            return false;
-        }
-
-        #endregion
-
-
-
-        #region SavingRemote
-
-        public static async UniTask SaveObjectRemote<T> (
-            string url,
-            T obj,
-            AsyncMode asyncMode,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObject {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectRemote)));
-                return;
-            }
-
-            await SaveObjectsRemote(url, new[] {obj}, asyncMode, null, source, onComplete);
+        /// <returns> True if local storage has any data, otherwise false </returns>
+        public static bool HasAnyData () {
+            return GetDataSize(Application.persistentDataPath) > 0;
         }
 
 
-        public static async UniTask SaveObjectsRemote<T> (
-            string url,
-            T[] objects,
-            AsyncMode asyncMode,
-            IProgress<float> progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObject {
-            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsRemote))) {
-                source?.Dispose();
-                return;
+        /// <param name="dataSize"> Size of data to will be formatted </param>
+        /// <returns> Returns the formatted data size </returns>
+        internal static string GetFormattedDataSize (long dataSize) {
+            string label;
+
+            switch (dataSize) {
+                case < 1_000:
+                    label = $"{Math.Round((double)dataSize, 2)} Bytes";
+                    break;
+                case < 1_000_000:
+                    double size = dataSize / 1024d;
+                    label = $"{Math.Round(size, 2)} KBytes";
+                    break;
+                case < 1_000_000_000:
+                    size = dataSize / Math.Pow(1024, 2);
+                    label = $"{Math.Round(size, 2)} MBytes";
+                    break;
+                default:
+                    size = dataSize / Math.Pow(1024, 3);
+                    label = $"{Math.Round(size, 2)} GBytes";
+                    break;
             }
 
-            await using var unityWriter = GetUnityWriterRemote();
-
-            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityWriter, progress, source)) {
-                await unityWriter.DisposeAsync();
-                await SendDataToRemote(url);
-                onComplete?.Invoke();
-            }
-        }
-
-        #endregion
-
-
-
-        #region LoadingRemote
-
-        public static async UniTask<bool> LoadObjectRemote<T> (
-            string url,
-            T obj,
-            AsyncMode asyncMode,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObject {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(LoadObjectRemote)));
-                return false;
-            }
-
-            return await LoadObjectsRemote(url, new[] {obj}, asyncMode, null, source, onComplete);
+            return label;
         }
 
 
-        public static async UniTask<bool> LoadObjectsRemote<T> (
-            string url,
-            T[] objects,
-            AsyncMode asyncMode,
-            IProgress<float> progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObject {
-            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsRemote))) {
-                source?.Dispose();
-                return false;
-            }
+        /// <summary>
+        /// It's unsafe calling. Make sure you want it
+        /// </summary>
+        internal static void DeleteAllData () {
+            string[] data = Directory.GetFileSystemEntries(Application.persistentDataPath);
 
-            using var unityReader = await GetUnityReaderRemote(url);
-
-            if (unityReader is null) {
-                source?.Dispose();
-                return false;
-            }
-
-            if (await Handler.TryHandleObjectsAsync(objects, asyncMode, unityReader, progress, source)) {
-                onComplete?.Invoke();
-                return true;
-            }
-
-            return false;
-        }
-
-        #endregion
-
-
-
-        #region SavingRemoteAdvanced
-
-        public static async UniTask SaveObjectRemoteAdvanced<T> (
-            string url,
-            T obj,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (obj is null) {
-                Debug.LogError(ObjectIsNullMessage(nameof(SaveObjectRemoteAdvanced)));
-                return;
-            }
-
-            await SaveObjectsRemoteAdvanced(url, new[] {obj}, null, source, onComplete);
-        }
-
-
-        public static async UniTask SaveObjectsRemoteAdvanced<T> (
-            string url,
-            T[] objects,
-            IProgress<float> progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (!ArrayIsValid(objects as object[], nameof(SaveObjectsRemoteAdvanced))) {
-                source?.Dispose();
-                return;
-            }
-
-            await using var unityAsyncWriter = GetUnityAsyncWriterRemote();
-
-            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncWriter, progress, source)) {
-                await unityAsyncWriter.DisposeAsync();
-                await SendDataToRemote(url);
-                onComplete?.Invoke();
+            foreach (string filePath in data) {
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+                else if (Directory.Exists(filePath))
+                    Directory.Delete(filePath, true);
             }
         }
 
-        #endregion
 
+        private static long GetDataSize (string path) {
+            string[] data = Directory.GetFileSystemEntries(path);
+            var dataSize = 0L;
 
-
-        #region LoadingRemoteAdvanced
-
-        public static async UniTask<bool> LoadObjectRemoteAdvanced<T> (
-            string url,
-            T obj,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (obj is null) {
-                source?.Dispose();
-                return false;
+            foreach (string filePath in data) {
+                if (Directory.Exists(filePath))
+                    dataSize += GetDataSize(filePath);
+                else
+                    dataSize += new FileInfo(filePath).Length;
             }
 
-            return await LoadObjectsRemoteAdvanced(url, new[] {obj}, null, source, onComplete);
-        }
-
-
-        public static async UniTask<bool> LoadObjectsRemoteAdvanced<T> (
-            string url,
-            T[] objects,
-            IProgress<float> progress = null,
-            CancellationTokenSource source = null,
-            Action onComplete = null
-        ) where T : IPersistentObjectAsync {
-            if (!ArrayIsValid(objects as object[], nameof(LoadObjectsRemoteAdvanced))) {
-                source?.Dispose();
-                return false;
-            }
-
-            using var unityAsyncReader = await GetUnityAsyncReaderRemote(url);
-
-            if (unityAsyncReader is null) {
-                source?.Dispose();
-                return false;
-            }
-
-            if (await AdvancedHandler.TryHandleObjectsAsync(objects, unityAsyncReader, progress, source)) {
-                onComplete?.Invoke();
-                return true;
-            }
-
-            return false;
-        }
-
-        #endregion
-
-
-
-        private static bool ArrayIsValid (object[] array, string methodName) {
-            if (array is null) {
-                Debug.LogError(ObjectsArrayIsNullMessage(methodName));
-                return false;
-            }
-            else if (array.Length is 0) {
-                Debug.LogWarning(ObjectsArrayIsEmptyMessage(methodName));
-                return false;
-            }
-
-            return true;
+            return dataSize;
         }
 
     }

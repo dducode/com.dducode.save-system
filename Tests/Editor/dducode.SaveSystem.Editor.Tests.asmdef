@@ -1,10 +1,11 @@
 {
     "name": "SaveSystem.Editor.Tests",
-    "rootNamespace": "",
+    "rootNamespace": "SaveSystem.Editor.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "SaveSystem"
+        "SaveSystem",
+        "SaveSystem.Editor"
     ],
     "includePlatforms": [
         "Editor"

@@ -1,19 +1,20 @@
 using System.Collections;
-using System.Reflection;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using SaveSystem.Handlers;
+using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
 
 
-namespace SaveSystem.Tests.Runtime {
+namespace SaveSystem.Tests {
 
     internal sealed class MeshTestsAdvanced {
 
-        private const string FILE_NAME = "test";
-        private const string LP_SPHERE_NAME = "Test LP Sphere";
-        private const string HP_SPHERE_NAME = "Test HP Sphere";
+        private const string FilePath = "test.bytes";
+        private const string LpSphereName = "Test LP Sphere";
+        private const string HpSphereName = "Test HP Sphere";
 
 
         [SetUp]
@@ -27,27 +28,23 @@ namespace SaveSystem.Tests.Runtime {
 
         [UnityTest]
         public IEnumerator HpMeshAsyncAdvancedTest () => UniTask.ToCoroutine(async () => {
-            var testMono = Object.Instantiate(Resources.Load<TestMeshAdvanced>(HP_SPHERE_NAME));
+            TestMeshAdvanced testMono = Object.Instantiate(Resources.Load<TestMeshAdvanced>(HpSphereName));
             Debug.Log("Create object");
 
             Debug.Log("Start saving");
-            await DataManager.SaveObjectAsyncAdvanced(
-                FILE_NAME,
-                testMono,
-                null,
-                () => {
+            AdvancedObjectHandler objectHandler =
+                HandlersProvider.CreateObjectHandler(testMono, FilePath);
+            await objectHandler
+               .OnComplete(_ => {
                     testMono.GetComponent<MeshFilter>().mesh = null;
                     Debug.Log("Mesh saved and removed");
-                }
-            );
+                })
+               .SaveAsync();
 
             Debug.Log("Start loading");
-            await DataManager.LoadObjectAsyncAdvanced(
-                FILE_NAME,
-                testMono,
-                null,
-                () => Debug.Log("Mesh loaded")
-            );
+            await objectHandler
+               .OnComplete(_ => Debug.Log("Mesh loaded"))
+               .LoadAsync();
         });
 
 
@@ -56,43 +53,33 @@ namespace SaveSystem.Tests.Runtime {
             var objects = new TestMeshAdvanced[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMeshAdvanced>(LP_SPHERE_NAME));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAdvanced>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            await DataManager.SaveObjectsAsyncAdvanced(
-                FILE_NAME,
-                objects,
-                null,
-                null,
-                () => {
-                    foreach (var obj in objects)
+            AdvancedObjectHandler objectHandler =
+                HandlersProvider.CreateObjectHandler(objects, FilePath);
+            await objectHandler
+               .OnComplete(_ => {
+                    foreach (TestMeshAdvanced obj in objects)
                         obj.GetComponent<MeshFilter>().mesh = null;
                     Debug.Log("Meshes saved and removed");
-                }
-            );
+                })
+               .SaveAsync();
 
             Debug.Log("Start loading");
-            await DataManager.LoadObjectsAsyncAdvanced(
-                FILE_NAME,
-                objects,
-                null,
-                null,
-                () => Debug.Log("Meshes loaded")
-            );
+            await objectHandler
+               .OnComplete(_ => Debug.Log("Meshes loaded"))
+               .LoadAsync();
         });
 
 
         [TearDown]
         public void EndTest () {
-            var method = typeof(SaveSystemEditor).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
-            method?.Invoke(null, new object[] { });
-
-            method = typeof(SaveSystemEditor).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
-            method?.Invoke(null, new object[] { });
+            DataManager.DeleteAllData();
             Debug.Log("End test");
         }
 

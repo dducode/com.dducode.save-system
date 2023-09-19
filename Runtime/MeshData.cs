@@ -8,26 +8,26 @@ namespace SaveSystem {
     /// </summary>
     public struct MeshData {
 
-        public SubMeshDescriptor[] subMeshes;
-        public int[][] subMeshIndices;
-        public string name;
-        public Vector3[] vertices;
-        public Vector2[] uv;
-        public Vector2[] uv2;
-        public Vector2[] uv3;
-        public Vector2[] uv4;
-        public Vector2[] uv5;
-        public Vector2[] uv6;
-        public Vector2[] uv7;
-        public Vector2[] uv8;
-        public Color32[] colors32;
-        public Vector3[] normals;
-        public Vector4[] tangents;
-        public int[] triangles;
-        public Bounds bounds;
-        public GraphicsBuffer.Target indexBufferTarget;
-        public IndexFormat indexFormat;
-        public GraphicsBuffer.Target vertexBufferTarget;
+        internal SubMeshDescriptor[] subMeshes;
+        internal int[][] subMeshIndices;
+        internal string name;
+        internal Vector3[] vertices;
+        internal Vector2[] uv;
+        internal Vector2[] uv2;
+        internal Vector2[] uv3;
+        internal Vector2[] uv4;
+        internal Vector2[] uv5;
+        internal Vector2[] uv6;
+        internal Vector2[] uv7;
+        internal Vector2[] uv8;
+        internal Color32[] colors32;
+        internal Vector3[] normals;
+        internal Vector4[] tangents;
+        internal int[] triangles;
+        internal Bounds bounds;
+        internal GraphicsBuffer.Target indexBufferTarget;
+        internal IndexFormat indexFormat;
+        internal GraphicsBuffer.Target vertexBufferTarget;
 
 
         public static implicit operator MeshData (Mesh mesh) {
