@@ -26,7 +26,7 @@ during a quick-save and when the player hits any checkpoint
   the nested class within the DataManager. These methods have
   been renamed
 * Data handlers (UnityWriter, UnityReader, etc.)
-  have been moved to SaveSystem.DataHandlers namespace
+  have been moved to SaveSystem.UnityHandlers namespace
 
 ### Fixed
 
