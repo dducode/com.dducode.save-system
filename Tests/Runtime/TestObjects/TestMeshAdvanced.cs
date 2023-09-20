@@ -9,18 +9,23 @@ namespace SaveSystem.Tests.TestObjects {
         private MeshFilter m_meshFilter;
 
 
-        public async UniTask Save (UnityAsyncWriter asyncWriter) {
-            await asyncWriter.Write(m_meshFilter.mesh);
+        public async UniTask Save (UnityWriter writer) {
+            await writer.WriteAsync(m_meshFilter.mesh);
         }
 
 
-        public async UniTask Load (UnityAsyncReader asyncReader) {
-            m_meshFilter.mesh = await asyncReader.ReadMesh();
+        public async UniTask Load (UnityReader reader) {
+            m_meshFilter.mesh = await reader.ReadMeshAsync();
         }
 
 
         private void Awake () {
             m_meshFilter = GetComponent<MeshFilter>();
+        }
+
+
+        public void RemoveMesh () {
+            m_meshFilter.mesh = null;
         }
 
     }

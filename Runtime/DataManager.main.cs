@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Handlers;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
 using UnityEngine;
@@ -39,10 +40,12 @@ namespace SaveSystem {
         /// <param name="objects"> the objects which will be saved </param>
         public static void SaveObjects<T> (string filePath, IEnumerable<T> objects)
             where T : IPersistentObject {
-            using UnityWriter unityWriter = UnityWriter.GetLocal(filePath);
+            using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
 
             foreach (T obj in objects)
                 obj.Save(unityWriter);
+
+            unityWriter.WriteBufferToFile();
         }
 
         #endregion
@@ -70,7 +73,7 @@ namespace SaveSystem {
         /// <returns> Returns true if there is saved data, otherwise false </returns>
         public static bool LoadObjects<T> (string filePath, IEnumerable<T> objects)
             where T : IPersistentObject {
-            using UnityReader unityReader = UnityReader.GetLocal(filePath);
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
 
             if (unityReader is null)
                 return false;
@@ -93,13 +96,13 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when saving is canceled </exception>
         /// <inheritdoc cref="SaveObject{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask SaveObjectAsync<T> (
+        public static async UniTask SaveObjectAsync (
             string filePath,
-            T obj,
+            IPersistentObject obj,
             AsyncMode asyncMode,
             CancellationTokenSource source = null,
             Action onComplete = null
-        ) where T : IPersistentObject {
+        ) {
             await SaveObjectsAsync(filePath, new[] {obj}, asyncMode, null, source, onComplete);
         }
 
@@ -110,17 +113,25 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when saving is canceled </exception>
         /// <inheritdoc cref="SaveObjects{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask SaveObjectsAsync<T> (
+        public static async UniTask SaveObjectsAsync (
             string filePath,
-            T[] objects,
+            IPersistentObject[] objects,
             AsyncMode asyncMode,
             IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
-        ) where T : IPersistentObject {
-            await using UnityWriter unityWriter = UnityWriter.GetLocal(filePath);
+        ) {
+            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
+            source ??= new CancellationTokenSource();
 
-            if (await InternalHandling.TryHandleObjectsAsync(objects, asyncMode, unityWriter, progress, source))
+            if (source.IsCancellationRequested)
+                return;
+
+            HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
+                objects, asyncMode, unityWriter, progress, source.Token
+            );
+
+            if (result == HandlingResult.Success)
                 onComplete?.Invoke();
         }
 
@@ -136,13 +147,13 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when loading is canceled </exception>
         /// <inheritdoc cref="LoadObject{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask<bool> LoadObjectAsync<T> (
+        public static async UniTask<bool> LoadObjectAsync (
             string filePath,
-            T obj,
+            IPersistentObject obj,
             AsyncMode asyncMode,
             CancellationTokenSource source = null,
             Action onComplete = null
-        ) where T : IPersistentObject {
+        ) {
             return await LoadObjectsAsync(filePath, new[] {obj}, asyncMode, null, source, onComplete);
         }
 
@@ -153,22 +164,30 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when loading is canceled </exception>
         /// <inheritdoc cref="LoadObjects{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask<bool> LoadObjectsAsync<T> (
+        public static async UniTask<bool> LoadObjectsAsync (
             string filePath,
-            T[] objects,
+            IPersistentObject[] objects,
             AsyncMode asyncMode,
             IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
-        ) where T : IPersistentObject {
-            using UnityReader unityReader = UnityReader.GetLocal(filePath);
+        ) {
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
+            source ??= new CancellationTokenSource();
 
             if (unityReader is null) {
-                source?.Dispose();
+                source.Dispose();
                 return false;
             }
 
-            if (await InternalHandling.TryHandleObjectsAsync(objects, asyncMode, unityReader, progress, source)) {
+            if (source.IsCancellationRequested)
+                return false;
+
+            HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
+                objects, asyncMode, unityReader, progress, source.Token
+            );
+
+            if (result == HandlingResult.Success) {
                 onComplete?.Invoke();
                 return true;
             }

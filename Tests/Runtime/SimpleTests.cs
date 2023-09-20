@@ -12,7 +12,7 @@ namespace SaveSystem.Tests {
 
         [Test(Author = "dducode", Description = "Obsolete test")]
         [Obsolete("Test of obsolete logic")]
-        public void BinaryTest () {
+        public void BinarySaveLoad () {
             var firstObject = new BinaryObject {
                 name = "Binary Object",
                 position = new Vector3(10, 0, 15),
@@ -29,7 +29,7 @@ namespace SaveSystem.Tests {
 
         [Test(Author = "dducode", Description = "Obsolete test")]
         [Obsolete("Test of obsolete logic")]
-        public void JsonTest () {
+        public void JsonSaveLoad () {
             var firstObject = new JsonObject {
                 name = "Json Object",
                 position = new Vector3(109, 24, 0),

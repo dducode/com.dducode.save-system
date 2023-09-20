@@ -5,12 +5,12 @@ using UnityEditor;
 
 namespace SaveSystem.Handlers {
 
-    public static partial class HandlersProvider {
+    public static partial class ObjectHandlersFactory {
 
         internal static readonly List<HandlerMetadata> HandlersData = new();
 
 
-        static HandlersProvider () {
+        static ObjectHandlersFactory () {
             EditorApplication.playModeStateChanged += state => {
                 if (state is PlayModeStateChange.ExitingPlayMode)
                     HandlersData.Clear();

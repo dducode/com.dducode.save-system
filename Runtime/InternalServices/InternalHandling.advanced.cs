@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Handlers;
 using SaveSystem.UnityHandlers;
 using UnityEngine;
 
@@ -12,68 +12,81 @@ namespace SaveSystem.InternalServices {
 
         internal static class Advanced {
 
-            internal static async UniTask<bool> TryHandleObjectsAsync<T> (
-                T[] objects,
-                IUnityAsyncHandler asyncHandler,
-                IProgress<float> progress = null,
-                CancellationTokenSource tokenSource = null
-            ) where T : IPersistentObjectAsync {
+            internal static async UniTask<HandlingResult> TrySaveObjectsAsync (
+                IReadOnlyCollection<IPersistentObjectAsync> objects,
+                UnityWriter writer,
+                IProgress<float> progress,
+                CancellationToken token
+            ) {
                 try {
-                    await HandleObjectsAsync(objects, asyncHandler, progress, tokenSource);
-                    return true;
+                    await SaveObjectsAsync(objects, writer, progress, token);
+                    await writer.WriteBufferToFileAsync();
+                    return HandlingResult.Success;
                 }
                 catch (Exception ex) when (ex is OperationCanceledException) {
-                    switch (asyncHandler) {
-                        case UnityAsyncWriter writer:
-                            await writer.DisposeAsync();
-                            File.Delete(writer.localPath);
-                            InternalLogger.LogWarning("Save cancelled. The data file has been deleted");
-                            break;
-                        case UnityAsyncReader:
-                            InternalLogger.Log("Load cancelled");
-                            break;
-                    }
-
-                    return false;
+                    InternalLogger.LogWarning("Saving was cancelled while data was being written");
+                    return HandlingResult.CanceledOperation;
                 }
                 catch (Exception ex) {
                     Debug.LogException(ex);
-                    return false;
-                }
-                finally {
-                    tokenSource?.Dispose();
+                    return HandlingResult.UnknownError;
                 }
             }
 
 
-            private static async UniTask HandleObjectsAsync<T> (
-                IReadOnlyCollection<T> objects,
-                IUnityAsyncHandler asyncHandler,
-                IProgress<float> progress = null,
-                CancellationTokenSource source = null
-            ) where T : IPersistentObjectAsync {
-                var completedTasks = 0f;
-                source ??= new CancellationTokenSource();
+            internal static async UniTask<HandlingResult> TryLoadObjectsAsync (
+                IReadOnlyCollection<IPersistentObjectAsync> objects,
+                UnityReader reader,
+                IProgress<float> progress,
+                CancellationToken token
+            ) {
+                try {
+                    await LoadObjectsAsync(objects, reader, progress, token);
+                    return HandlingResult.Success;
+                }
+                catch (Exception ex) when (ex is OperationCanceledException) {
+                    InternalLogger.LogWarning("Loading was cancelled while reading data");
+                    return HandlingResult.CanceledOperation;
+                }
+                catch (Exception ex) {
+                    Debug.LogException(ex);
+                    return HandlingResult.UnknownError;
+                }
+            }
 
-                foreach (T obj in objects) {
-                    if (source.IsCancellationRequested)
+
+            private static async UniTask SaveObjectsAsync (
+                IReadOnlyCollection<IPersistentObjectAsync> objects,
+                UnityWriter writer,
+                IProgress<float> progress,
+                CancellationToken token
+            ) {
+                var completedTasks = 0f;
+
+                foreach (IPersistentObjectAsync obj in objects) {
+                    if (token.IsCancellationRequested)
                         throw new OperationCanceledException();
-                    await HandleObjectAsync(obj, asyncHandler);
+                    await obj.Save(writer);
                     completedTasks++;
                     progress?.Report(completedTasks / objects.Count);
                 }
             }
 
 
-            private static async UniTask HandleObjectAsync<T> (T obj, IUnityAsyncHandler asyncHandler)
-                where T : IPersistentObjectAsync {
-                switch (asyncHandler) {
-                    case UnityAsyncWriter asyncWriter:
-                        await obj.Save(asyncWriter);
-                        break;
-                    case UnityAsyncReader asyncReader:
-                        await obj.Load(asyncReader);
-                        break;
+            private static async UniTask LoadObjectsAsync (
+                IReadOnlyCollection<IPersistentObjectAsync> objects,
+                UnityReader reader,
+                IProgress<float> progress,
+                CancellationToken token
+            ) {
+                var completedTasks = 0f;
+
+                foreach (IPersistentObjectAsync obj in objects) {
+                    if (token.IsCancellationRequested)
+                        throw new OperationCanceledException();
+                    await obj.Load(reader);
+                    completedTasks++;
+                    progress?.Report(completedTasks / objects.Count);
                 }
             }
 

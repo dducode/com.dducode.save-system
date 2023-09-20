@@ -13,6 +13,7 @@ namespace SaveSystem.Core {
         public bool debugEnabled;
         public bool destroyCheckPoints;
         public string playerTag;
+        public bool registerImmediately;
 
     }
 

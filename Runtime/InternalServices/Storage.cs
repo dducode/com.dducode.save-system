@@ -15,7 +15,7 @@ namespace SaveSystem.InternalServices {
                 await request.SendWebRequest();
 
                 if (request.result != UnityWebRequest.Result.Success) {
-                    Debug.LogError(request.error);
+                    InternalLogger.LogError(request.error);
                     return null;
                 }
 
@@ -31,41 +31,31 @@ namespace SaveSystem.InternalServices {
         }
 
 
-        internal static async UniTask SendDataToRemote (string url) {
-            byte[] data = await File.ReadAllBytesAsync(GetCachePath());
+        internal static async UniTask<bool> SendDataToRemote (string url, byte[] data) {
             UnityWebRequest request = UnityWebRequest.Put(url, data);
 
             try {
                 await request.SendWebRequest();
 
-                if (request.result != UnityWebRequest.Result.Success)
-                    Debug.LogError(request.error);
+                if (request.result != UnityWebRequest.Result.Success) {
+                    InternalLogger.LogError(request.error);
+                    return false;
+                }
+
+                return true;
             }
             catch (Exception e) {
                 Debug.LogException(e);
+                return false;
             }
             finally {
                 request.Dispose();
-                ClearCache();
             }
         }
 
 
         internal static string GetFullPath (string filePath) {
             return Path.Combine(Application.persistentDataPath, $"{filePath}");
-        }
-
-
-        internal static string GetCachePath () {
-            return Path.Combine(Application.temporaryCachePath, "temp.bytes");
-        }
-
-
-        private static void ClearCache () {
-            string[] data = Directory.GetFiles(Application.temporaryCachePath);
-
-            foreach (string file in data)
-                File.Delete(file);
         }
 
     }

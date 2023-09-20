@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -12,29 +13,15 @@ namespace SaveSystem.UnityHandlers {
     /// <summary>
     /// Adapter to class <see cref="BinaryWriter"></see> for simplify writing data
     /// </summary>
-    public sealed class UnityWriter : IUnityHandler, IAsyncDisposable {
+    public sealed class UnityWriter : IDisposable, IAsyncDisposable {
 
         private readonly BinaryWriter m_writer;
         public readonly string localPath;
 
 
-        private UnityWriter (BinaryWriter writer, string localPath) {
+        internal UnityWriter (BinaryWriter writer, string localPath = "") {
             m_writer = writer;
             this.localPath = localPath;
-        }
-
-
-        internal static UnityWriter GetLocal (string fileName) {
-            return new UnityWriter(
-                InternalServices.BinaryHandlers.GetBinaryWriter(fileName, out string persistentPath), persistentPath
-            );
-        }
-
-
-        internal static UnityWriter GetRemote () {
-            return new UnityWriter(
-                InternalServices.BinaryHandlers.GetBinaryWriterRemote(out string tempPath), tempPath
-            );
         }
 
 
@@ -43,6 +30,7 @@ namespace SaveSystem.UnityHandlers {
             m_writer.Write(version.Minor);
             m_writer.Write(version.Build);
             m_writer.Write(version.Revision);
+            m_writer.Close();
         }
 
 
@@ -62,6 +50,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (IEnumerable<Vector2> vector2Collection) {
             Write(vector2Collection.ToArray());
+        }
+
+
+        public async UniTask WriteAsync (IEnumerable<Vector2> vector2Collection) {
+            await UniTask.RunOnThreadPool(() => Write(vector2Collection.ToArray()));
         }
 
 
@@ -85,6 +78,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<Vector3> vector3Collection) {
+            await UniTask.RunOnThreadPool(() => Write(vector3Collection.ToArray()));
+        }
+
+
         public void Write (Vector4 vector4) {
             m_writer.Write(vector4.x);
             m_writer.Write(vector4.y);
@@ -103,6 +101,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (IEnumerable<Vector4> vector4Collection) {
             Write(vector4Collection.ToArray());
+        }
+
+
+        public async UniTask WriteAsync (IEnumerable<Vector4> vector4Collection) {
+            await UniTask.RunOnThreadPool(() => Write(vector4Collection.ToArray()));
         }
 
 
@@ -135,6 +138,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<Color> colors) {
+            await UniTask.RunOnThreadPool(() => Write(colors.ToArray()));
+        }
+
+
         public void Write (Color32 color32) {
             m_writer.Write(color32.r);
             m_writer.Write(color32.g);
@@ -156,6 +164,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<Color32> colors32) {
+            await UniTask.RunOnThreadPool(() => Write(colors32.ToArray()));
+        }
+
+
         public void Write (Matrix4x4 matrix) {
             for (var i = 0; i < 16; i++)
                 m_writer.Write(matrix[i]);
@@ -172,6 +185,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (IEnumerable<Matrix4x4> matrices) {
             Write(matrices.ToArray());
+        }
+
+
+        public async UniTask WriteAsync (IEnumerable<Matrix4x4> matrices) {
+            await UniTask.RunOnThreadPool(() => Write(matrices.ToArray()));
         }
 
 
@@ -219,6 +237,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (MeshData mesh) {
+            await UniTask.RunOnThreadPool(() => Write(mesh));
+        }
+
+
         public void WriteObject<T> (T obj) {
             m_writer.Write(JsonUtility.ToJson(obj));
         }
@@ -227,6 +250,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteObjects<T> (IEnumerable<T> objects) {
             WriteObjectsArray(objects.ToArray());
+        }
+
+
+        public async UniTask WriteObjectsAsync<T> (IEnumerable<T> objects) {
+            await UniTask.RunOnThreadPool(() => WriteObjectsArray(objects.ToArray()));
         }
 
 
@@ -255,6 +283,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<byte> bytes) {
+            await UniTask.RunOnThreadPool(() => Write(bytes.ToArray()));
+        }
+
+
         public void Write (short shortValue) {
             m_writer.Write(shortValue);
         }
@@ -270,6 +303,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (IEnumerable<short> shorts) {
             Write(shorts.ToArray());
+        }
+
+
+        public async UniTask WriteAsync (IEnumerable<short> shorts) {
+            await UniTask.RunOnThreadPool(() => Write(shorts.ToArray()));
         }
 
 
@@ -291,6 +329,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<int> ints) {
+            await UniTask.RunOnThreadPool(() => Write(ints.ToArray()));
+        }
+
+
         public void Write (long longValue) {
             m_writer.Write(longValue);
         }
@@ -306,6 +349,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (IEnumerable<long> longs) {
             Write(longs.ToArray());
+        }
+
+
+        public async UniTask WriteAsync (IEnumerable<long> longs) {
+            await UniTask.RunOnThreadPool(() => Write(longs.ToArray()));
         }
 
 
@@ -327,6 +375,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<char> chars) {
+            await UniTask.RunOnThreadPool(() => Write(chars.ToArray()));
+        }
+
+
         public void Write (string stringValue) {
             m_writer.Write(stringValue);
         }
@@ -342,6 +395,11 @@ namespace SaveSystem.UnityHandlers {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Write (IEnumerable<string> strings) {
             Write(strings.ToArray());
+        }
+
+
+        public async UniTask WriteAsync (IEnumerable<string> strings) {
+            await UniTask.RunOnThreadPool(() => Write(strings.ToArray()));
         }
 
 
@@ -363,6 +421,11 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<float> floats) {
+            await UniTask.RunOnThreadPool(() => Write(floats.ToArray()));
+        }
+
+
         public void Write (double doubleValue) {
             m_writer.Write(doubleValue);
         }
@@ -381,8 +444,28 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask WriteAsync (IEnumerable<double> doubles) {
+            await UniTask.RunOnThreadPool(() => Write(doubles.ToArray()));
+        }
+
+
         public void Write (bool boolValue) {
             m_writer.Write(boolValue);
+        }
+
+
+        internal byte[] GetMemoryData () {
+            return ((MemoryStream)m_writer.BaseStream).GetBuffer();
+        }
+
+
+        internal void WriteBufferToFile () {
+            File.WriteAllBytes(localPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
+        }
+
+
+        internal async UniTask WriteBufferToFileAsync () {
+            await File.WriteAllBytesAsync(localPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
         }
 
 

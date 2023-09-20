@@ -11,15 +11,15 @@ namespace SaveSystem {
         /// <summary>
         /// It will be called when system will save data
         /// </summary>
-        /// <param name="asyncWriter"> <see cref="UnityAsyncWriter"/> </param>
-        public UniTask Save (UnityAsyncWriter asyncWriter);
+        /// <param name="writer"> <see cref="UnityWriter"/> </param>
+        public UniTask Save (UnityWriter writer);
 
 
         /// <summary>
         /// It will be called when system will load data
         /// </summary>
-        /// <param name="asyncReader"> <see cref="UnityAsyncReader"/> </param>
-        public UniTask Load (UnityAsyncReader asyncReader);
+        /// <param name="reader"> <see cref="UnityReader"/> </param>
+        public UniTask Load (UnityReader reader);
 
     }
 

@@ -33,7 +33,7 @@ namespace SaveSystem.Editor {
         private static void Init () {
             var console = GetWindow<SaveSystemConsole>();
             console.titleContent = new GUIContent {
-                image = EditorIconsTool.GetCheckPointsManagerIcon(),
+                image = EditorIconsTool.GetMainIcon(),
                 text = WindowName
             };
             console.Show();

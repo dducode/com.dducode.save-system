@@ -1,8 +1,7 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using SaveSystem.InternalServices;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,26 +10,13 @@ namespace SaveSystem.UnityHandlers {
     /// <summary>
     /// Adapter to class <see cref="BinaryReader"></see> for simplify reading data
     /// </summary>
-    public sealed class UnityReader : IUnityHandler {
+    public sealed class UnityReader : IDisposable {
 
         private readonly BinaryReader m_reader;
 
 
-        private UnityReader (BinaryReader reader) {
+        internal UnityReader (BinaryReader reader) {
             m_reader = reader;
-        }
-
-
-        [return: MaybeNull]
-        internal static UnityReader GetLocal (string fileName) {
-            BinaryReader binaryReader = BinaryHandlers.GetBinaryReader(fileName);
-            return binaryReader != null ? new UnityReader(binaryReader) : null;
-        }
-
-
-        internal static async UniTask<UnityReader> GetRemote (string url) {
-            BinaryReader binaryReader = await BinaryHandlers.GetBinaryReaderRemote(url);
-            return binaryReader != null ? new UnityReader(binaryReader) : null;
         }
 
 
@@ -68,6 +54,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<Vector2[]> ReadVector2ArrayAsync () {
+            Vector2[] vector2Array = Array.Empty<Vector2>();
+            await UniTask.RunOnThreadPool(() => vector2Array = ReadVector2Array());
+            return vector2Array;
+        }
+
+
         public Vector3 ReadVector3 () {
             return new Vector3 {
                 x = m_reader.ReadSingle(),
@@ -84,6 +77,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 vector3Array[i] = ReadVector3();
 
+            return vector3Array;
+        }
+
+
+        public async UniTask<Vector3[]> ReadVector3ArrayAsync () {
+            Vector3[] vector3Array = Array.Empty<Vector3>();
+            await UniTask.RunOnThreadPool(() => vector3Array = ReadVector3Array());
             return vector3Array;
         }
 
@@ -105,6 +105,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 vector4Array[i] = ReadVector4();
 
+            return vector4Array;
+        }
+
+
+        public async UniTask<Vector4[]> ReadVector4ArrayAsync () {
+            Vector4[] vector4Array = Array.Empty<Vector4>();
+            await UniTask.RunOnThreadPool(() => vector4Array = ReadVector4Array());
             return vector4Array;
         }
 
@@ -140,6 +147,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<Color[]> ReadColorsAsync () {
+            Color[] colors = Array.Empty<Color>();
+            await UniTask.RunOnThreadPool(() => colors = ReadColors());
+            return colors;
+        }
+
+
         public Color32 ReadColor32 () {
             return new Color32 {
                 r = m_reader.ReadByte(),
@@ -161,6 +175,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<Color32[]> ReadColors32Async () {
+            Color32[] colors32 = Array.Empty<Color32>();
+            await UniTask.RunOnThreadPool(() => colors32 = ReadColors32());
+            return colors32;
+        }
+
+
         public Matrix4x4 ReadMatrix () {
             var matrix = new Matrix4x4();
             for (var i = 0; i < 16; i++)
@@ -177,6 +198,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 matrices[i] = ReadMatrix();
 
+            return matrices;
+        }
+
+
+        public async UniTask<Matrix4x4[]> ReadMatricesAsync () {
+            Matrix4x4[] matrices = Array.Empty<Matrix4x4>();
+            await UniTask.RunOnThreadPool(() => matrices = ReadMatrices());
             return matrices;
         }
 
@@ -236,6 +264,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<MeshData> ReadMeshAsync () {
+            MeshData mesh = default;
+            await UniTask.RunOnThreadPool(() => mesh = ReadMesh());
+            return mesh;
+        }
+
+
         public T ReadObject<T> () {
             return JsonUtility.FromJson<T>(m_reader.ReadString());
         }
@@ -252,6 +287,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<T[]> ReadObjectsArrayAsync<T> () {
+            T[] objectsArray = Array.Empty<T>();
+            await UniTask.RunOnThreadPool(() => objectsArray = ReadObjectsArray<T>());
+            return objectsArray;
+        }
+
+
         public byte ReadByte () {
             return m_reader.ReadByte();
         }
@@ -264,6 +306,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 bytes[i] = m_reader.ReadByte();
 
+            return bytes;
+        }
+
+
+        public async UniTask<byte[]> ReadBytesAsync () {
+            byte[] bytes = Array.Empty<byte>();
+            await UniTask.RunOnThreadPool(() => bytes = ReadBytes());
             return bytes;
         }
 
@@ -284,6 +333,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<short[]> ReadShortsAsync () {
+            short[] shorts = Array.Empty<short>();
+            await UniTask.RunOnThreadPool(() => shorts = ReadShorts());
+            return shorts;
+        }
+
+
         public int ReadInt () {
             return m_reader.ReadInt32();
         }
@@ -296,6 +352,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 intArray[i] = m_reader.ReadInt32();
 
+            return intArray;
+        }
+
+
+        public async UniTask<int[]> ReadIntArrayAsync () {
+            int[] intArray = Array.Empty<int>();
+            await UniTask.RunOnThreadPool(() => intArray = ReadIntArray());
             return intArray;
         }
 
@@ -316,6 +379,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<long[]> ReadLongArrayAsync () {
+            long[] longArray = Array.Empty<long>();
+            await UniTask.RunOnThreadPool(() => longArray = ReadLongArray());
+            return longArray;
+        }
+
+
         public char ReadChar () {
             return m_reader.ReadChar();
         }
@@ -328,6 +398,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 chars[i] = m_reader.ReadChar();
 
+            return chars;
+        }
+
+
+        public async UniTask<char[]> ReadCharsAsync () {
+            char[] chars = Array.Empty<char>();
+            await UniTask.RunOnThreadPool(() => chars = ReadChars());
             return chars;
         }
 
@@ -348,6 +425,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<string[]> ReadStringArrayAsync () {
+            string[] stringArray = Array.Empty<string>();
+            await UniTask.RunOnThreadPool(() => stringArray = ReadStringArray());
+            return stringArray;
+        }
+
+
         public float ReadFloat () {
             return m_reader.ReadSingle();
         }
@@ -364,6 +448,13 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        public async UniTask<float[]> ReadFloatsAsync () {
+            float[] floats = Array.Empty<float>();
+            await UniTask.RunOnThreadPool(() => floats = ReadFloats());
+            return floats;
+        }
+
+
         public double ReadDouble () {
             return m_reader.ReadDouble();
         }
@@ -376,6 +467,13 @@ namespace SaveSystem.UnityHandlers {
             for (var i = 0; i < length; i++)
                 doubles[i] = m_reader.ReadInt64();
 
+            return doubles;
+        }
+
+
+        public async UniTask<double[]> ReadDoublesAsync () {
+            double[] doubles = Array.Empty<double>();
+            await UniTask.RunOnThreadPool(() => doubles = ReadDoubles());
             return doubles;
         }
 

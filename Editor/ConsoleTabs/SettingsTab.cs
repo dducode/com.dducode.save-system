@@ -12,8 +12,11 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private readonly SerializedProperty m_savePeriodProperty;
         private readonly SerializedProperty m_asyncSaveEnabledProperty;
         private readonly SerializedProperty m_debugEnabledProperty;
+
         private readonly SerializedProperty m_destroyCheckPointsProperty;
         private readonly SerializedProperty m_playerTagProperty;
+
+        private readonly SerializedProperty m_registerImmediatelyProperty;
 
         private readonly GUIContent m_savePeriodContent = new() {
             text = "Save Period",
@@ -33,30 +36,51 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_asyncSaveEnabledProperty = m_serializedSettings.FindProperty("asyncSaveEnabled");
             m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
+
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
             m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
+
+            m_registerImmediatelyProperty = m_serializedSettings.FindProperty("registerImmediately");
         }
 
 
         public void Draw () {
-            EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
-
             m_serializedSettings.Update();
+
+            DrawCoreSettings();
+            
+            EditorGUILayout.Space(15);
+            DrawCheckpointsSettings();
+            
+            EditorGUILayout.Space(15);
+            DrawProviderSettings();
+
+            m_serializedSettings.ApplyModifiedProperties();
+        }
+
+
+        private void DrawCoreSettings () {
+            EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
 
             EditorGUILayout.PropertyField(m_autoSaveEnabledProperty);
             if (m_autoSaveEnabledProperty.boolValue)
                 EditorGUILayout.PropertyField(m_savePeriodProperty, m_savePeriodContent, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_asyncSaveEnabledProperty);
             EditorGUILayout.PropertyField(m_debugEnabledProperty);
+        }
 
-            EditorGUILayout.Space(15);
+
+        private void DrawCheckpointsSettings () {
             EditorGUILayout.LabelField("Checkpoints settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_destroyCheckPointsProperty, m_destroyCheckPointsContent);
             m_playerTagProperty.stringValue =
                 EditorGUILayout.TagField("Player Tag", m_playerTagProperty.stringValue, GUILayout.MaxWidth(300));
+        }
 
 
-            m_serializedSettings.ApplyModifiedProperties();
+        private void DrawProviderSettings () {
+            EditorGUILayout.LabelField("Handlers Provider settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(m_registerImmediatelyProperty);
         }
 
     }

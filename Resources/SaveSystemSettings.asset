@@ -16,5 +16,6 @@ MonoBehaviour:
   savePeriod: 0
   asyncSaveEnabled: 0
   debugEnabled: 0
-  destroyCheckPoints: 1
+  destroyCheckPoints: 0
   playerTag: Player
+  registerImmediately: 0

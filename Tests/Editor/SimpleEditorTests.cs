@@ -29,7 +29,7 @@ namespace SaveSystem.Editor.Tests {
                 objectList.Add(binaryObject);
             }
 
-            ObjectHandler objectHandler = HandlersProvider.CreateObjectHandler(objectList, FileName);
+            ObjectHandler objectHandler = ObjectHandlersFactory.Create(objectList, FileName);
             objectHandler.Save();
 
             MethodInfo method =
@@ -52,7 +52,7 @@ namespace SaveSystem.Editor.Tests {
                 color = Color.cyan
             };
 
-            HandlersProvider.CreateObjectHandler(editorObject, Path.Combine(FolderName, FileName)).Save();
+            ObjectHandlersFactory.Create(editorObject, Path.Combine(FolderName, FileName)).Save();
         }
 
     }

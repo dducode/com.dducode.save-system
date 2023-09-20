@@ -5,7 +5,7 @@ namespace SaveSystem.CheckPoints {
     /// <summary>
     /// You can create checkpoints at runtime by using this class
     /// </summary>
-    public static class CheckPointsCreator {
+    public static class CheckPointsFactory {
 
         /// <summary>
         /// Creates a 3D checkpoint with sphere collider

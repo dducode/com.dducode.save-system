@@ -3,38 +3,42 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using SaveSystem.UnityHandlers;
 
 namespace SaveSystem.InternalServices {
 
-    internal static class BinaryHandlers {
+    internal static class UnityHandlersProvider {
 
-        internal static BinaryWriter GetBinaryWriter (string localFilePath, out string fullPath) {
-            fullPath = Storage.GetFullPath(localFilePath);
+        internal static UnityWriter GetWriter (string localFilePath) {
+            string fullPath = Storage.GetFullPath(localFilePath);
             List<string> directoryPaths = localFilePath.Split(new[] {Path.DirectorySeparatorChar}).ToList();
             directoryPaths.RemoveAt(directoryPaths.Count - 1); // last element is a file, not a folder
 
             CreateFoldersIfNotExists(directoryPaths);
 
-            return new BinaryWriter(File.Open(fullPath, FileMode.Create));
+            return new UnityWriter(new BinaryWriter(new MemoryStream()), fullPath);
         }
 
 
-        internal static BinaryWriter GetBinaryWriterRemote (out string tempPath) {
-            tempPath = Storage.GetCachePath();
-            return new BinaryWriter(File.Open(tempPath, FileMode.Create));
+        internal static UnityWriter GetWriterRemote () {
+            return new UnityWriter(new BinaryWriter(new MemoryStream()));
         }
 
 
         [return: MaybeNull]
-        internal static BinaryReader GetBinaryReader (string fileName) {
+        internal static UnityReader GetReader (string fileName) {
             string persistentPath = Storage.GetFullPath(fileName);
-            return File.Exists(persistentPath) ? new BinaryReader(File.Open(persistentPath, FileMode.Open)) : null;
+            return File.Exists(persistentPath)
+                ? new UnityReader(new BinaryReader(File.Open(persistentPath, FileMode.Open)))
+                : null;
         }
 
 
-        internal static async UniTask<BinaryReader> GetBinaryReaderRemote (string url) {
+        internal static async UniTask<UnityReader> GetReaderRemote (string url) {
             byte[] data = await Storage.GetDataFromRemote(url);
-            return data is not null && data.Length > 0 ? new BinaryReader(new MemoryStream(data)) : null;
+            return data is not null && data.Length > 0
+                ? new UnityReader(new BinaryReader(new MemoryStream(data)))
+                : null;
         }
 
 

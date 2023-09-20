@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Handlers;
 using SaveSystem.UnityHandlers;
 using UnityEngine;
 
@@ -10,88 +10,139 @@ namespace SaveSystem.InternalServices {
 
     internal static partial class InternalHandling {
 
-        internal static async UniTask<bool> TryHandleObjectsAsync<T> (
-            T[] objects,
+        public static async UniTask<HandlingResult> TrySaveObjectsAsync (
+            IPersistentObject[] objects,
             AsyncMode asyncMode,
-            IUnityHandler handler,
-            IProgress<float> progress = null,
-            CancellationTokenSource tokenSource = null
-        ) where T : IPersistentObject {
+            UnityWriter writer,
+            IProgress<float> progress,
+            CancellationToken tokenSource
+        ) {
             try {
-                await HandleObjectsAsync(objects, asyncMode, handler, progress, tokenSource);
-                return true;
-            }
-            catch (Exception ex) when (ex is OperationCanceledException) {
-                switch (handler) {
-                    case UnityWriter writer:
-                        await writer.DisposeAsync();
-                        File.Delete(writer.localPath);
-                        InternalLogger.LogWarning("Save cancelled. The data file has been deleted");
+                switch (asyncMode) {
+                    case AsyncMode.OnPlayerLoop:
+                        await SaveObjectsOnPlayerLoop(objects, writer, progress, tokenSource);
                         break;
-                    case UnityReader:
-                        InternalLogger.Log("Load cancelled");
+                    case AsyncMode.OnThreadPool:
+                        await SaveObjectsOnThreadPool(objects, writer, progress, tokenSource);
                         break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
 
-                return false;
+                await writer.WriteBufferToFileAsync();
+
+                return HandlingResult.Success;
             }
-            catch (Exception ex) {
-                Debug.LogException(ex);
-                return false;
+            catch (Exception ex) when (ex is OperationCanceledException) {
+                InternalLogger.LogWarning("Saving was cancelled while data was being written");
+                return HandlingResult.CanceledOperation;
             }
-            finally {
-                tokenSource?.Dispose();
+            catch (Exception e) {
+                Debug.LogException(e);
+                return HandlingResult.UnknownError;
             }
         }
 
 
-        private static async UniTask HandleObjectsAsync<T> (
-            IReadOnlyCollection<T> objects,
+        public static async UniTask<HandlingResult> TryLoadObjectsAsync (
+            IPersistentObject[] objects,
             AsyncMode asyncMode,
-            IUnityHandler handler,
-            IProgress<float> progress = null,
-            CancellationTokenSource tokenSource = null
-        ) where T : IPersistentObject {
-            var completedTasks = 0f;
-            tokenSource ??= new CancellationTokenSource();
+            UnityReader reader,
+            IProgress<float> progress,
+            CancellationToken token
+        ) {
+            try {
+                switch (asyncMode) {
+                    case AsyncMode.OnPlayerLoop:
+                        await LoadObjectsOnPlayerLoop(objects, reader, progress, token);
+                        break;
+                    case AsyncMode.OnThreadPool:
+                        await LoadObjectsOnThreadPool(objects, reader, progress, token);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
 
-            switch (asyncMode) {
-                case AsyncMode.OnPlayerLoop:
-                    foreach (T obj in objects) {
-                        HandleObject(obj, handler);
-                        completedTasks++;
-                        progress?.Report(completedTasks / objects.Count);
-                        await UniTask.NextFrame(tokenSource.Token);
-                    }
-
-                    break;
-                case AsyncMode.OnThreadPool:
-                    await UniTask.RunOnThreadPool(() => {
-                        foreach (T obj in objects) {
-                            if (tokenSource.IsCancellationRequested)
-                                throw new OperationCanceledException();
-                            HandleObject(obj, handler);
-                            completedTasks++;
-                            progress?.Report(completedTasks / objects.Count);
-                        }
-                    });
-
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                return HandlingResult.Success;
+            }
+            catch (Exception ex) when (ex is OperationCanceledException) {
+                InternalLogger.LogWarning("Loading was cancelled while reading data");
+                return HandlingResult.CanceledOperation;
+            }
+            catch (Exception e) {
+                Debug.LogException(e);
+                return HandlingResult.UnknownError;
             }
         }
 
 
-        private static void HandleObject<T> (T obj, IUnityHandler handler) where T : IPersistentObject {
-            switch (handler) {
-                case UnityWriter writer:
-                    obj.Save(writer);
-                    break;
-                case UnityReader reader:
-                    obj.Load(reader);
-                    break;
+        private static async UniTask SaveObjectsOnPlayerLoop (
+            IReadOnlyCollection<IPersistentObject> objects,
+            UnityWriter writer,
+            IProgress<float> progress,
+            CancellationToken token
+        ) {
+            var completedTasks = 0f;
+
+            foreach (IPersistentObject obj in objects) {
+                obj.Save(writer);
+                completedTasks++;
+                progress?.Report(completedTasks / objects.Count);
+                await UniTask.NextFrame(token);
             }
+        }
+
+
+        private static async UniTask SaveObjectsOnThreadPool (
+            IReadOnlyCollection<IPersistentObject> objects,
+            UnityWriter writer,
+            IProgress<float> progress,
+            CancellationToken token
+        ) {
+            var completedTasks = 0f;
+
+            await UniTask.RunOnThreadPool(() => {
+                foreach (IPersistentObject obj in objects) {
+                    obj.Save(writer);
+                    completedTasks++;
+                    progress?.Report(completedTasks / objects.Count);
+                }
+            }, cancellationToken: token);
+        }
+
+
+        private static async UniTask LoadObjectsOnPlayerLoop (
+            IReadOnlyCollection<IPersistentObject> objects,
+            UnityReader reader,
+            IProgress<float> progress,
+            CancellationToken token
+        ) {
+            var completedTasks = 0f;
+
+            foreach (IPersistentObject obj in objects) {
+                obj.Load(reader);
+                completedTasks++;
+                progress?.Report(completedTasks / objects.Count);
+                await UniTask.NextFrame(token);
+            }
+        }
+
+
+        private static async UniTask LoadObjectsOnThreadPool (
+            IReadOnlyCollection<IPersistentObject> objects,
+            UnityReader reader,
+            IProgress<float> progress,
+            CancellationToken token
+        ) {
+            var completedTasks = 0f;
+
+            await UniTask.RunOnThreadPool(() => {
+                foreach (IPersistentObject obj in objects) {
+                    obj.Load(reader);
+                    completedTasks++;
+                    progress?.Report(completedTasks / objects.Count);
+                }
+            }, cancellationToken: token);
         }
 
     }

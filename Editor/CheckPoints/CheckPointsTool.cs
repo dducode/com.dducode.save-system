@@ -11,16 +11,16 @@ namespace SaveSystem.Editor.CheckPoints {
     [EditorTool("Check Points Tool")]
     public class CheckPointsTool : EditorTool {
 
-        private const string hideInHierarchyKey = "hide_in_hierarchy";
-        private const string collidersColorKey = "colliders_color";
+        private const string HideInHierarchyKey = "hide_in_hierarchy";
+        private const string CollidersColorKey = "colliders_color";
 
-        private const string createPointShortcutId =
+        private const string CreatePointShortcutId =
             nameof(SaveSystem) + "." + nameof(CheckPointsTool) + "." + nameof(CreateCheckPointBase);
 
-        private const string deletePointShortcutId =
+        private const string DeletePointShortcutId =
             nameof(SaveSystem) + "." + nameof(CheckPointsTool) + "." + nameof(DeleteAllCheckPoints);
 
-        private const string setActiveShortcutId =
+        private const string SetActiveShortcutId =
             nameof(SaveSystem) + "." + nameof(CheckPointsTool) + "." + nameof(SetActive);
 
         public override GUIContent toolbarIcon => m_icon;
@@ -30,19 +30,19 @@ namespace SaveSystem.Editor.CheckPoints {
         private Color m_collidersColor;
 
 
-        [Shortcut(setActiveShortcutId, KeyCode.C)]
+        [Shortcut(SetActiveShortcutId, KeyCode.C)]
         private static void SetActive () {
             ToolManager.SetActiveTool<CheckPointsTool>();
         }
 
 
-        [Shortcut(createPointShortcutId, KeyCode.S, ShortcutModifiers.Control | ShortcutModifiers.Alt)]
+        [Shortcut(CreatePointShortcutId, KeyCode.S, ShortcutModifiers.Control | ShortcutModifiers.Alt)]
         private static void CreateCheckPoint () {
             CreateCheckPointBase();
         }
 
 
-        [Shortcut(deletePointShortcutId, KeyCode.Delete, ShortcutModifiers.Control)]
+        [Shortcut(DeletePointShortcutId, KeyCode.Delete, ShortcutModifiers.Control)]
         private static void DeleteAllCheckPoints () {
             bool destroyCheckPoints = EditorUtility.DisplayDialog(
                 "Clear All Check Points",
@@ -60,12 +60,12 @@ namespace SaveSystem.Editor.CheckPoints {
 
 
         private void OnEnable () {
-            m_hideInHierarchy = EditorPrefs.GetBool(hideInHierarchyKey, false);
-            m_collidersColor = SaveSystemPrefs.GetColor(collidersColorKey, Color.green);
+            m_hideInHierarchy = EditorPrefs.GetBool(HideInHierarchyKey, false);
+            m_collidersColor = SaveSystemPrefs.GetColor(CollidersColorKey, Color.green);
             HandleAllPointsInHierarchy(m_hideInHierarchy);
 
             m_icon = new GUIContent {
-                image = EditorIconsTool.GetCheckPointsManagerIcon(),
+                image = EditorIconsTool.GetMainIcon(),
                 text = "Check Points Manager",
                 tooltip = "Check Points Creator"
             };
@@ -183,7 +183,7 @@ namespace SaveSystem.Editor.CheckPoints {
             m_collidersColor = EditorGUI.ColorField(rect, "Colliders Color", m_collidersColor);
 
             if (EditorGUI.EndChangeCheck())
-                SaveSystemPrefs.SetColor(collidersColorKey, m_collidersColor);
+                SaveSystemPrefs.SetColor(CollidersColorKey, m_collidersColor);
         }
 
 
@@ -196,7 +196,7 @@ namespace SaveSystem.Editor.CheckPoints {
             m_hideInHierarchy = EditorGUI.ToggleLeft(rect, "Hide In Hierarchy", m_hideInHierarchy);
 
             if (EditorGUI.EndChangeCheck()) {
-                EditorPrefs.SetBool(hideInHierarchyKey, m_hideInHierarchy);
+                EditorPrefs.SetBool(HideInHierarchyKey, m_hideInHierarchy);
                 HandleAllPointsInHierarchy(m_hideInHierarchy);
             }
         }
@@ -221,11 +221,11 @@ namespace SaveSystem.Editor.CheckPoints {
                 case EditorBehaviorMode.Mode3D:
                     randomPosition.y = 0;
                     randomPosition = PositionRelativeToCamera(randomPosition, camera);
-                    return CheckPointsCreatorEditor.CreateCheckPoint(randomPosition);
+                    return CheckPointsFactoryEditor.CreateCheckPoint(randomPosition);
                 case EditorBehaviorMode.Mode2D:
                     randomPosition += camera.transform.position;
                     randomPosition.z = 0;
-                    return CheckPointsCreatorEditor.CreateCheckPoint2D(randomPosition);
+                    return CheckPointsFactoryEditor.CreateCheckPoint2D(randomPosition);
                 default:
                     throw new ArgumentOutOfRangeException();
             }

@@ -28,7 +28,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator AutoSaveTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator AutoSave () => UniTask.ToCoroutine(async () => {
             var simpleObject = new BinaryObject {
                 name = "Binary Object",
                 position = new Vector3(10, 0, 15),
@@ -46,7 +46,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator QuickSaveTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator QuickSave () => UniTask.ToCoroutine(async () => {
             var simpleObject = new BinaryObject {
                 name = "Binary Object",
                 position = new Vector3(10, 0, 15),
@@ -71,17 +71,20 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator CheckpointSaveTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator CheckpointSave () => UniTask.ToCoroutine(async () => {
+            const string sphereTag = "Player";
+            
             var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.transform.position = Vector3.up * 10;
+            sphere.tag = sphereTag;
             var sphereComponent = sphere.AddComponent<TestRigidbody>();
 
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.RegisterPersistentObject(sphereComponent, FilePath);
             SaveSystemCore.DestroyCheckPoints = true;
-            SaveSystemCore.PlayerTag = "Player";
+            SaveSystemCore.PlayerTag = sphereTag;
 
-            CheckPointsCreator.CreateCheckPoint(Vector3.zero);
+            CheckPointsFactory.CreateCheckPoint(Vector3.zero);
             var wasTriggeredCheckpoint = false;
 
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -95,11 +98,11 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator ManySpheresTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator ManySpheres () => UniTask.ToCoroutine(async () => {
             var spheres = new List<TestRigidbody>();
 
             // Spawn spheres
-            for (var i = 0; i < 100; i++) {
+            for (var i = 0; i < 1000; i++) {
                 var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 sphere.transform.position = Random.insideUnitSphere * 10;
 
@@ -111,19 +114,11 @@ namespace SaveSystem.Tests {
             }
 
             // Create checkpoints
-            for (var i = 0; i < 100; i++)
-                CheckPointsCreator.CreateCheckPoint(Random.insideUnitSphere * 10);
+            for (var i = 0; i < 1000; i++)
+                CheckPointsFactory.CreateCheckPoint(Random.insideUnitSphere * 10);
 
-            ObjectHandler handler = HandlersProvider
-               .CreateObjectHandler(spheres, FilePath)
-               .OnComplete(result => {
-                    if (result)
-                        Debug.Log("<b>Test</b>: Successful save spheres");
-                    else
-                        Debug.LogError("<b>Test</b>: Failed save spheres");
-                });
-
-            SaveSystemCore.RegisterObjectHandler(handler);
+            ObjectHandlersFactory.RegisterImmediately = true;
+            ObjectHandlersFactory.Create(spheres, FilePath);
 
             SaveSystemCore.ConfigureParameters(
                 true, 3, true,
@@ -157,17 +152,17 @@ namespace SaveSystem.Tests {
 
                 return true;
             });
-            
+
             Assert.Greater(DataManager.GetDataSize(), 0);
         });
 
 
         [UnityTest]
-        public IEnumerator QuittingTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator Quitting () => UniTask.ToCoroutine(async () => {
             var spheres = new List<TestRigidbody>();
 
             // Spawn spheres
-            for (var i = 0; i < 100; i++) {
+            for (var i = 0; i < 1000; i++) {
                 var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 sphere.transform.position = Random.insideUnitSphere * 10;
                 var component = sphere.AddComponent<TestRigidbody>();
@@ -176,9 +171,8 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.AsyncSaveEnabled = true;
-            ObjectHandler handler = HandlersProvider.CreateObjectHandler(spheres, FilePath);
-            handler.ObserveProgress(new TestProgress());
-            SaveSystemCore.RegisterObjectHandler(handler);
+            ObjectHandlersFactory.RegisterImmediately = true;
+            ObjectHandlersFactory.Create(spheres, FilePath);
             await UniTask.Delay(1000);
         });
 

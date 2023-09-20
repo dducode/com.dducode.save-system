@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.CheckPoints;
 using SaveSystem.Handlers;
@@ -65,7 +66,7 @@ namespace SaveSystem.Core {
         public static string PlayerTag { get; set; }
 
         /// <summary>
-        /// The event that called before saving. It can be useful when you use async saving
+        /// Event that called before saving. It can be useful when you use async saving
         /// </summary>
         /// <value>
         /// Listeners that will be called when core will start saving.
@@ -74,7 +75,7 @@ namespace SaveSystem.Core {
         public static event Action<SaveType> OnSaveStart;
 
         /// <summary>
-        /// The event that called after saving
+        /// Event that called after saving
         /// </summary>
         /// <value>
         /// Listeners that will be called when core will finish saving.
@@ -83,8 +84,11 @@ namespace SaveSystem.Core {
         public static event Action<SaveType> OnSaveEnd;
 
         private static readonly List<ObjectHandler> Handlers = new();
+        private static readonly Queue<Func<UniTask>> SaveQueue = new();
         private static List<Vector3> m_destroyedCheckpoints = new();
         private static float m_lastTimeSaving;
+        private static bool m_saveQueueIsFree = true;
+        private static CancellationTokenSource m_cancellationSource;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -93,13 +97,14 @@ namespace SaveSystem.Core {
             PlayerLoopSystem modifiedLoop = PlayerLoop.GetCurrentPlayerLoop();
             var saveSystemLoop = new PlayerLoopSystem {
                 type = typeof(SaveSystemCore),
-                updateDelegate = AutoSave
+                updateDelegate = UpdateSystem
             };
 
             SetPlayerLoop(modifiedLoop, saveSystemLoop);
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
             SetSavingBeforeQuitting();
             ResetOnExitPlayMode(modifiedLoop, saveSystemLoop);
+            m_cancellationSource = new CancellationTokenSource();
 
             if (DebugEnabled)
                 InternalLogger.Log("Initialized");
@@ -109,7 +114,7 @@ namespace SaveSystem.Core {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void LoadInternalData () {
             string dataPath = Storage.GetFullPath(InternalDataPath);
-            using UnityReader reader = UnityReader.GetLocal(dataPath);
+            using UnityReader reader = UnityHandlersProvider.GetReader(dataPath);
 
             if (reader != null) {
                 m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
@@ -140,7 +145,7 @@ namespace SaveSystem.Core {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
 
-            Handlers.Add(HandlersProvider.CreateObjectHandler(obj, filePath, caller));
+            Handlers.Add(ObjectHandlersFactory.Create(obj, filePath, caller));
 
             if (DebugEnabled)
                 InternalLogger.Log("Persistent object was register");
@@ -188,81 +193,101 @@ namespace SaveSystem.Core {
         /// <summary>
         /// You can call it when the player presses any key
         /// </summary>
+        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         public static void QuickSave () {
-            OnSaveStart?.Invoke(SaveType.QuickSave);
+            SaveQueue.Enqueue(async () => {
+                OnSaveStart?.Invoke(SaveType.QuickSave);
 
-            SaveAll();
-
-            OnSaveEnd?.Invoke(SaveType.QuickSave);
-
-            if (DebugEnabled)
-                InternalLogger.Log("Successful quick-save");
-        }
-
-
-        /// <summary>
-        /// Same as <see cref="QuickSave"/> only for async saving
-        /// </summary>
-        public static async UniTask QuickSaveAsync () {
-            OnSaveStart?.Invoke(SaveType.QuickSave);
-
-            await SaveAllAsync();
-
-            OnSaveEnd?.Invoke(SaveType.QuickSave);
-
-            if (DebugEnabled)
-                InternalLogger.Log("Successful async quick-save");
-        }
-
-
-        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
-        internal static async void SaveAtCheckpoint (CheckPointBase checkPoint, Component other) {
-            if (!other.CompareTag(PlayerTag))
-                return;
-
-            OnSaveStart?.Invoke(SaveType.SaveAtCheckpoint);
-
-            checkPoint.Disable();
-
-            if (AsyncSaveEnabled)
-                await SaveAllAsync();
-            else
-                SaveAll();
-
-            if (DestroyCheckPoints) {
-                m_destroyedCheckpoints.Add(checkPoint.transform.position);
-                checkPoint.Destroy();
-                SaveInternalData();
-            }
-            else
-                checkPoint.Enable();
-
-            OnSaveEnd?.Invoke(SaveType.SaveAtCheckpoint);
-
-            if (DebugEnabled)
-                InternalLogger.Log("Successful save at checkpoint");
-        }
-
-
-        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
-        private static async void AutoSave () {
-            if (!AutoSaveEnabled)
-                return;
-
-            if (m_lastTimeSaving + SavePeriod < Time.time) {
-                OnSaveStart?.Invoke(SaveType.AutoSave);
-
-                if (AsyncSaveEnabled)
-                    await SaveAllAsync();
+                if (AutoSaveEnabled)
+                    await SaveAllAsync(m_cancellationSource.Token);
                 else
                     SaveAll();
 
-                m_lastTimeSaving = Time.time;
+                if (m_cancellationSource.IsCancellationRequested)
+                    return;
 
-                OnSaveEnd?.Invoke(SaveType.AutoSave);
+                OnSaveEnd?.Invoke(SaveType.QuickSave);
 
                 if (DebugEnabled)
-                    InternalLogger.Log("Successful auto save");
+                    InternalLogger.Log("Successful quick-save");
+            });
+        }
+
+
+        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
+        internal static void SaveAtCheckpoint (CheckPointBase checkPoint, Component other) {
+            if (!other.CompareTag(PlayerTag))
+                return;
+
+            SaveQueue.Enqueue(async () => {
+                OnSaveStart?.Invoke(SaveType.SaveAtCheckpoint);
+
+                checkPoint.Disable();
+
+                if (AsyncSaveEnabled)
+                    await SaveAllAsync(m_cancellationSource.Token);
+                else
+                    SaveAll();
+
+                if (m_cancellationSource.IsCancellationRequested)
+                    return;
+
+                if (DestroyCheckPoints) {
+                    m_destroyedCheckpoints.Add(checkPoint.transform.position);
+                    checkPoint.Destroy();
+                    SaveInternalData();
+                }
+                else
+                    checkPoint.Enable();
+
+                OnSaveEnd?.Invoke(SaveType.SaveAtCheckpoint);
+
+                if (DebugEnabled)
+                    InternalLogger.Log("Successful save at checkpoint");
+            });
+        }
+
+
+        private static async void UpdateSystem () {
+            if (m_saveQueueIsFree) {
+                m_saveQueueIsFree = false;
+
+                while (SaveQueue.Count > 0) {
+                    if (m_cancellationSource.IsCancellationRequested)
+                        return;
+
+                    await SaveQueue.Dequeue().Invoke();
+                }
+
+                m_saveQueueIsFree = true;
+            }
+
+            if (AutoSaveEnabled)
+                AutoSave();
+        }
+
+
+        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
+        private static void AutoSave () {
+            if (m_lastTimeSaving + SavePeriod < Time.time) {
+                SaveQueue.Enqueue(async () => {
+                    OnSaveStart?.Invoke(SaveType.AutoSave);
+
+                    if (AsyncSaveEnabled)
+                        await SaveAllAsync(m_cancellationSource.Token);
+                    else
+                        SaveAll();
+                    
+                    if (m_cancellationSource.IsCancellationRequested)
+                        return;
+
+                    OnSaveEnd?.Invoke(SaveType.AutoSave);
+
+                    if (DebugEnabled)
+                        InternalLogger.Log("Successful auto save");
+                });
+
+                m_lastTimeSaving = Time.time;
             }
         }
 
@@ -273,9 +298,13 @@ namespace SaveSystem.Core {
         }
 
 
-        private static async UniTask SaveAllAsync () {
-            foreach (ObjectHandler objectHandler in Handlers)
-                await objectHandler.SaveAsync();
+        [SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
+        private static async UniTask SaveAllAsync (CancellationToken token) {
+            for (var i = 0; i < Handlers.Count; i++) {
+                if (token.IsCancellationRequested)
+                    return;
+                await Handlers[i].SetCancellationToken(token).SaveAsync();
+            }
         }
 
 
@@ -294,10 +323,13 @@ namespace SaveSystem.Core {
                 );
             }
 
+            // Core settings
             AutoSaveEnabled = settings.autoSaveEnabled;
             SavePeriod = settings.savePeriod;
             AsyncSaveEnabled = settings.asyncSaveEnabled;
             DebugEnabled = settings.debugEnabled;
+            
+            // Checkpoints settings
             DestroyCheckPoints = settings.destroyCheckPoints;
             PlayerTag = settings.playerTag;
         }
@@ -306,6 +338,8 @@ namespace SaveSystem.Core {
         [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         private static void SetSavingBeforeQuitting () {
             Application.quitting += () => {
+                m_cancellationSource.Cancel();
+
                 OnSaveStart?.Invoke(SaveType.OnExit);
 
                 SaveAll();
@@ -320,7 +354,7 @@ namespace SaveSystem.Core {
 
         private static void SaveInternalData () {
             string dataPath = Storage.GetFullPath(InternalDataPath);
-            using UnityWriter writer = UnityWriter.GetLocal(dataPath);
+            using UnityWriter writer = UnityHandlersProvider.GetWriter(dataPath);
             writer.Write(m_destroyedCheckpoints);
         }
 

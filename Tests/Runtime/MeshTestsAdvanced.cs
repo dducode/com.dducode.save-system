@@ -27,29 +27,25 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator HpMeshAsyncAdvancedTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator HpMeshAsyncAdvanced () => UniTask.ToCoroutine(async () => {
             TestMeshAdvanced testMono = Object.Instantiate(Resources.Load<TestMeshAdvanced>(HpSphereName));
             Debug.Log("Create object");
 
             Debug.Log("Start saving");
             AdvancedObjectHandler objectHandler =
-                HandlersProvider.CreateObjectHandler(testMono, FilePath);
-            await objectHandler
-               .OnComplete(_ => {
-                    testMono.GetComponent<MeshFilter>().mesh = null;
-                    Debug.Log("Mesh saved and removed");
-                })
-               .SaveAsync();
+                ObjectHandlersFactory.Create(testMono, FilePath);
+            await objectHandler.SaveAsync();
+            testMono.RemoveMesh();
+            Debug.Log("Mesh saved and removed");
 
             Debug.Log("Start loading");
-            await objectHandler
-               .OnComplete(_ => Debug.Log("Mesh loaded"))
-               .LoadAsync();
+            await objectHandler.LoadAsync();
+            Debug.Log("Mesh loaded");
         });
 
 
         [UnityTest]
-        public IEnumerator LpMeshesAsyncAdvancedTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator LpMeshesAsyncAdvanced () => UniTask.ToCoroutine(async () => {
             var objects = new TestMeshAdvanced[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -60,20 +56,15 @@ namespace SaveSystem.Tests {
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            AdvancedObjectHandler objectHandler =
-                HandlersProvider.CreateObjectHandler(objects, FilePath);
-            await objectHandler
-               .OnComplete(_ => {
-                    foreach (TestMeshAdvanced obj in objects)
-                        obj.GetComponent<MeshFilter>().mesh = null;
-                    Debug.Log("Meshes saved and removed");
-                })
-               .SaveAsync();
+            AdvancedObjectHandler objectHandler = ObjectHandlersFactory.Create(objects, FilePath);
+            await objectHandler.SaveAsync();
+            foreach (TestMeshAdvanced obj in objects)
+                obj.RemoveMesh();
+            Debug.Log("Meshes saved and removed");
 
             Debug.Log("Start loading");
-            await objectHandler
-               .OnComplete(_ => Debug.Log("Meshes loaded"))
-               .LoadAsync();
+            await objectHandler.LoadAsync();
+            Debug.Log("Meshes loaded");
         });
 
 

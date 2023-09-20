@@ -19,13 +19,19 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void RemoveMesh () {
-            m_meshFilter.mesh = null;
+        public void SetMesh () {
+            m_meshFilter.mesh = m_meshData;
         }
 
 
-        public void SetMesh () {
-            m_meshFilter.mesh = m_meshData;
+        public void RemoveMesh () {
+            m_meshFilter.mesh = null;
+            m_meshData = default;
+        }
+
+
+        public bool MeshDataIsFilling () {
+            return m_meshData != default;
         }
 
 

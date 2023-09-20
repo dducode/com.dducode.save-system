@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Handlers;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
 
@@ -23,31 +24,35 @@ namespace SaveSystem {
 
             #region SavingAsync
 
-            /// <inheritdoc cref="DataManager.SaveObjectAsync{T}"/>
+            /// <inheritdoc cref="DataManager.SaveObjectAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask SaveObjectAsync<T> (
+            public static async UniTask SaveObjectAsync (
                 string fileName,
-                T obj,
+                IPersistentObjectAsync obj,
                 CancellationTokenSource source = null,
                 Action onComplete = null
-            ) where T : IPersistentObjectAsync {
+            ) {
                 await SaveObjectsAsync(fileName, new[] {obj}, null, source, onComplete);
             }
 
 
-            /// <inheritdoc cref="DataManager.SaveObjectsAsync{T}"/>
+            /// <inheritdoc cref="DataManager.SaveObjectsAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask SaveObjectsAsync<T> (
+            public static async UniTask SaveObjectsAsync (
                 string fileName,
-                T[] objects,
+                IPersistentObjectAsync[] objects,
                 IProgress<float> progress = null,
                 CancellationTokenSource source = null,
                 Action onComplete = null
-            )
-                where T : IPersistentObjectAsync {
-                await using UnityAsyncWriter unityAsyncWriter = UnityAsyncWriter.GetLocal(fileName);
+            ) {
+                await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(fileName);
+                source ??= new CancellationTokenSource();
 
-                if (await InternalHandling.Advanced.TryHandleObjectsAsync(objects, unityAsyncWriter, progress, source))
+                HandlingResult result = await InternalHandling.Advanced.TrySaveObjectsAsync(
+                    objects, unityWriter, progress, source.Token
+                );
+
+                if (result == HandlingResult.Success)
                     onComplete?.Invoke();
             }
 
@@ -57,37 +62,40 @@ namespace SaveSystem {
 
             #region LoadingAsync
 
-            /// <inheritdoc cref="DataManager.LoadObjectAsync{T}"/>
+            /// <inheritdoc cref="DataManager.LoadObjectAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask<bool> LoadObjectAsync<T> (
+            public static async UniTask<bool> LoadObjectAsync (
                 string fileName,
-                T obj,
+                IPersistentObjectAsync obj,
                 CancellationTokenSource source = null,
                 Action onComplete = null
-            ) where T : IPersistentObjectAsync {
+            ) {
                 return await LoadObjectsAsync(fileName, new[] {obj}, null, source, onComplete);
             }
 
 
-            /// <inheritdoc cref="DataManager.LoadObjectsAsync{T}"/>
+            /// <inheritdoc cref="DataManager.LoadObjectsAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask<bool> LoadObjectsAsync<T> (
+            public static async UniTask<bool> LoadObjectsAsync (
                 string fileName,
-                T[] objects,
+                IPersistentObjectAsync[] objects,
                 IProgress<float> progress = null,
                 CancellationTokenSource source = null,
                 Action onComplete = null
-            )
-                where T : IPersistentObjectAsync {
-                using UnityAsyncReader unityAsyncReader = UnityAsyncReader.GetLocal(fileName);
+            ) {
+                using UnityReader unityReader = UnityHandlersProvider.GetReader(fileName);
+                source ??= new CancellationTokenSource();
 
-                if (unityAsyncReader is null) {
-                    source?.Dispose();
+                if (unityReader is null) {
+                    source.Dispose();
                     return false;
                 }
 
-                if (await InternalHandling.Advanced.TryHandleObjectsAsync(objects, unityAsyncReader, progress,
-                    source)) {
+                HandlingResult result = await InternalHandling.Advanced.TryLoadObjectsAsync(
+                    objects, unityReader, progress, source.Token
+                );
+
+                if (result == HandlingResult.Success) {
                     onComplete?.Invoke();
                     return true;
                 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
@@ -25,7 +26,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator MeshAsyncCancelSaveTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator MeshAsyncCancelSave () => UniTask.ToCoroutine(async () => {
             var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -34,29 +35,26 @@ namespace SaveSystem.Tests {
             }
 
             Debug.Log("Created objects");
+            await UniTask.NextFrame();
 
             Debug.Log("Start saving");
             var cancellationSource = new CancellationTokenSource();
-            UniTask saveOperation = HandlersProvider
-               .CreateObjectHandler(objects, FilePath)
+            ObjectHandler objectHandler = ObjectHandlersFactory
+               .Create(objects, FilePath)
                .OnThreadPool()
-               .SetCancellationSource(cancellationSource)
-               .OnComplete(_ => {
-                    foreach (TestMesh obj in objects)
-                        obj.GetComponent<MeshFilter>().mesh = null;
-                    Debug.Log("Meshes saved and removed");
-                })
-               .SaveAsync();
+               .SetCancellationToken(cancellationSource.Token);
 
-            Debug.Log("Attempt to cancel save");
+            Debug.Log("Attempt to cancel saving after starting it");
+            objectHandler.SaveAsync().Forget();
+
             cancellationSource.Cancel();
 
-            await saveOperation;
+            Assert.IsTrue(DataManager.GetDataSize() == 0);
         });
 
 
         [UnityTest]
-        public IEnumerator MeshAsyncCancelLoadTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator MeshAsyncCancelLoad () => UniTask.ToCoroutine(async () => {
             var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -67,32 +65,30 @@ namespace SaveSystem.Tests {
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            ObjectHandler objectHandler = HandlersProvider
-               .CreateObjectHandler(objects, FilePath)
-               .OnThreadPool()
-               .OnComplete(_ => {
-                    foreach (TestMesh obj in objects)
-                        obj.GetComponent<MeshFilter>().mesh = null;
-                    Debug.Log("Meshes saved and removed");
-                });
-            await objectHandler.SaveAsync();
+            ObjectHandler objectHandler = ObjectHandlersFactory.Create(objects, FilePath);
+            HandlingResult result = await objectHandler.OnThreadPool().SaveAsync();
+
+            if (result == HandlingResult.Success) {
+                foreach (TestMesh obj in objects)
+                    obj.RemoveMesh();
+                Debug.Log("Meshes saved and removed");
+            }
 
             Debug.Log("Start loading");
             var cancellationSource = new CancellationTokenSource();
-            objectHandler
-               .SetCancellationSource(cancellationSource)
-               .OnComplete(_ => Debug.Log("Meshes load"));
+            objectHandler.SetCancellationToken(cancellationSource.Token);
 
-            Debug.Log("Attempt to cancel load");
+            Debug.Log("Attempt to cancel loading before starting it");
             cancellationSource.Cancel();
 
-            await objectHandler.LoadAsync();
+            objectHandler.LoadAsync().Forget();
+
+            Assert.IsFalse(objects.Any(obj => obj.MeshDataIsFilling()));
         });
 
 
         [TearDown]
         public void EndTest () {
-            Debug.Log($"Size of data: {DataManager.GetDataSize()} bytes");
             DataManager.DeleteAllData();
             Debug.Log("End test");
         }
