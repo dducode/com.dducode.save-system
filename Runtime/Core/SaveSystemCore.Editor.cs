@@ -11,11 +11,12 @@ namespace SaveSystem.Core {
             EditorApplication.playModeStateChanged += state => {
                 if (state is PlayModeStateChange.ExitingPlayMode) {
                     ResetPlayerLoop(modifiedLoop, saveSystemLoop);
-                    SavePeriod = 0;
                     AutoSaveEnabled = false;
-                    OnSaveEnd = null;
+                    SavePeriod = 0;
                     OnSaveStart = null;
-                    m_lastTimeSaving = 0;
+                    OnSaveEnd = null;
+                    m_destroyedCheckpoints.Clear();
+                    m_autoSaveLastTime = 0;
                 }
             };
         }

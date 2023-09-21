@@ -29,8 +29,6 @@ namespace SaveSystem.InternalServices {
                         throw new ArgumentOutOfRangeException();
                 }
 
-                await writer.WriteBufferToFileAsync();
-
                 return HandlingResult.Success;
             }
             catch (Exception ex) when (ex is OperationCanceledException) {

@@ -9,12 +9,12 @@ namespace SaveSystem.Handlers {
     /// </summary>
     public class AdvancedObjectHandler : AbstractHandler<AdvancedObjectHandler> {
 
-        private readonly string m_filePath;
+        private readonly string m_localFilePath;
         private readonly IPersistentObjectAsync[] m_objects;
 
 
-        internal AdvancedObjectHandler (string filePath, IPersistentObjectAsync[] objects) {
-            m_filePath = filePath;
+        internal AdvancedObjectHandler (string localFilePath, IPersistentObjectAsync[] objects) {
+            m_localFilePath = localFilePath;
             m_objects = objects;
         }
 
@@ -24,11 +24,14 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_filePath);
+            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_localFilePath);
 
             HandlingResult result = await InternalHandling.Advanced.TrySaveObjectsAsync(
                 m_objects, unityWriter, savingProgress, token
             );
+
+            if (result == HandlingResult.Success)
+                await unityWriter.WriteBufferToFileAsync();
 
             return result;
         }
@@ -39,18 +42,17 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_filePath);
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_localFilePath);
 
-            if (unityReader is null) {
-                return HandlingResult.FileNotExists;
-            }
-            else {
+            if (await unityReader.ReadFileDataToBufferAsync()) {
                 HandlingResult result = await InternalHandling.Advanced.TryLoadObjectsAsync(
                     m_objects, unityReader, loadingProgress, token
                 );
 
                 return result;
             }
+
+            return HandlingResult.FileNotExists;
         }
 
     }

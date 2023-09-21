@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -13,10 +12,12 @@ namespace SaveSystem.UnityHandlers {
     public sealed class UnityReader : IDisposable {
 
         private readonly BinaryReader m_reader;
+        private readonly string m_fullPath;
 
 
-        internal UnityReader (BinaryReader reader) {
+        internal UnityReader (BinaryReader reader, string fullPath = "") {
             m_reader = reader;
+            m_fullPath = fullPath;
         }
 
 
@@ -485,6 +486,37 @@ namespace SaveSystem.UnityHandlers {
 
         public void Dispose () {
             m_reader?.Dispose();
+        }
+
+
+        internal void WriteToBuffer (ReadOnlySpan<byte> data) {
+            ((MemoryStream)m_reader.BaseStream).Write(data);
+        }
+
+
+        internal bool ReadFileDataToBuffer () {
+            if (File.Exists(m_fullPath)) {
+                var memoryStream = ((MemoryStream)m_reader.BaseStream);
+                memoryStream.Write(File.ReadAllBytes(m_fullPath));
+                memoryStream.Position = 0;
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+
+
+        internal async UniTask<bool> ReadFileDataToBufferAsync () {
+            if (File.Exists(m_fullPath)) {
+                var memoryStream = (MemoryStream)m_reader.BaseStream;
+                await memoryStream.WriteAsync(await File.ReadAllBytesAsync(m_fullPath));
+                memoryStream.Position = 0;
+                return true;
+            }
+            else {
+                return false;
+            }
         }
 
     }

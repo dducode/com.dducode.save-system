@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using SaveSystem.InternalServices;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,13 +11,13 @@ namespace SaveSystem.Editor.ConsoleTabs {
             DrawDataSizeLabel();
             DrawFileSystemEntries(Application.persistentDataPath);
 
-            if (DataManager.HasAnyData())
+            if (Storage.HasAnyData())
                 DrawDeleteDataButton();
         }
 
 
         private void DrawDataSizeLabel () {
-            string message = DataManager.GetFormattedDataSize();
+            string message = Storage.GetFormattedDataSize();
             EditorGUILayout.HelpBox($"Total data size: {message}", MessageType.Info);
         }
 
@@ -62,7 +63,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
                 text = Path.GetFileName(entryPath),
                 image = EditorGUIUtility.IconContent("DefaultAsset Icon").image
             });
-            string fileSize = DataManager.GetFormattedDataSize(new FileInfo(entryPath).Length);
+            string fileSize = Storage.GetFormattedDataSize(new FileInfo(entryPath).Length);
             EditorGUILayout.LabelField(fileSize);
 
             if (GUILayout.Button(openEntryLabel, GUILayout.ExpandWidth(false)))
@@ -84,7 +85,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             }
 
             if (allowDeleteData) {
-                DataManager.DeleteAllData();
+                Storage.DeleteAllData();
                 EditorUtility.DisplayDialog(dialogName, "Data deleted successfully", "Ok");
             }
         }

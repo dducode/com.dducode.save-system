@@ -23,15 +23,15 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriterRemote();
+            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter();
 
             HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
                 m_objects, asyncMode, unityWriter, savingProgress, token
             );
 
             if (result == HandlingResult.Success) {
-                bool sendingSucceeded = await Storage.SendDataToRemote(m_url, unityWriter.GetMemoryData());
-                result = sendingSucceeded ? HandlingResult.Success : HandlingResult.NetworkError;
+                bool requestSucceeded = await Storage.SendDataToRemote(m_url, unityWriter.GetBuffer());
+                result = requestSucceeded ? HandlingResult.Success : HandlingResult.NetworkError;
             }
 
             return result;
@@ -45,18 +45,19 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = await UnityHandlersProvider.GetReaderRemote(m_url);
+            byte[] data = await Storage.GetDataFromRemote(m_url);
 
-            if (unityReader is null) {
+            if (data is null)
                 return HandlingResult.NetworkError;
-            }
-            else {
-                HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
-                    m_objects, asyncMode, unityReader, loadingProgress, token
-                );
 
-                return result;
-            }
+            using UnityReader unityReader = UnityHandlersProvider.GetReader();
+            unityReader.WriteToBuffer(data);
+
+            HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
+                m_objects, asyncMode, unityReader, loadingProgress, token
+            );
+
+            return result;
         }
 
     }

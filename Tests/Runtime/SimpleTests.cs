@@ -1,5 +1,6 @@
 using System;
 using NUnit.Framework;
+using SaveSystem.InternalServices;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 
@@ -46,7 +47,7 @@ namespace SaveSystem.Tests {
 
         [TearDown]
         public void EndTest () {
-            DataManager.DeleteAllData();
+            Storage.DeleteAllData();
         }
 
 

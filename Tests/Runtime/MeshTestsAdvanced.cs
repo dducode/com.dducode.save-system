@@ -2,6 +2,7 @@ using System.Collections;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.Handlers;
+using SaveSystem.InternalServices;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -70,7 +71,7 @@ namespace SaveSystem.Tests {
 
         [TearDown]
         public void EndTest () {
-            DataManager.DeleteAllData();
+            Storage.DeleteAllData();
             Debug.Log("End test");
         }
 

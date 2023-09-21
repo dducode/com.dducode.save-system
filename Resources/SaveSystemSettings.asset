@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   autoSaveEnabled: 0
   savePeriod: 0
-  asyncSaveEnabled: 0
+  saveMode: 0
   debugEnabled: 0
   destroyCheckPoints: 0
   playerTag: Player

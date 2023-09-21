@@ -12,8 +12,10 @@ namespace SaveSystem.Handlers {
 
         static ObjectHandlersFactory () {
             EditorApplication.playModeStateChanged += state => {
-                if (state is PlayModeStateChange.ExitingPlayMode)
+                if (state is PlayModeStateChange.ExitingPlayMode) {
                     HandlersData.Clear();
+                    RegisterImmediately = false;
+                }
             };
         }
 

@@ -20,7 +20,6 @@ namespace SaveSystem.InternalServices {
             ) {
                 try {
                     await SaveObjectsAsync(objects, writer, progress, token);
-                    await writer.WriteBufferToFileAsync();
                     return HandlingResult.Success;
                 }
                 catch (Exception ex) when (ex is OperationCanceledException) {

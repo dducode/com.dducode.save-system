@@ -1,6 +1,6 @@
 ﻿namespace SaveSystem.Editor {
 
-    internal enum DrawingMode {
+    internal enum ConsoleTabsNames {
 
         SavedFiles,
         HandlersTracker,

@@ -16,12 +16,12 @@ namespace SaveSystem.UnityHandlers {
     public sealed class UnityWriter : IDisposable, IAsyncDisposable {
 
         private readonly BinaryWriter m_writer;
-        public readonly string localPath;
+        private readonly string m_fullPath;
 
 
-        internal UnityWriter (BinaryWriter writer, string localPath = "") {
+        internal UnityWriter (BinaryWriter writer, string fullPath = "") {
             m_writer = writer;
-            this.localPath = localPath;
+            m_fullPath = fullPath;
         }
 
 
@@ -454,21 +454,6 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
-        internal byte[] GetMemoryData () {
-            return ((MemoryStream)m_writer.BaseStream).GetBuffer();
-        }
-
-
-        internal void WriteBufferToFile () {
-            File.WriteAllBytes(localPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
-        }
-
-
-        internal async UniTask WriteBufferToFileAsync () {
-            await File.WriteAllBytesAsync(localPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
-        }
-
-
         public void Dispose () {
             m_writer?.Dispose();
         }
@@ -476,6 +461,21 @@ namespace SaveSystem.UnityHandlers {
 
         public ValueTask DisposeAsync () {
             return m_writer.DisposeAsync();
+        }
+
+
+        internal byte[] GetBuffer () {
+            return ((MemoryStream)m_writer.BaseStream).GetBuffer();
+        }
+
+
+        internal void WriteBufferToFile () {
+            File.WriteAllBytes(m_fullPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
+        }
+
+
+        internal async UniTask WriteBufferToFileAsync () {
+            await File.WriteAllBytesAsync(m_fullPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
         }
 
     }

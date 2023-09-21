@@ -10,12 +10,12 @@ namespace SaveSystem.Handlers {
     /// </summary>
     public sealed class ObjectHandler : AbstractHandler<ObjectHandler> {
 
-        private readonly string m_filePath;
+        private readonly string m_localFilePath;
         private readonly IPersistentObject[] m_objects;
 
 
-        internal ObjectHandler (string filePath, IPersistentObject[] objects) {
-            m_filePath = filePath;
+        internal ObjectHandler (string localFilePath, IPersistentObject[] objects) {
+            m_localFilePath = localFilePath;
             m_objects = objects;
         }
 
@@ -27,7 +27,7 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return;
 
-            using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_filePath);
+            using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_localFilePath);
 
             foreach (IPersistentObject obj in m_objects)
                 obj.Save(unityWriter);
@@ -43,17 +43,16 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_filePath);
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_localFilePath);
 
-            if (unityReader is null) {
-                return HandlingResult.FileNotExists;
-            }
-            else {
+            if (unityReader.ReadFileDataToBuffer()) {
                 foreach (IPersistentObject obj in m_objects)
                     obj.Load(unityReader);
 
                 return HandlingResult.Success;
             }
+
+            return HandlingResult.FileNotExists;
         }
 
 
@@ -64,11 +63,14 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_filePath);
+            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_localFilePath);
 
             HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
                 m_objects, asyncMode, unityWriter, savingProgress, token
             );
+
+            if (result == HandlingResult.Success)
+                await unityWriter.WriteBufferToFileAsync();
 
             return result;
         }
@@ -81,18 +83,17 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_filePath);
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_localFilePath);
 
-            if (unityReader is null) {
-                return HandlingResult.FileNotExists;
-            }
-            else {
+            if (await unityReader.ReadFileDataToBufferAsync()) {
                 HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
                     m_objects, asyncMode, unityReader, loadingProgress, token
                 );
 
                 return result;
             }
+
+            return HandlingResult.FileNotExists;
         }
 
     }

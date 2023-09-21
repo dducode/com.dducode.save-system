@@ -11,6 +11,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private readonly SerializedProperty m_autoSaveEnabledProperty;
         private readonly SerializedProperty m_savePeriodProperty;
         private readonly SerializedProperty m_asyncSaveEnabledProperty;
+        private readonly SerializedProperty m_saveModeProperty;
         private readonly SerializedProperty m_debugEnabledProperty;
 
         private readonly SerializedProperty m_destroyCheckPointsProperty;
@@ -18,14 +19,9 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private readonly SerializedProperty m_registerImmediatelyProperty;
 
-        private readonly GUIContent m_savePeriodContent = new() {
-            text = "Save Period",
-            tooltip = "For what period should it be saved automatically? (in sec.)"
-        };
-
-        private readonly GUIContent m_destroyCheckPointsContent = new() {
-            text = "Destroy Check Points",
-            tooltip = "Destroy check points after saving?"
+        private readonly GUIContent m_playerTagContent = new() {
+            text = "Player Tag",
+            tooltip = "Player tag is used to filtering messages from triggered checkpoints"
         };
 
 
@@ -35,6 +31,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_autoSaveEnabledProperty = m_serializedSettings.FindProperty("autoSaveEnabled");
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_asyncSaveEnabledProperty = m_serializedSettings.FindProperty("asyncSaveEnabled");
+            m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
             m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
 
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
@@ -48,10 +45,10 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_serializedSettings.Update();
 
             DrawCoreSettings();
-            
+
             EditorGUILayout.Space(15);
             DrawCheckpointsSettings();
-            
+
             EditorGUILayout.Space(15);
             DrawProviderSettings();
 
@@ -64,17 +61,17 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             EditorGUILayout.PropertyField(m_autoSaveEnabledProperty);
             if (m_autoSaveEnabledProperty.boolValue)
-                EditorGUILayout.PropertyField(m_savePeriodProperty, m_savePeriodContent, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_asyncSaveEnabledProperty);
+                EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_saveModeProperty, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_debugEnabledProperty);
         }
 
 
         private void DrawCheckpointsSettings () {
             EditorGUILayout.LabelField("Checkpoints settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(m_destroyCheckPointsProperty, m_destroyCheckPointsContent);
+            EditorGUILayout.PropertyField(m_destroyCheckPointsProperty);
             m_playerTagProperty.stringValue =
-                EditorGUILayout.TagField("Player Tag", m_playerTagProperty.stringValue, GUILayout.MaxWidth(300));
+                EditorGUILayout.TagField(m_playerTagContent, m_playerTagProperty.stringValue, GUILayout.MaxWidth(300));
         }
 
 

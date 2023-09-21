@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -9,6 +10,7 @@ using SaveSystem.CheckPoints;
 using SaveSystem.Handlers;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
+using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -25,13 +27,15 @@ namespace SaveSystem.Core {
     /// </summary>
     public static partial class SaveSystemCore {
 
-        private const string InternalDataPath = "destroyed_checkpoints.bytes";
+        private static readonly string InternalDataPath =
+            Path.Combine("save_system", "internal", "destroyed_checkpoints.bytes");
 
         /// <summary>
         /// It's used to enable/disable autosave loop
         /// </summary>
         /// <value> If true, autosave loop will be enabled, otherwise false </value>
         public static bool AutoSaveEnabled { get; set; }
+
 
         /// <summary>
         /// It's used into autosave loop to determine saving frequency
@@ -40,10 +44,10 @@ namespace SaveSystem.Core {
         public static float SavePeriod { get; set; }
 
         /// <summary>
-        /// You can enable async saving if you have a lot of objects or they're large enough
+        /// You can choose 3 saving modes - simple mode, async saving and multithreading saving
         /// </summary>
-        /// <value> If true, all objects and handlers will be saved async, otherwise - synchronously </value>
-        public static bool AsyncSaveEnabled { get; set; }
+        /// <seealso cref="SaveMode"/>
+        public static SaveMode SaveMode { get; set; }
 
         /// <summary>
         /// Enables logs
@@ -54,13 +58,13 @@ namespace SaveSystem.Core {
         public static bool DebugEnabled { get; set; }
 
         /// <summary>
-        /// Determines whether checkpoints will be destroyed
+        /// Determines whether checkpoints will be destroyed after saving
         /// </summary>
         /// <value> If true, triggered checkpoint will be deleted from scene after saving </value>
         public static bool DestroyCheckPoints { get; set; }
 
         /// <summary>
-        /// It's used to filtering messages from triggered checkpoints
+        /// Player tag is used to filtering messages from triggered checkpoints
         /// </summary>
         /// <value> Tag of the player object </value>
         public static string PlayerTag { get; set; }
@@ -83,12 +87,17 @@ namespace SaveSystem.Core {
         /// </value>
         public static event Action<SaveType> OnSaveEnd;
 
-        private static readonly List<ObjectHandler> Handlers = new();
-        private static readonly Queue<Func<UniTask>> SaveQueue = new();
-        private static List<Vector3> m_destroyedCheckpoints = new();
-        private static float m_lastTimeSaving;
-        private static bool m_saveQueueIsFree = true;
+        /// It's used for delayed async saving
+        private static readonly Queue<Func<UniTask>> SavingRequests = new();
+
+        /// It will be canceled before exit game
         private static CancellationTokenSource m_cancellationSource;
+
+        private static readonly List<ObjectHandler> Handlers = new();
+        private static List<Vector3> m_destroyedCheckpoints = new();
+        private static SavingJobHandle m_savingJobHandle;
+        private static float m_autoSaveLastTime;
+        private static bool m_requestsQueueIsFree = true;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -113,10 +122,9 @@ namespace SaveSystem.Core {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void LoadInternalData () {
-            string dataPath = Storage.GetFullPath(InternalDataPath);
-            using UnityReader reader = UnityHandlersProvider.GetReader(dataPath);
+            using UnityReader reader = UnityHandlersProvider.GetReader(InternalDataPath);
 
-            if (reader != null) {
+            if (reader.ReadFileDataToBuffer()) {
                 m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
 
                 DeleteTriggeredCheckpoints();
@@ -145,7 +153,9 @@ namespace SaveSystem.Core {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
 
-            Handlers.Add(ObjectHandlersFactory.Create(obj, filePath, caller));
+            ObjectHandler objectHandler = ObjectHandlersFactory.Create(obj, filePath, caller);
+            if (!ObjectHandlersFactory.RegisterImmediately)
+                RegisterObjectHandler(objectHandler);
 
             if (DebugEnabled)
                 InternalLogger.Log("Persistent object was register");
@@ -172,18 +182,17 @@ namespace SaveSystem.Core {
         /// </summary>
         /// <param name="autoSaveEnabled"> <see cref="AutoSaveEnabled"/> </param>
         /// <param name="savePeriod"> <see cref="SavePeriod"/> </param>
-        /// <param name="asyncSaveEnabled"> <see cref="AsyncSaveEnabled"/> </param>
+        /// <param name="saveMode"> <see cref="SaveMode"/> </param>
         /// <param name="debugEnabled"> <see cref="DebugEnabled"/> </param>
         /// <param name="destroyCheckPoints"> <see cref="DestroyCheckPoints"/> </param>
         /// <param name="playerTag"> <see cref="PlayerTag"/> </param>
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
-        public static void ConfigureParameters (
-            bool autoSaveEnabled, float savePeriod, bool asyncSaveEnabled,
-            bool debugEnabled, bool destroyCheckPoints, string playerTag
+        public static void ConfigureParameters (bool autoSaveEnabled, float savePeriod,
+            SaveMode saveMode, bool debugEnabled, bool destroyCheckPoints, string playerTag
         ) {
             AutoSaveEnabled = autoSaveEnabled;
             SavePeriod = savePeriod;
-            AsyncSaveEnabled = asyncSaveEnabled;
+            SaveMode = saveMode;
             DebugEnabled = debugEnabled;
             DestroyCheckPoints = destroyCheckPoints;
             PlayerTag = playerTag;
@@ -195,22 +204,23 @@ namespace SaveSystem.Core {
         /// </summary>
         [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         public static void QuickSave () {
-            SaveQueue.Enqueue(async () => {
-                OnSaveStart?.Invoke(SaveType.QuickSave);
+            const string message = "Successful quick-save";
 
-                if (AutoSaveEnabled)
-                    await SaveAllAsync(m_cancellationSource.Token);
-                else
-                    SaveAll();
-
-                if (m_cancellationSource.IsCancellationRequested)
-                    return;
-
-                OnSaveEnd?.Invoke(SaveType.QuickSave);
-
-                if (DebugEnabled)
-                    InternalLogger.Log("Successful quick-save");
-            });
+            switch (SaveMode) {
+                case SaveMode.Simple:
+                    SaveAll(SaveType.QuickSave, message);
+                    break;
+                case SaveMode.Async:
+                    SavingRequests.Enqueue(async () =>
+                        await SaveAllAsync(m_cancellationSource.Token, SaveType.QuickSave, message)
+                    );
+                    break;
+                case SaveMode.Parallel:
+                    ScheduleSaveJob(SaveType.QuickSave, message);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
 
@@ -219,47 +229,60 @@ namespace SaveSystem.Core {
             if (!other.CompareTag(PlayerTag))
                 return;
 
-            SaveQueue.Enqueue(async () => {
-                OnSaveStart?.Invoke(SaveType.SaveAtCheckpoint);
+            checkPoint.Disable();
 
-                checkPoint.Disable();
+            const string message = "Successful save at checkpoint";
 
-                if (AsyncSaveEnabled)
-                    await SaveAllAsync(m_cancellationSource.Token);
-                else
-                    SaveAll();
+            switch (SaveMode) {
+                case SaveMode.Simple:
+                    SaveAll(SaveType.SaveAtCheckpoint, message);
+                    break;
+                case SaveMode.Async:
+                    SavingRequests.Enqueue(async () =>
+                        await SaveAllAsync(m_cancellationSource.Token, SaveType.SaveAtCheckpoint, message)
+                    );
+                    break;
+                case SaveMode.Parallel:
+                    ScheduleSaveJob(SaveType.SaveAtCheckpoint, message);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
 
-                if (m_cancellationSource.IsCancellationRequested)
-                    return;
+            if (checkPoint == null)
+                return;
 
-                if (DestroyCheckPoints) {
-                    m_destroyedCheckpoints.Add(checkPoint.transform.position);
-                    checkPoint.Destroy();
-                    SaveInternalData();
-                }
-                else
-                    checkPoint.Enable();
-
-                OnSaveEnd?.Invoke(SaveType.SaveAtCheckpoint);
-
-                if (DebugEnabled)
-                    InternalLogger.Log("Successful save at checkpoint");
-            });
+            if (DestroyCheckPoints) {
+                m_destroyedCheckpoints.Add(checkPoint.transform.position);
+                checkPoint.Destroy();
+                SaveInternalData();
+            }
+            else
+                checkPoint.Enable();
         }
 
 
         private static async void UpdateSystem () {
-            if (m_saveQueueIsFree) {
-                m_saveQueueIsFree = false;
+            m_savingJobHandle.Complete();
 
-                while (SaveQueue.Count > 0) {
-                    if (m_cancellationSource.IsCancellationRequested)
+            /*
+             * Lock queue and call all requests only in one thread
+             * This is necessary to prevent sharing of the same file
+             */
+            if (m_requestsQueueIsFree) {
+                m_requestsQueueIsFree = false;
+
+                while (SavingRequests.Count > 0) {
+                    if (m_cancellationSource.IsCancellationRequested) {
+                        m_requestsQueueIsFree = true;
+                        SavingRequests.Clear();
                         return;
+                    }
 
-                    await SaveQueue.Dequeue().Invoke();
+                    await SavingRequests.Dequeue().Invoke();
                 }
 
-                m_saveQueueIsFree = true;
+                m_requestsQueueIsFree = true;
             }
 
             if (AutoSaveEnabled)
@@ -269,42 +292,64 @@ namespace SaveSystem.Core {
 
         [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         private static void AutoSave () {
-            if (m_lastTimeSaving + SavePeriod < Time.time) {
-                SaveQueue.Enqueue(async () => {
-                    OnSaveStart?.Invoke(SaveType.AutoSave);
+            if (m_autoSaveLastTime + SavePeriod < Time.time) {
+                const string message = "Successful auto save";
 
-                    if (AsyncSaveEnabled)
-                        await SaveAllAsync(m_cancellationSource.Token);
-                    else
-                        SaveAll();
-                    
-                    if (m_cancellationSource.IsCancellationRequested)
-                        return;
+                switch (SaveMode) {
+                    case SaveMode.Simple:
+                        SaveAll(SaveType.AutoSave, message);
+                        break;
+                    case SaveMode.Async:
+                        SavingRequests.Enqueue(async () =>
+                            await SaveAllAsync(m_cancellationSource.Token, SaveType.AutoSave, message)
+                        );
+                        break;
+                    case SaveMode.Parallel:
+                        ScheduleSaveJob(SaveType.AutoSave, message);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
 
-                    OnSaveEnd?.Invoke(SaveType.AutoSave);
-
-                    if (DebugEnabled)
-                        InternalLogger.Log("Successful auto save");
-                });
-
-                m_lastTimeSaving = Time.time;
+                m_autoSaveLastTime = Time.time;
             }
         }
 
 
-        private static void SaveAll () {
+        private static void SaveAll (SaveType saveType, string debugMessage) {
+            OnSaveStart?.Invoke(saveType);
+
             foreach (ObjectHandler objectHandler in Handlers)
                 objectHandler.Save();
+
+            OnSaveEnd?.Invoke(saveType);
+
+            if (DebugEnabled)
+                InternalLogger.Log(debugMessage);
         }
 
 
         [SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
-        private static async UniTask SaveAllAsync (CancellationToken token) {
+        private static async UniTask SaveAllAsync (CancellationToken token, SaveType saveType, string debugMessage) {
+            OnSaveStart?.Invoke(saveType);
+
             for (var i = 0; i < Handlers.Count; i++) {
                 if (token.IsCancellationRequested)
                     return;
                 await Handlers[i].SetCancellationToken(token).SaveAsync();
             }
+
+            OnSaveEnd?.Invoke(saveType);
+
+            if (DebugEnabled)
+                InternalLogger.Log(debugMessage);
+        }
+
+
+        private static void ScheduleSaveJob (SaveType saveType, string debugMessage) {
+            var savingJob = new SavingJob();
+            m_savingJobHandle = new SavingJobHandle(
+                saveType, debugMessage, savingJob.Schedule(Handlers.Count, 1));
         }
 
 
@@ -326,9 +371,9 @@ namespace SaveSystem.Core {
             // Core settings
             AutoSaveEnabled = settings.autoSaveEnabled;
             SavePeriod = settings.savePeriod;
-            AsyncSaveEnabled = settings.asyncSaveEnabled;
+            SaveMode = settings.saveMode;
             DebugEnabled = settings.debugEnabled;
-            
+
             // Checkpoints settings
             DestroyCheckPoints = settings.destroyCheckPoints;
             PlayerTag = settings.playerTag;
@@ -339,23 +384,15 @@ namespace SaveSystem.Core {
         private static void SetSavingBeforeQuitting () {
             Application.quitting += () => {
                 m_cancellationSource.Cancel();
-
-                OnSaveStart?.Invoke(SaveType.OnExit);
-
-                SaveAll();
-
-                OnSaveEnd?.Invoke(SaveType.OnExit);
-
-                if (DebugEnabled)
-                    InternalLogger.Log("Successful saving before application quitting");
+                SaveAll(SaveType.OnExit, "Successful saving before application quitting");
             };
         }
 
 
         private static void SaveInternalData () {
-            string dataPath = Storage.GetFullPath(InternalDataPath);
-            using UnityWriter writer = UnityHandlersProvider.GetWriter(dataPath);
+            using UnityWriter writer = UnityHandlersProvider.GetWriter(InternalDataPath);
             writer.Write(m_destroyedCheckpoints);
+            writer.WriteBufferToFile();
         }
 
 
@@ -440,6 +477,50 @@ namespace SaveSystem.Core {
             PlayerLoopSystem modifiedLoop,
             PlayerLoopSystem saveSystemLoop
         );
+
+
+
+        private struct SavingJobHandle {
+
+            private readonly SaveType m_saveType;
+            private readonly string m_debugMessage;
+            private JobHandle m_jobHandle;
+
+            private bool m_isCompleted;
+
+
+            public SavingJobHandle (SaveType saveType, string debugMessage, JobHandle jobHandle) {
+                m_saveType = saveType;
+                m_debugMessage = debugMessage;
+                m_jobHandle = jobHandle;
+
+                m_isCompleted = false;
+            }
+
+
+            public void Complete () {
+                if (m_isCompleted)
+                    return;
+
+                m_jobHandle.Complete();
+                OnSaveEnd?.Invoke(m_saveType);
+                m_isCompleted = true;
+
+                if (DebugEnabled)
+                    InternalLogger.Log(m_debugMessage);
+            }
+
+        }
+
+
+
+        private struct SavingJob : IJobParallelFor {
+
+            public void Execute (int index) {
+                Handlers[index].Save();
+            }
+
+        }
 
     }
 

@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Handlers;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
-using UnityEngine;
 
 
 namespace SaveSystem {
@@ -75,13 +73,14 @@ namespace SaveSystem {
             where T : IPersistentObject {
             using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
 
-            if (unityReader is null)
-                return false;
+            if (unityReader.ReadFileDataToBuffer()) {
+                foreach (T obj in objects)
+                    obj.Load(unityReader);
 
-            foreach (T obj in objects)
-                obj.Load(unityReader);
+                return true;
+            }
 
-            return true;
+            return false;
         }
 
         #endregion
@@ -121,18 +120,20 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         ) {
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
             source ??= new CancellationTokenSource();
-
             if (source.IsCancellationRequested)
                 return;
+
+            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
 
             HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
                 objects, asyncMode, unityWriter, progress, source.Token
             );
 
-            if (result == HandlingResult.Success)
+            if (result == HandlingResult.Success) {
+                await unityWriter.WriteBufferToFileAsync();
                 onComplete?.Invoke();
+            }
         }
 
         #endregion
@@ -172,109 +173,27 @@ namespace SaveSystem {
             CancellationTokenSource source = null,
             Action onComplete = null
         ) {
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
             source ??= new CancellationTokenSource();
-
-            if (unityReader is null) {
-                source.Dispose();
-                return false;
-            }
-
             if (source.IsCancellationRequested)
                 return false;
 
-            HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
-                objects, asyncMode, unityReader, progress, source.Token
-            );
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
 
-            if (result == HandlingResult.Success) {
-                onComplete?.Invoke();
-                return true;
+            if (await unityReader.ReadFileDataToBufferAsync()) {
+                HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
+                    objects, asyncMode, unityReader, progress, source.Token
+                );
+
+                if (result == HandlingResult.Success) {
+                    onComplete?.Invoke();
+                    return true;
+                }
             }
 
             return false;
         }
 
         #endregion
-
-
-
-        /// <returns> Returns the size of the data in bytes </returns>
-        public static long GetDataSize () {
-            return GetDataSize(Application.persistentDataPath);
-        }
-
-
-        /// <returns> Returns the formatted total data size </returns>
-        /// <example>
-        /// "64 Bytes", "10.54 KBytes", "0.93 MBytes"
-        /// </example>
-        public static string GetFormattedDataSize () {
-            return GetFormattedDataSize(GetDataSize());
-        }
-
-
-        /// <returns> True if local storage has any data, otherwise false </returns>
-        public static bool HasAnyData () {
-            return GetDataSize(Application.persistentDataPath) > 0;
-        }
-
-
-        /// <param name="dataSize"> Size of data to will be formatted </param>
-        /// <returns> Returns the formatted data size </returns>
-        internal static string GetFormattedDataSize (long dataSize) {
-            string label;
-
-            switch (dataSize) {
-                case < 1_000:
-                    label = $"{Math.Round((double)dataSize, 2)} Bytes";
-                    break;
-                case < 1_000_000:
-                    double size = dataSize / 1024d;
-                    label = $"{Math.Round(size, 2)} KBytes";
-                    break;
-                case < 1_000_000_000:
-                    size = dataSize / Math.Pow(1024, 2);
-                    label = $"{Math.Round(size, 2)} MBytes";
-                    break;
-                default:
-                    size = dataSize / Math.Pow(1024, 3);
-                    label = $"{Math.Round(size, 2)} GBytes";
-                    break;
-            }
-
-            return label;
-        }
-
-
-        /// <summary>
-        /// It's unsafe calling. Make sure you want it
-        /// </summary>
-        internal static void DeleteAllData () {
-            string[] data = Directory.GetFileSystemEntries(Application.persistentDataPath);
-
-            foreach (string filePath in data) {
-                if (File.Exists(filePath))
-                    File.Delete(filePath);
-                else if (Directory.Exists(filePath))
-                    Directory.Delete(filePath, true);
-            }
-        }
-
-
-        private static long GetDataSize (string path) {
-            string[] data = Directory.GetFileSystemEntries(path);
-            var dataSize = 0L;
-
-            foreach (string filePath in data) {
-                if (Directory.Exists(filePath))
-                    dataSize += GetDataSize(filePath);
-                else
-                    dataSize += new FileInfo(filePath).Length;
-            }
-
-            return dataSize;
-        }
 
     }
 

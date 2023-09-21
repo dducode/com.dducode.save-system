@@ -8,10 +8,12 @@ namespace SaveSystem.Editor {
     public class SaveSystemConsole : EditorWindow {
 
         private const string WindowName = "Save System Console";
+        private const string DrawingModeKey = "drawing_mode";
 
         private Vector2 m_scrollViewPosition;
-        private DrawingMode m_drawingMode;
-        private IConsoleTab m_currentTab;
+        private ConsoleTabsNames m_selectedTab;
+        private IConsoleTab m_drawableTab;
+
 
         private readonly GUIContent[] m_toolbarsContent = {
             new() {
@@ -41,42 +43,45 @@ namespace SaveSystem.Editor {
 
 
         private void OnEnable () {
-            m_currentTab = new SavedFilesTab();
+            m_selectedTab = (ConsoleTabsNames)EditorPrefs.GetInt(DrawingModeKey, (int)ConsoleTabsNames.SavedFiles);
+            m_drawableTab = GetConsoleTab(m_selectedTab);
         }
 
 
         private void OnGUI () {
-            m_currentTab = DrawConsoleTabs(m_currentTab);
+            m_selectedTab = DrawTabBar(m_selectedTab);
+            m_drawableTab = GetConsoleTab(m_selectedTab);
 
             m_scrollViewPosition = EditorGUILayout.BeginScrollView(m_scrollViewPosition);
-            m_currentTab.Draw();
+            m_drawableTab.Draw();
             EditorGUILayout.EndScrollView();
         }
 
 
-        private IConsoleTab DrawConsoleTabs (IConsoleTab currentTab) {
+        private ConsoleTabsNames DrawTabBar (ConsoleTabsNames selectedTab) {
             GUIStyle style = EditorStyles.toolbarButton;
             EditorGUI.BeginChangeCheck();
 
-            m_drawingMode = (DrawingMode)GUILayout.Toolbar((int)m_drawingMode, m_toolbarsContent, style);
+            selectedTab = (ConsoleTabsNames)GUILayout.Toolbar((int)selectedTab, m_toolbarsContent, style);
 
-            if (EditorGUI.EndChangeCheck()) {
-                switch (m_drawingMode) {
-                    case DrawingMode.SavedFiles:
-                        currentTab = new SavedFilesTab();
-                        break;
-                    case DrawingMode.HandlersTracker:
-                        currentTab = new TrackerTab();
-                        break;
-                    case DrawingMode.Settings:
-                        currentTab = new SettingsTab();
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+            if (EditorGUI.EndChangeCheck())
+                EditorPrefs.SetInt(DrawingModeKey, (int)selectedTab);
+
+            return selectedTab;
+        }
+
+
+        private IConsoleTab GetConsoleTab (ConsoleTabsNames selectedTab) {
+            switch (selectedTab) {
+                case ConsoleTabsNames.SavedFiles:
+                    return new SavedFilesTab();
+                case ConsoleTabsNames.HandlersTracker:
+                    return new TrackerTab();
+                case ConsoleTabsNames.Settings:
+                    return new SettingsTab();
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
-
-            return currentTab;
         }
 
     }

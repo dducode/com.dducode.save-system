@@ -48,12 +48,17 @@ namespace SaveSystem {
                 await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(fileName);
                 source ??= new CancellationTokenSource();
 
+                if (source.IsCancellationRequested)
+                    return;
+
                 HandlingResult result = await InternalHandling.Advanced.TrySaveObjectsAsync(
                     objects, unityWriter, progress, source.Token
                 );
 
-                if (result == HandlingResult.Success)
+                if (result == HandlingResult.Success) {
+                    await unityWriter.WriteBufferToFileAsync();
                     onComplete?.Invoke();
+                }
             }
 
             #endregion
@@ -83,21 +88,21 @@ namespace SaveSystem {
                 CancellationTokenSource source = null,
                 Action onComplete = null
             ) {
-                using UnityReader unityReader = UnityHandlersProvider.GetReader(fileName);
                 source ??= new CancellationTokenSource();
-
-                if (unityReader is null) {
-                    source.Dispose();
+                if (source.IsCancellationRequested)
                     return false;
-                }
 
-                HandlingResult result = await InternalHandling.Advanced.TryLoadObjectsAsync(
-                    objects, unityReader, progress, source.Token
-                );
+                using UnityReader unityReader = UnityHandlersProvider.GetReader(fileName);
 
-                if (result == HandlingResult.Success) {
-                    onComplete?.Invoke();
-                    return true;
+                if (await unityReader.ReadFileDataToBufferAsync()) {
+                    HandlingResult result = await InternalHandling.Advanced.TryLoadObjectsAsync(
+                        objects, unityReader, progress, source.Token
+                    );
+
+                    if (result == HandlingResult.Success) {
+                        onComplete?.Invoke();
+                        return true;
+                    }
                 }
 
                 return false;

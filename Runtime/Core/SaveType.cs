@@ -11,12 +11,12 @@
         QuickSave,
 
         /// <summary>
-        /// This is sent when the player reached a checkpoint
+        /// This is sent when the player reaches a checkpoint
         /// </summary>
         SaveAtCheckpoint,
 
         /// <summary>
-        /// This is sent when the core calls handlers to saving in internal loop
+        /// This is sent when the Core starts saving in internal loop
         /// </summary>
         AutoSave,
 
