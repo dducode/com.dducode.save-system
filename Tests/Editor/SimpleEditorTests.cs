@@ -29,13 +29,13 @@ namespace SaveSystem.Editor.Tests {
                 objectList.Add(binaryObject);
             }
 
-            ObjectHandler objectHandler = ObjectHandlersFactory.Create(objectList, FileName);
+            ObjectHandler<EditorObject> objectHandler = ObjectHandlersFactory.Create(FileName, objectList);
             objectHandler.Save();
 
             MethodInfo method =
                 typeof(SaveSystemConsole).GetMethod("GetDataSize", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
-            
+
             method = typeof(SaveSystemConsole).GetMethod("RemoveData", BindingFlags.Static | BindingFlags.NonPublic);
             method?.Invoke(null, new object[] { });
         }
@@ -52,7 +52,7 @@ namespace SaveSystem.Editor.Tests {
                 color = Color.cyan
             };
 
-            ObjectHandlersFactory.Create(editorObject, Path.Combine(FolderName, FileName)).Save();
+            ObjectHandlersFactory.Create(Path.Combine(FolderName, FileName), editorObject).Save();
         }
 
     }

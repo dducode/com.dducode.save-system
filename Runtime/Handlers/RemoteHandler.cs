@@ -1,36 +1,45 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
 
 namespace SaveSystem.Handlers {
 
-    public class RemoteHandler : AbstractHandler<RemoteHandler> {
+    /// <summary>
+    /// This handler can help you to saving objects at remote storage and loading them from it
+    /// </summary>
+    public sealed class RemoteHandler<TO> : AbstractHandler<RemoteHandler<TO>, TO>,
+        IAsyncObjectHandler where TO : IPersistentObject {
 
-        private readonly string m_url;
-        private readonly IPersistentObject[] m_objects;
+        internal RemoteHandler (string url, TO[] staticObjects) : base(url, staticObjects) { }
 
 
-        internal RemoteHandler (string url, IPersistentObject[] objects) {
-            m_url = url;
-            m_objects = objects;
-        }
+        internal RemoteHandler (string url, Func<TO> factoryFunc) : base(url, factoryFunc) { }
 
 
         /// <summary>
         /// Call it to start remote objects saving
         /// </summary>
-        public async UniTask<HandlingResult> SaveAsync () {
+        /// <param name="token"></param>
+        public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
+            dynamicObjects.RemoveAll(obj => obj == null);
+            var savingObjects = new List<TO>(dynamicObjects);
+
             await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter();
+            unityWriter.Write(dynamicObjects.Count);
+            savingObjects.AddRange(staticObjects);
 
             HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
-                m_objects, asyncMode, unityWriter, savingProgress, token
+                savingObjects, unityWriter, savingProgress, token
             );
 
             if (result == HandlingResult.Success) {
-                bool requestSucceeded = await Storage.SendDataToRemote(m_url, unityWriter.GetBuffer());
+                bool requestSucceeded = await Storage.SendDataToRemote(destinationPath, unityWriter.GetBuffer());
                 result = requestSucceeded ? HandlingResult.Success : HandlingResult.NetworkError;
             }
 
@@ -41,11 +50,12 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Call it to start remote objects loading
         /// </summary>
-        public async UniTask<HandlingResult> LoadAsync () {
+        /// <param name="token"></param>
+        public async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            byte[] data = await Storage.GetDataFromRemote(m_url);
+            byte[] data = await Storage.GetDataFromRemote(destinationPath);
 
             if (data is null)
                 return HandlingResult.NetworkError;
@@ -53,8 +63,23 @@ namespace SaveSystem.Handlers {
             using UnityReader unityReader = UnityHandlersProvider.GetReader();
             unityReader.WriteToBuffer(data);
 
-            HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
-                m_objects, asyncMode, unityReader, loadingProgress, token
+            int dynamicObjectsCount = unityReader.ReadInt();
+            if (dynamicObjectsCount > 0 && factoryFunc == null)
+                throw new ArgumentException(nameof(factoryFunc));
+
+            HandlingResult result;
+
+            if (dynamicObjectsCount > 0) {
+                result = await InternalHandling.TryLoadDynamicObjectsAsync(
+                    factoryFunc, this, dynamicObjectsCount, unityReader, loadingProgress, token
+                );
+
+                if (result != HandlingResult.Success)
+                    return result;
+            }
+
+            result = await InternalHandling.TryLoadStaticObjectsAsync(
+                staticObjects, unityReader, loadingProgress, token
             );
 
             return result;

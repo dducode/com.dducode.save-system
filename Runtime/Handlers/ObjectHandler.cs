@@ -1,4 +1,7 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
 
@@ -8,46 +11,50 @@ namespace SaveSystem.Handlers {
     /// Object Handler can help you to saving/loading <see cref="IPersistentObject">persistent objects</see>.
     /// Also you can set parameters for this as a chain of methods
     /// </summary>
-    public sealed class ObjectHandler : AbstractHandler<ObjectHandler> {
+    public sealed class ObjectHandler<TO> : AbstractHandler<ObjectHandler<TO>, TO>, IObjectHandler,
+        IAsyncObjectHandler where TO : IPersistentObject {
 
-        private readonly string m_localFilePath;
-        private readonly IPersistentObject[] m_objects;
-
-
-        internal ObjectHandler (string localFilePath, IPersistentObject[] objects) {
-            m_localFilePath = localFilePath;
-            m_objects = objects;
-        }
+        internal ObjectHandler (string localFilePath, TO[] staticObjects) : base(localFilePath, staticObjects) { }
 
 
-        /// <summary>
-        /// Call it to start objects saving
-        /// </summary>
+        internal ObjectHandler (string localFilePath, Func<TO> factoryFunc) : base(localFilePath, factoryFunc) { }
+
+
         public void Save () {
-            if (token.IsCancellationRequested)
-                return;
+            using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(destinationPath);
 
-            using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_localFilePath);
+            var savedObjects = new List<TO>(dynamicObjects);
+            unityWriter.Write(dynamicObjects.Count);
+            savedObjects.AddRange(staticObjects);
 
-            foreach (IPersistentObject obj in m_objects)
+            var completedTasks = 0f;
+
+            foreach (TO obj in savedObjects) {
                 obj.Save(unityWriter);
+                completedTasks++;
+                savingProgress?.Report(completedTasks / savedObjects.Count);
+            }
 
             unityWriter.WriteBufferToFile();
         }
 
 
-        /// <summary>
-        /// Call it to start objects loading
-        /// </summary>
         public HandlingResult Load () {
-            if (token.IsCancellationRequested)
-                return HandlingResult.CanceledOperation;
-
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_localFilePath);
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(destinationPath);
 
             if (unityReader.ReadFileDataToBuffer()) {
-                foreach (IPersistentObject obj in m_objects)
+                int dynamicObjectsCount = unityReader.ReadInt();
+                List<TO> loadedObjects = SpawnObjects(dynamicObjectsCount);
+                AddObjects(loadedObjects);
+                loadedObjects.AddRange(staticObjects);
+
+                var completedTasks = 0f;
+
+                foreach (TO obj in loadedObjects) {
                     obj.Load(unityReader);
+                    completedTasks++;
+                    loadingProgress?.Report(completedTasks / loadedObjects.Count);
+                }
 
                 return HandlingResult.Success;
             }
@@ -56,17 +63,19 @@ namespace SaveSystem.Handlers {
         }
 
 
-        /// <summary>
-        /// Call it to start async objects saving
-        /// </summary>
-        public async UniTask<HandlingResult> SaveAsync () {
+        public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(m_localFilePath);
+            dynamicObjects.RemoveAll(obj => obj == null);
+            var savedObjects = new List<TO>(dynamicObjects);
+
+            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(destinationPath);
+            unityWriter.Write(dynamicObjects.Count);
+            savedObjects.AddRange(staticObjects);
 
             HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
-                m_objects, asyncMode, unityWriter, savingProgress, token
+                savedObjects, unityWriter, savingProgress, token
             );
 
             if (result == HandlingResult.Success)
@@ -76,24 +85,51 @@ namespace SaveSystem.Handlers {
         }
 
 
-        /// <summary>
-        /// Call it to start async objects loading
-        /// </summary>
-        public async UniTask<HandlingResult> LoadAsync () {
+        public async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(m_localFilePath);
+            using UnityReader unityReader = UnityHandlersProvider.GetReader(destinationPath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
-                HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
-                    m_objects, asyncMode, unityReader, loadingProgress, token
+                int dynamicObjectsCount = unityReader.ReadInt();
+                if (dynamicObjectsCount > 0 && factoryFunc == null)
+                    throw new ArgumentException(nameof(factoryFunc));
+
+                HandlingResult result;
+
+                if (dynamicObjectsCount > 0) {
+                    result = await InternalHandling.TryLoadDynamicObjectsAsync(
+                        factoryFunc, this, dynamicObjectsCount, unityReader, loadingProgress, token
+                    );
+
+                    if (result != HandlingResult.Success)
+                        return result;
+                }
+
+                result = await InternalHandling.TryLoadStaticObjectsAsync(
+                    staticObjects, unityReader, loadingProgress, token
                 );
 
                 return result;
             }
 
             return HandlingResult.FileNotExists;
+        }
+
+
+        private List<TO> SpawnObjects (int count) {
+            if (count > 0 && factoryFunc == null)
+                throw new ArgumentException(nameof(factoryFunc));
+
+            var objects = new List<TO>();
+
+            for (var i = 0; i < count; i++) {
+                TO obj = factoryFunc();
+                objects.Add(obj);
+            }
+
+            return objects;
         }
 
     }

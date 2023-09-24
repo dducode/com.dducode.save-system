@@ -40,13 +40,11 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Start saving");
             var cancellationSource = new CancellationTokenSource();
-            ObjectHandler objectHandler = ObjectHandlersFactory
-               .Create(objects, FilePath)
-               .OnThreadPool()
-               .SetCancellationToken(cancellationSource.Token);
+            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory
+               .Create(FilePath, objects);
 
             Debug.Log("Attempt to cancel saving after starting it");
-            objectHandler.SaveAsync().Forget();
+            objectHandler.SaveAsync(cancellationSource.Token).Forget();
 
             cancellationSource.Cancel();
 
@@ -66,8 +64,9 @@ namespace SaveSystem.Tests {
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            ObjectHandler objectHandler = ObjectHandlersFactory.Create(objects, FilePath);
-            HandlingResult result = await objectHandler.OnThreadPool().SaveAsync();
+            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, objects);
+
+            HandlingResult result = await objectHandler.SaveAsync();
 
             if (result == HandlingResult.Success) {
                 foreach (TestMesh obj in objects)
@@ -77,12 +76,11 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Start loading");
             var cancellationSource = new CancellationTokenSource();
-            objectHandler.SetCancellationToken(cancellationSource.Token);
 
             Debug.Log("Attempt to cancel loading before starting it");
             cancellationSource.Cancel();
 
-            objectHandler.LoadAsync().Forget();
+            objectHandler.LoadAsync(cancellationSource.Token).Forget();
 
             Assert.IsFalse(objects.Any(obj => obj.MeshDataIsFilling()));
         });

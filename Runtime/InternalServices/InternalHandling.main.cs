@@ -10,25 +10,14 @@ namespace SaveSystem.InternalServices {
 
     internal static partial class InternalHandling {
 
-        public static async UniTask<HandlingResult> TrySaveObjectsAsync (
-            IPersistentObject[] objects,
-            AsyncMode asyncMode,
+        public static async UniTask<HandlingResult> TrySaveObjectsAsync<TO> (
+            ICollection<TO> objects,
             UnityWriter writer,
             IProgress<float> progress,
             CancellationToken tokenSource
-        ) {
+        ) where TO : IPersistentObject {
             try {
-                switch (asyncMode) {
-                    case AsyncMode.OnPlayerLoop:
-                        await SaveObjectsOnPlayerLoop(objects, writer, progress, tokenSource);
-                        break;
-                    case AsyncMode.OnThreadPool:
-                        await SaveObjectsOnThreadPool(objects, writer, progress, tokenSource);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-
+                await SaveObjects(objects, writer, progress, tokenSource);
                 return HandlingResult.Success;
             }
             catch (Exception ex) when (ex is OperationCanceledException) {
@@ -42,25 +31,14 @@ namespace SaveSystem.InternalServices {
         }
 
 
-        public static async UniTask<HandlingResult> TryLoadObjectsAsync (
-            IPersistentObject[] objects,
-            AsyncMode asyncMode,
+        public static async UniTask<HandlingResult> TryLoadStaticObjectsAsync<TO> (
+            ICollection<TO> objects,
             UnityReader reader,
             IProgress<float> progress,
             CancellationToken token
-        ) {
+        ) where TO : IPersistentObject {
             try {
-                switch (asyncMode) {
-                    case AsyncMode.OnPlayerLoop:
-                        await LoadObjectsOnPlayerLoop(objects, reader, progress, token);
-                        break;
-                    case AsyncMode.OnThreadPool:
-                        await LoadObjectsOnThreadPool(objects, reader, progress, token);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-
+                await LoadStaticObjects(objects, reader, progress, token);
                 return HandlingResult.Success;
             }
             catch (Exception ex) when (ex is OperationCanceledException) {
@@ -74,15 +52,40 @@ namespace SaveSystem.InternalServices {
         }
 
 
-        private static async UniTask SaveObjectsOnPlayerLoop (
-            IReadOnlyCollection<IPersistentObject> objects,
+        public static async UniTask<HandlingResult> TryLoadDynamicObjectsAsync<T, TO> (
+            Func<TO> factoryFunc,
+            AbstractHandler<T, TO> handler,
+            int objectsCount,
+            UnityReader reader,
+            IProgress<float> progress,
+            CancellationToken token
+        ) where TO : IPersistentObject where T : AbstractHandler<T, TO> {
+            try {
+                await LoadDynamicObjects(
+                    factoryFunc, handler, objectsCount, reader, progress, token
+                );
+                return HandlingResult.Success;
+            }
+            catch (Exception ex) when (ex is OperationCanceledException) {
+                InternalLogger.LogWarning("Loading was cancelled while reading data");
+                return HandlingResult.CanceledOperation;
+            }
+            catch (Exception e) {
+                Debug.LogException(e);
+                return HandlingResult.UnknownError;
+            }
+        }
+
+
+        private static async UniTask SaveObjects<TO> (
+            ICollection<TO> objects,
             UnityWriter writer,
             IProgress<float> progress,
             CancellationToken token
-        ) {
+        ) where TO : IPersistentObject {
             var completedTasks = 0f;
 
-            foreach (IPersistentObject obj in objects) {
+            foreach (TO obj in objects) {
                 obj.Save(writer);
                 completedTasks++;
                 progress?.Report(completedTasks / objects.Count);
@@ -91,33 +94,15 @@ namespace SaveSystem.InternalServices {
         }
 
 
-        private static async UniTask SaveObjectsOnThreadPool (
-            IReadOnlyCollection<IPersistentObject> objects,
-            UnityWriter writer,
-            IProgress<float> progress,
-            CancellationToken token
-        ) {
-            var completedTasks = 0f;
-
-            await UniTask.RunOnThreadPool(() => {
-                foreach (IPersistentObject obj in objects) {
-                    obj.Save(writer);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Count);
-                }
-            }, cancellationToken: token);
-        }
-
-
-        private static async UniTask LoadObjectsOnPlayerLoop (
-            IReadOnlyCollection<IPersistentObject> objects,
+        private static async UniTask LoadStaticObjects<TO> (
+            ICollection<TO> objects,
             UnityReader reader,
             IProgress<float> progress,
             CancellationToken token
-        ) {
+        ) where TO : IPersistentObject {
             var completedTasks = 0f;
 
-            foreach (IPersistentObject obj in objects) {
+            foreach (TO obj in objects) {
                 obj.Load(reader);
                 completedTasks++;
                 progress?.Report(completedTasks / objects.Count);
@@ -126,21 +111,24 @@ namespace SaveSystem.InternalServices {
         }
 
 
-        private static async UniTask LoadObjectsOnThreadPool (
-            IReadOnlyCollection<IPersistentObject> objects,
+        private static async UniTask LoadDynamicObjects<T, TO> (
+            Func<TO> factoryFunc,
+            AbstractHandler<T, TO> handler,
+            int objectsCount,
             UnityReader reader,
             IProgress<float> progress,
             CancellationToken token
-        ) {
+        ) where TO : IPersistentObject where T : AbstractHandler<T, TO> {
             var completedTasks = 0f;
 
-            await UniTask.RunOnThreadPool(() => {
-                foreach (IPersistentObject obj in objects) {
-                    obj.Load(reader);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Count);
-                }
-            }, cancellationToken: token);
+            for (var i = 0; i < objectsCount; i++) {
+                TO obj = factoryFunc();
+                handler.AddObject(obj);
+                obj.Load(reader);
+                completedTasks++;
+                progress?.Report(completedTasks / objectsCount);
+                await UniTask.NextFrame(token);
+            }
         }
 
     }

@@ -95,7 +95,7 @@ namespace SaveSystem {
                 using UnityReader unityReader = UnityHandlersProvider.GetReader(fileName);
 
                 if (await unityReader.ReadFileDataToBufferAsync()) {
-                    HandlingResult result = await InternalHandling.Advanced.TryLoadObjectsAsync(
+                    HandlingResult result = await InternalHandling.Advanced.TryLoadStaticObjectsAsync(
                         objects, unityReader, progress, source.Token
                     );
 

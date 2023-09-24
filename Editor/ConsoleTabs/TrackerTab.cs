@@ -1,5 +1,4 @@
-﻿using SaveSystem.Handlers;
-using SaveSystem.InternalServices.Diagnostic;
+﻿using SaveSystem.InternalServices.Diagnostic;
 using UnityEditor;
 using UnityEngine;
 
@@ -31,7 +30,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Number", headerStyle);
 
-            for (var i = 0; i < ObjectHandlersFactory.HandlersData.Count; i++)
+            for (var i = 0; i < DiagnosticService.HandlersData.Count; i++)
                 EditorGUILayout.LabelField($"{i + 1}", entryStyle);
 
             EditorGUILayout.EndVertical();
@@ -42,7 +41,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("File Path", headerStyle);
 
-            foreach (HandlerMetadata metadata in ObjectHandlersFactory.HandlersData)
+            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
                 EditorGUILayout.LabelField($"{metadata.filePath}", entryStyle);
 
             EditorGUILayout.EndVertical();
@@ -53,7 +52,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Create From", headerStyle);
 
-            foreach (HandlerMetadata metadata in ObjectHandlersFactory.HandlersData)
+            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
                 EditorGUILayout.LabelField($"{metadata.caller}", entryStyle);
 
             EditorGUILayout.EndVertical();
@@ -64,7 +63,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Type", headerStyle);
 
-            foreach (HandlerMetadata metadata in ObjectHandlersFactory.HandlersData)
+            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
                 EditorGUILayout.LabelField($"{metadata.objectsType}", entryStyle);
 
             EditorGUILayout.EndVertical();
@@ -75,7 +74,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Count", headerStyle);
 
-            foreach (HandlerMetadata metadata in ObjectHandlersFactory.HandlersData)
+            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
                 EditorGUILayout.LabelField($"{metadata.objectsCount}", entryStyle);
 
             EditorGUILayout.EndVertical();

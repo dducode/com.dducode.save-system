@@ -8,6 +8,9 @@ using UnityEngine.Networking;
 
 namespace SaveSystem.InternalServices {
 
+    /// <summary>
+    /// TODO: add description
+    /// </summary>
     public static class Storage {
 
         private static readonly string PersistentDataPath = Application.persistentDataPath;
@@ -35,9 +38,8 @@ namespace SaveSystem.InternalServices {
 
 
         internal static async UniTask<byte[]> GetDataFromRemote (string url) {
-            UnityWebRequest request = UnityWebRequest.Get(url);
-
             try {
+                using UnityWebRequest request = UnityWebRequest.Get(url);
                 await request.SendWebRequest();
 
                 if (request.result != UnityWebRequest.Result.Success) {
@@ -51,16 +53,12 @@ namespace SaveSystem.InternalServices {
                 Debug.LogException(e);
                 return null;
             }
-            finally {
-                request.Dispose();
-            }
         }
 
 
         internal static async UniTask<bool> SendDataToRemote (string url, byte[] data) {
-            UnityWebRequest request = UnityWebRequest.Put(url, data);
-
             try {
+                using UnityWebRequest request = UnityWebRequest.Put(url, data);
                 await request.SendWebRequest();
 
                 if (request.result != UnityWebRequest.Result.Success) {
@@ -73,9 +71,6 @@ namespace SaveSystem.InternalServices {
             catch (Exception e) {
                 Debug.LogException(e);
                 return false;
-            }
-            finally {
-                request.Dispose();
             }
         }
 

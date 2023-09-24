@@ -30,7 +30,7 @@ namespace SaveSystem.Tests {
             Debug.Log("Create object");
             yield return new WaitForSeconds(2);
 
-            ObjectHandler objectHandler = ObjectHandlersFactory.Create(testMono, FilePath);
+            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, testMono);
             objectHandler.Save();
             testMono.RemoveMesh();
             Debug.Log("Save and remove mesh");
@@ -44,7 +44,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator MeshesSaveLoadAsyncOnThreadPool () => UniTask.ToCoroutine(async () => {
+        public IEnumerator MeshesSaveLoadAsyncOnPlayerLoop () => UniTask.ToCoroutine(async () => {
             var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -54,9 +54,10 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Created objects");
 
-            ObjectHandler objectHandler = ObjectHandlersFactory.Create(objects, FilePath);
             Debug.Log("Start saving");
-            HandlingResult result = await objectHandler.OnThreadPool().SaveAsync();
+            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, objects);
+
+            HandlingResult result = await objectHandler.SaveAsync();
 
             if (result == HandlingResult.Success) {
                 foreach (TestMesh obj in objects)
@@ -76,7 +77,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator MeshesSaveLoadAsyncOnPlayerLoop () => UniTask.ToCoroutine(async () => {
+        public IEnumerator MeshesSaveLoadAsyncOnThreadPool () => UniTask.ToCoroutine(async () => {
             var objects = new TestMesh[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -86,25 +87,22 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Created objects");
 
+            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, objects);
             Debug.Log("Start saving");
-            ObjectHandler objectHandler = ObjectHandlersFactory.Create(objects, FilePath).OnPlayerLoop();
 
-            HandlingResult result = await objectHandler.SaveAsync();
+            await UniTask.RunOnThreadPool(() => { objectHandler.Save(); });
 
-            if (result == HandlingResult.Success) {
-                foreach (TestMesh obj in objects)
-                    obj.RemoveMesh();
-                Debug.Log("Meshes saved and removed");
-            }
+            foreach (TestMesh obj in objects)
+                obj.RemoveMesh();
+            Debug.Log("Meshes saved and removed");
 
             Debug.Log("Start loading");
-            result = await objectHandler.LoadAsync();
 
-            if (result == HandlingResult.Success) {
-                foreach (TestMesh testMesh in objects)
-                    testMesh.SetMesh();
-                Debug.Log("Meshes loaded");
-            }
+            await UniTask.RunOnThreadPool(() => { objectHandler.Load(); });
+
+            foreach (TestMesh testMesh in objects)
+                testMesh.SetMesh();
+            Debug.Log("Meshes loaded");
         });
 
 

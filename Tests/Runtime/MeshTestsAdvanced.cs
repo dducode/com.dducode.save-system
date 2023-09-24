@@ -33,8 +33,8 @@ namespace SaveSystem.Tests {
             Debug.Log("Create object");
 
             Debug.Log("Start saving");
-            AdvancedObjectHandler objectHandler =
-                ObjectHandlersFactory.Create(testMono, FilePath);
+            AdvancedObjectHandler<TestMeshAdvanced> objectHandler =
+                ObjectHandlersFactory.CreateAdvancedHandler(FilePath, testMono);
             await objectHandler.SaveAsync();
             testMono.RemoveMesh();
             Debug.Log("Mesh saved and removed");
@@ -57,7 +57,8 @@ namespace SaveSystem.Tests {
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            AdvancedObjectHandler objectHandler = ObjectHandlersFactory.Create(objects, FilePath);
+            AdvancedObjectHandler<TestMeshAdvanced> objectHandler =
+                ObjectHandlersFactory.CreateAdvancedHandler(FilePath, objects);
             await objectHandler.SaveAsync();
             foreach (TestMeshAdvanced obj in objects)
                 obj.RemoveMesh();

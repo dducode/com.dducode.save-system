@@ -6,14 +6,14 @@
     public enum AsyncMode {
 
         /// <summary>
+        /// Sets the data processing at the player loop (main thread)
+        /// </summary>
+        OnPlayerLoop,
+
+        /// <summary>
         /// Sets the data processing at the thread pool
         /// </summary>
         OnThreadPool,
-
-        /// <summary>
-        /// Sets the data processing at the player loop (main thread)
-        /// </summary>
-        OnPlayerLoop
 
     }
 

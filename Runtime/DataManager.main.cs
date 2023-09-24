@@ -126,9 +126,24 @@ namespace SaveSystem {
 
             await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
 
-            HandlingResult result = await InternalHandling.TrySaveObjectsAsync(
-                objects, asyncMode, unityWriter, progress, source.Token
-            );
+            var result = HandlingResult.UnknownError;
+
+            switch (asyncMode) {
+                case AsyncMode.OnPlayerLoop:
+                    result = await InternalHandling.TrySaveObjectsAsync(
+                        objects, unityWriter, progress, source.Token
+                    );
+                    break;
+                case AsyncMode.OnThreadPool:
+                    await UniTask.RunOnThreadPool(async () => {
+                        result = await InternalHandling.TrySaveObjectsAsync(
+                            objects, unityWriter, progress, source.Token
+                        );
+                    });
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(asyncMode), asyncMode, null);
+            }
 
             if (result == HandlingResult.Success) {
                 await unityWriter.WriteBufferToFileAsync();
@@ -180,9 +195,24 @@ namespace SaveSystem {
             using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
-                HandlingResult result = await InternalHandling.TryLoadObjectsAsync(
-                    objects, asyncMode, unityReader, progress, source.Token
-                );
+                var result = HandlingResult.UnknownError;
+
+                switch (asyncMode) {
+                    case AsyncMode.OnPlayerLoop:
+                        result = await InternalHandling.TryLoadStaticObjectsAsync(
+                            objects, unityReader, progress, source.Token
+                        );
+                        break;
+                    case AsyncMode.OnThreadPool:
+                        await UniTask.RunOnThreadPool(async () => {
+                            result = await InternalHandling.TryLoadStaticObjectsAsync(
+                                objects, unityReader, progress, source.Token
+                            );
+                        });
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(asyncMode), asyncMode, null);
+                }
 
                 if (result == HandlingResult.Success) {
                     onComplete?.Invoke();

@@ -123,7 +123,7 @@ namespace SaveSystem.Tests {
                 CheckPointsFactory.CreateCheckPoint(Random.insideUnitSphere * 10);
 
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.Create(spheres, FilePath);
+            ObjectHandlersFactory.Create(FilePath, spheres);
 
             SaveSystemCore.ConfigureParameters(
                 true, 3,
@@ -178,7 +178,7 @@ namespace SaveSystem.Tests {
                         spheres.Add(sphereComponent);
                     }
 
-                    ObjectHandlersFactory.Create(spheres, $"test_{i}.bytes");
+                    ObjectHandlersFactory.Create($"test_{i}.bytes", spheres);
                     await UniTask.NextFrame();
                 }
 
@@ -214,7 +214,7 @@ namespace SaveSystem.Tests {
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.SaveMode = SaveMode.Async;
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.Create(spheres, FilePath);
+            ObjectHandlersFactory.Create(FilePath, spheres);
             await UniTask.Delay(1000);
         });
 
