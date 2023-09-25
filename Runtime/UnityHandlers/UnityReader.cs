@@ -15,7 +15,7 @@ namespace SaveSystem.UnityHandlers {
         private readonly string m_fullPath;
 
 
-        internal UnityReader (BinaryReader reader, string fullPath = "") {
+        public UnityReader (BinaryReader reader, string fullPath = "") {
             m_reader = reader;
             m_fullPath = fullPath;
         }

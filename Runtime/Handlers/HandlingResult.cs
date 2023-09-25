@@ -16,7 +16,7 @@
         FileNotExists,
 
         /// <summary>
-        /// Operation of the handling was canceled by external code
+        /// Handling operation was canceled by external code
         /// </summary>
         CanceledOperation,
 

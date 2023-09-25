@@ -31,7 +31,7 @@ namespace SaveSystem.Handlers {
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter();
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter();
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
@@ -61,7 +61,7 @@ namespace SaveSystem.Handlers {
             if (result != HandlingResult.Success)
                 return result;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader();
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader();
             await unityReader.WriteToBufferAsync(data);
             int dynamicObjectsCount = unityReader.ReadInt();
 

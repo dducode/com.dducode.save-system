@@ -18,10 +18,6 @@ namespace SaveSystem.Core {
         [Tooltip("You can choose 3 saving modes - simple mode, async saving and multithreading saving (parallel)")]
         public SaveMode saveMode;
 
-        [Tooltip("Defines method to save simple objects (in the main thread or in the thread pool)" +
-                 "\nIt's only used when async save mode is selected. Otherwise it'll be ignored")]
-        public AsyncMode asyncMode;
-
         [Tooltip("Determines whether checkpoints will be destroyed after saving")]
         public bool destroyCheckPoints;
 

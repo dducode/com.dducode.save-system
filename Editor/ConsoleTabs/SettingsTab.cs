@@ -12,7 +12,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private readonly SerializedProperty m_autoSaveEnabledProperty;
         private readonly SerializedProperty m_savePeriodProperty;
         private readonly SerializedProperty m_saveModeProperty;
-        private readonly SerializedProperty m_asyncModeProperty;
 
         private readonly SerializedProperty m_destroyCheckPointsProperty;
         private readonly SerializedProperty m_playerTagProperty;
@@ -31,7 +30,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_autoSaveEnabledProperty = m_serializedSettings.FindProperty("autoSaveEnabled");
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
-            m_asyncModeProperty = m_serializedSettings.FindProperty("asyncMode");
             m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
 
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
@@ -66,8 +64,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
             
             EditorGUILayout.PropertyField(m_saveModeProperty, GUILayout.MaxWidth(300));
-            if (m_saveModeProperty.intValue == (int)SaveMode.Async)
-                EditorGUILayout.PropertyField(m_asyncModeProperty, GUILayout.MaxWidth(300));
         }
 
 

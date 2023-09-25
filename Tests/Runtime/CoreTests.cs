@@ -42,9 +42,11 @@ namespace SaveSystem.Tests {
             };
 
             SaveSystemCore.DebugEnabled = true;
-            SaveSystemCore.RegisterPersistentObject(simpleObject, FilePath);
             SaveSystemCore.SavePeriod = 1.5f;
             SaveSystemCore.AutoSaveEnabled = true;
+            
+            ObjectHandlersFactory.RegisterImmediately = true;
+            ObjectHandlersFactory.CreateHandler(FilePath, simpleObject);
 
             var autoSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -67,8 +69,10 @@ namespace SaveSystem.Tests {
             };
 
             SaveSystemCore.DebugEnabled = true;
-            SaveSystemCore.RegisterPersistentObject(simpleObject, FilePath);
             SaveSystemCore.BindKey(KeyCode.S);
+            
+            ObjectHandlersFactory.RegisterImmediately = true;
+            ObjectHandlersFactory.CreateHandler(FilePath, simpleObject);
 
             var quickSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -91,9 +95,12 @@ namespace SaveSystem.Tests {
             var sphereComponent = sphere.AddComponent<TestRigidbody>();
 
             SaveSystemCore.DebugEnabled = true;
-            SaveSystemCore.RegisterPersistentObject(sphereComponent, FilePath);
             SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
+            
+            ObjectHandlersFactory.RegisterImmediately = true;
+            ObjectHandlersFactory.CreateHandler(FilePath, sphereComponent);
+            
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -132,7 +139,7 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.ConfigureParameters(
                 true, true, true,
-                SaveMode.Async, "Player", 3, AsyncMode.OnThreadPool
+                SaveMode.Async, "Player", 3
             );
 
             var testStopped = false;

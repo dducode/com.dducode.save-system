@@ -45,7 +45,7 @@ namespace SaveSystem {
                 CancellationTokenSource source = null,
                 Action onComplete = null
             ) {
-                await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(fileName);
+                await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(fileName);
                 source ??= new CancellationTokenSource();
 
                 if (source.IsCancellationRequested)
@@ -92,7 +92,7 @@ namespace SaveSystem {
                 if (source.IsCancellationRequested)
                     return false;
 
-                using UnityReader unityReader = UnityHandlersProvider.GetReader(fileName);
+                using UnityReader unityReader = UnityHandlersFactory.CreateReader(fileName);
 
                 if (await unityReader.ReadFileDataToBufferAsync()) {
                     HandlingResult result = await Handling.LoadStaticObjectsAsync(

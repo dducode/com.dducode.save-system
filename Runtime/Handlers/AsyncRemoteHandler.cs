@@ -9,9 +9,9 @@ using SaveSystem.UnityHandlers;
 namespace SaveSystem.Handlers {
 
     /// <summary>
-    /// It's same as <see cref="RemoteHandler{TO}">Remote Handler</see> only for objects that are saved and loaded asynchronously
+    /// It's same as <see cref="RemoteHandler{TO}">Remote Handler</see> but works with objects that are saved and loaded asynchronously
     /// </summary>
-    public class AsyncRemoteHandler<TO> : AbstractHandler<AsyncRemoteHandler<TO>, TO>, IAsyncObjectHandler
+    public sealed class AsyncRemoteHandler<TO> : AbstractHandler<AsyncRemoteHandler<TO>, TO>, IAsyncObjectHandler
         where TO : IPersistentObjectAsync {
 
         public AsyncRemoteHandler (string destinationPath, TO[] staticObjects) :
@@ -31,7 +31,7 @@ namespace SaveSystem.Handlers {
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter();
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter();
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
@@ -63,7 +63,7 @@ namespace SaveSystem.Handlers {
             if (result != HandlingResult.Success)
                 return result;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader();
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader();
             await unityReader.WriteToBufferAsync(data);
             int dynamicObjectsCount = unityReader.ReadInt();
 

@@ -9,7 +9,7 @@ using SaveSystem.UnityHandlers;
 namespace SaveSystem.Handlers {
 
     /// <summary>
-    /// It's same as <see cref="ObjectHandler{TO}">Object Handler</see> only for objects that are saved and loaded asynchronously
+    /// It's same as <see cref="ObjectHandler{TO}">Object Handler</see> but works with objects that are saved and loaded asynchronously
     /// </summary>
     public sealed class AsyncObjectHandler<TO> : AbstractHandler<AsyncObjectHandler<TO>, TO>,
         IAsyncObjectHandler where TO : IPersistentObjectAsync {
@@ -30,7 +30,7 @@ namespace SaveSystem.Handlers {
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(destinationPath);
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(destinationPath);
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
@@ -47,7 +47,7 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(destinationPath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader(destinationPath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 int dynamicObjectsCount = unityReader.ReadInt();

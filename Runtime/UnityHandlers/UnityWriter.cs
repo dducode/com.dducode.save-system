@@ -19,7 +19,7 @@ namespace SaveSystem.UnityHandlers {
         private readonly string m_fullPath;
 
 
-        internal UnityWriter (BinaryWriter writer, string fullPath = "") {
+        public UnityWriter (BinaryWriter writer, string fullPath = "") {
             m_writer = writer;
             m_fullPath = fullPath;
         }
@@ -30,7 +30,6 @@ namespace SaveSystem.UnityHandlers {
             m_writer.Write(version.Minor);
             m_writer.Write(version.Build);
             m_writer.Write(version.Revision);
-            m_writer.Close();
         }
 
 

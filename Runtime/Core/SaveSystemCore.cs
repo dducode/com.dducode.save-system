@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
@@ -50,12 +49,6 @@ namespace SaveSystem.Core {
         /// </summary>
         /// <seealso cref="SaveMode"/>
         public static SaveMode SaveMode { get; set; }
-
-        /// <summary>
-        /// Defines method to save simple objects (in the main thread or in the thread pool)
-        /// </summary>
-        /// <remarks> It's only used when async save mode is selected. Otherwise it'll be ignored </remarks>
-        public static AsyncMode AsyncMode { get; set; }
 
         /// <summary>
         /// Enables logs
@@ -108,6 +101,7 @@ namespace SaveSystem.Core {
         private static List<Vector3> m_destroyedCheckpoints = new();
         private static float m_autoSaveLastTime;
         private static bool m_requestsQueueIsFree = true;
+        private static IProgress<float> m_progress;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -131,7 +125,7 @@ namespace SaveSystem.Core {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void LoadInternalData () {
-            using UnityReader reader = UnityHandlersProvider.GetReader(InternalDataPath);
+            using UnityReader reader = UnityHandlersFactory.CreateReader(InternalDataPath);
 
             if (reader.ReadFileDataToBuffer()) {
                 m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
@@ -141,52 +135,6 @@ namespace SaveSystem.Core {
                 if (DebugEnabled)
                     Logger.Log("Internal data was loaded");
             }
-        }
-
-
-        /// <summary>
-        /// Registers a single object to automatic save, quick-save, save at checkpoit and at save on exit.
-        /// </summary>
-        /// <param name="obj"> Object that will be saved </param>
-        /// <param name="filePath"> Path to object saving </param>
-        /// <param name="caller"> For internal use (no need to pass it manually) </param>
-        public static void RegisterPersistentObject (
-            [NotNull] IPersistentObject obj,
-            [NotNull] string filePath,
-            [CallerMemberName] string caller = null
-        ) {
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-
-            ObjectHandler<IPersistentObject> objectHandler = ObjectHandlersFactory.CreateHandler(filePath, obj, caller);
-            if (!ObjectHandlersFactory.RegisterImmediately)
-                RegisterObjectHandler(objectHandler);
-
-            if (DebugEnabled)
-                Logger.Log("Persistent object was register");
-        }
-
-
-        /// <inheritdoc cref="RegisterPersistentObject"/>
-        public static void RegisterPersistentObjectAsync (
-            [NotNull] IPersistentObjectAsync obj,
-            [NotNull] string filePath,
-            [CallerMemberName] string caller = ""
-        ) {
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-
-            AsyncObjectHandler<IPersistentObjectAsync> asyncObjectHandler =
-                ObjectHandlersFactory.CreateAsyncHandler(filePath, obj, caller);
-            if (!ObjectHandlersFactory.RegisterImmediately)
-                RegisterAsyncObjectHandler(asyncObjectHandler);
-
-            if (DebugEnabled)
-                Logger.Log("Async persistent object was register");
         }
 
 
@@ -227,7 +175,6 @@ namespace SaveSystem.Core {
         /// <param name="saveMode"> <see cref="SaveMode"/> </param>
         /// <param name="playerTag"> <see cref="PlayerTag"/> </param>
         /// <param name="savePeriod"> <see cref="SavePeriod"/> </param>
-        /// <param name="asyncMode"> <see cref="AsyncMode"/> </param>
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
         public static void ConfigureParameters (
             bool autoSaveEnabled,
@@ -235,8 +182,7 @@ namespace SaveSystem.Core {
             bool destroyCheckPoints,
             SaveMode saveMode,
             string playerTag,
-            float savePeriod = 0,
-            AsyncMode asyncMode = AsyncMode.OnPlayerLoop
+            float savePeriod = 0
         ) {
             AutoSaveEnabled = autoSaveEnabled;
             DebugEnabled = debugEnabled;
@@ -244,7 +190,40 @@ namespace SaveSystem.Core {
             SaveMode = saveMode;
             PlayerTag = playerTag;
             SavePeriod = savePeriod;
-            AsyncMode = asyncMode;
+
+            if (DebugEnabled) {
+                Logger.Log("Parameters was configured:" +
+                           $"\nAutoSaveEnabled: {AutoSaveEnabled}" +
+                           $"\nDebugEnabled: {DebugEnabled}" +
+                           $"\nDestroyCheckPoints: {DestroyCheckPoints}" +
+                           $"\nSaveMode: {SaveMode}" +
+                           $"\nPlayerTag: {PlayerTag}" +
+                           $"\nSavePeriod: {SavePeriod}"
+                );
+            }
+        }
+
+
+        /// <summary>
+        /// Pass <see cref="IProgress{T}"> IProgress object </see> to observe saving progress when it'll be started
+        /// </summary>
+        /// <remarks> The Core will report progress only in async save mode </remarks>
+        public static void ObserveProgress ([NotNull] IProgress<float> progress) {
+            m_progress = progress ?? throw new ArgumentNullException(nameof(progress));
+
+            if (DebugEnabled)
+                Logger.Log($"Progress observer {m_progress} was register");
+        }
+
+
+        /// <summary>
+        /// Binds any key with quick save
+        /// </summary>
+        public static void BindKey (KeyCode keyCode) {
+            m_quickSaveKey = keyCode;
+
+            if (DebugEnabled)
+                Logger.Log($"Key {m_quickSaveKey} was bind with quick save");
         }
 
 
@@ -254,7 +233,7 @@ namespace SaveSystem.Core {
         /// <param name="exitImmediately"> If true, application will be closed after saving.
         /// Pass false if you want to do anything after this </param>
         /// <remarks>
-        /// It resets some internal parameters and isn't recommended to be called except before quitting
+        /// It resets some internal parameters. It isn't recommended to call except before quitting
         /// </remarks>
         public static async UniTask SaveBeforeExit (bool exitImmediately) {
             const string debugMessage = "Successful saving before quitting";
@@ -284,7 +263,6 @@ namespace SaveSystem.Core {
         /// <summary>
         /// You can call it when the player presses any key
         /// </summary>
-        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         public static void QuickSave () {
             const string message = "Successful quick-save";
 
@@ -306,15 +284,6 @@ namespace SaveSystem.Core {
         }
 
 
-        /// <summary>
-        /// Binds any key with quick save
-        /// </summary>
-        public static void BindKey (KeyCode keyCode) {
-            m_quickSaveKey = keyCode;
-        }
-
-
-        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         internal static void SaveAtCheckpoint (CheckPointBase checkPoint, Component other) {
             if (!other.CompareTag(PlayerTag))
                 return;
@@ -353,9 +322,6 @@ namespace SaveSystem.Core {
 
 
         private static async void UpdateSystem () {
-            if (Input.GetKeyDown(m_quickSaveKey))
-                QuickSave();
-
             /*
              * Lock queue and call all requests only in one thread
              * This is necessary to prevent sharing of the same file
@@ -376,12 +342,14 @@ namespace SaveSystem.Core {
                 m_requestsQueueIsFree = true;
             }
 
+            if (Input.GetKeyDown(m_quickSaveKey))
+                QuickSave();
+
             if (AutoSaveEnabled)
                 AutoSave();
         }
 
 
-        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         private static void AutoSave () {
             if (m_autoSaveLastTime + SavePeriod < Time.time) {
                 const string message = "Successful auto save";
@@ -428,30 +396,24 @@ namespace SaveSystem.Core {
 
             HandlingResult result;
 
+            float completedHandlers = 0;
+            int totalHandlers = AsyncHandlers.Count + Handlers.Count;
+
             for (var i = 0; i < AsyncHandlers.Count; i++) {
                 result = await AsyncHandlers[i].SaveAsync(token);
                 if (result != HandlingResult.Success)
                     return result;
+
+                completedHandlers++;
+                m_progress?.Report(completedHandlers / totalHandlers);
             }
 
             result = await Catcher.TryHandle(async () => {
-                switch (AsyncMode) {
-                    case AsyncMode.OnPlayerLoop:
-                        foreach (IObjectHandler handler in Handlers) {
-                            handler.Save();
-                            await UniTask.NextFrame(token);
-                        }
-
-                        break;
-                    case AsyncMode.OnThreadPool:
-                        await UniTask.RunOnThreadPool(() => {
-                            foreach (IObjectHandler handler in Handlers)
-                                handler.Save();
-                        }, cancellationToken: token);
-
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                foreach (IObjectHandler handler in Handlers) {
+                    handler.Save();
+                    completedHandlers++;
+                    m_progress?.Report(completedHandlers / totalHandlers);
+                    await UniTask.NextFrame(token);
                 }
             });
 
@@ -498,7 +460,6 @@ namespace SaveSystem.Core {
             AutoSaveEnabled = settings.autoSaveEnabled;
             SavePeriod = settings.savePeriod;
             SaveMode = settings.saveMode;
-            AsyncMode = settings.asyncMode;
             DebugEnabled = settings.debugEnabled;
 
             // Checkpoints settings
@@ -508,7 +469,7 @@ namespace SaveSystem.Core {
 
 
         private static void SaveInternalData () {
-            using UnityWriter writer = UnityHandlersProvider.GetWriter(InternalDataPath);
+            using UnityWriter writer = UnityHandlersFactory.CreateWriter(InternalDataPath);
             writer.Write(m_destroyedCheckpoints);
             writer.WriteBufferToFile();
         }
@@ -591,10 +552,7 @@ namespace SaveSystem.Core {
         }
 
 
-        static partial void ResetOnExitPlayMode (
-            PlayerLoopSystem modifiedLoop,
-            PlayerLoopSystem saveSystemLoop
-        );
+        static partial void ResetOnExitPlayMode (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop);
 
     }
 

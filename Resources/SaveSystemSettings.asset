@@ -16,7 +16,6 @@ MonoBehaviour:
   autoSaveEnabled: 0
   savePeriod: 0
   saveMode: 0
-  asyncMode: 0
   destroyCheckPoints: 0
   playerTag: Player
   registerImmediately: 0

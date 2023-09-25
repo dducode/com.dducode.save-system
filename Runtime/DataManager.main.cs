@@ -38,7 +38,7 @@ namespace SaveSystem {
         /// <param name="objects"> the objects which will be saved </param>
         public static void SaveObjects<T> (string filePath, IEnumerable<T> objects)
             where T : IPersistentObject {
-            using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
+            using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(filePath);
 
             foreach (T obj in objects)
                 obj.Save(unityWriter);
@@ -71,7 +71,7 @@ namespace SaveSystem {
         /// <returns> Returns true if there is saved data, otherwise false </returns>
         public static bool LoadObjects<T> (string filePath, IEnumerable<T> objects)
             where T : IPersistentObject {
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader(filePath);
 
             if (unityReader.ReadFileDataToBuffer()) {
                 foreach (T obj in objects)
@@ -124,7 +124,7 @@ namespace SaveSystem {
             if (source.IsCancellationRequested)
                 return;
 
-            await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(filePath);
 
             HandlingResult result;
 
@@ -199,7 +199,7 @@ namespace SaveSystem {
             if (source.IsCancellationRequested)
                 return false;
 
-            using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader(filePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 HandlingResult result;

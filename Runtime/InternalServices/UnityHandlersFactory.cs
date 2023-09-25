@@ -3,27 +3,27 @@ using SaveSystem.UnityHandlers;
 
 namespace SaveSystem.InternalServices {
 
-    internal static class UnityHandlersProvider {
+    internal static class UnityHandlersFactory {
 
-        internal static UnityWriter GetWriter (string localFilePath) {
+        internal static UnityWriter CreateWriter (string localFilePath) {
             Storage.CreateFoldersIfNotExists(localFilePath);
             string fullPath = Storage.GetFullPath(localFilePath);
             return new UnityWriter(new BinaryWriter(new MemoryStream()), fullPath);
         }
 
 
-        internal static UnityWriter GetWriter () {
+        internal static UnityWriter CreateWriter () {
             return new UnityWriter(new BinaryWriter(new MemoryStream()));
         }
 
 
-        internal static UnityReader GetReader (string localFilePath) {
+        internal static UnityReader CreateReader (string localFilePath) {
             string fullPath = Storage.GetFullPath(localFilePath);
             return new UnityReader(new BinaryReader(new MemoryStream()), fullPath);
         }
 
 
-        internal static UnityReader GetReader () {
+        internal static UnityReader CreateReader () {
             return new UnityReader(new BinaryReader(new MemoryStream()));
         }
 
