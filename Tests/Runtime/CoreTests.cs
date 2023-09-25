@@ -45,7 +45,14 @@ namespace SaveSystem.Tests {
             SaveSystemCore.RegisterPersistentObject(simpleObject, FilePath);
             SaveSystemCore.SavePeriod = 1.5f;
             SaveSystemCore.AutoSaveEnabled = true;
-            await UniTask.Delay(2000);
+
+            var autoSaveCompleted = false;
+            SaveSystemCore.OnSaveEnd += saveType => {
+                if (saveType == SaveType.AutoSave)
+                    autoSaveCompleted = true;
+            };
+
+            await UniTask.WaitWhile(() => !autoSaveCompleted);
             Assert.Greater(Storage.GetDataSize(), 0);
         });
 
@@ -61,16 +68,15 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.RegisterPersistentObject(simpleObject, FilePath);
+            SaveSystemCore.BindKey(KeyCode.S);
 
-            await UniTask.WaitWhile(() => {
-                if (Input.GetKey(KeyCode.S)) {
-                    SaveSystemCore.QuickSave();
-                    return false;
-                }
+            var quickSaveCompleted = false;
+            SaveSystemCore.OnSaveEnd += saveType => {
+                if (saveType == SaveType.QuickSave)
+                    quickSaveCompleted = true;
+            };
 
-                return true;
-            });
-
+            await UniTask.WaitWhile(() => !quickSaveCompleted);
             Assert.Greater(Storage.GetDataSize(), 0);
         });
 
@@ -88,16 +94,15 @@ namespace SaveSystem.Tests {
             SaveSystemCore.RegisterPersistentObject(sphereComponent, FilePath);
             SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
-
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
-            var saveWasCompleted = false;
 
+            var saveAtCheckpointCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
                 if (saveType == SaveType.SaveAtCheckpoint)
-                    saveWasCompleted = true;
+                    saveAtCheckpointCompleted = true;
             };
 
-            await UniTask.WaitWhile(() => !saveWasCompleted);
+            await UniTask.WaitWhile(() => !saveAtCheckpointCompleted);
             Assert.Greater(Storage.GetDataSize(), 0);
         });
 
@@ -123,12 +128,14 @@ namespace SaveSystem.Tests {
                 CheckPointsFactory.CreateCheckPoint(Random.insideUnitSphere * 10);
 
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.Create(FilePath, spheres);
+            ObjectHandlersFactory.CreateHandler(FilePath, spheres);
 
             SaveSystemCore.ConfigureParameters(
-                true, 3,
-                SaveMode.Async, true, true, "Player"
+                true, true, true,
+                SaveMode.Async, "Player", 3, AsyncMode.OnThreadPool
             );
+
+            var testStopped = false;
 
             SaveSystemCore.OnSaveEnd += saveType => {
                 switch (saveType) {
@@ -136,6 +143,7 @@ namespace SaveSystem.Tests {
                         Debug.Log("<b>Test</b>: Successful auto save");
                         break;
                     case SaveType.QuickSave:
+                        testStopped = true;
                         Debug.Log("<b>Test</b>: Successful quick-save");
                         break;
                     case SaveType.SaveAtCheckpoint:
@@ -149,15 +157,9 @@ namespace SaveSystem.Tests {
                 }
             };
 
-            await UniTask.WaitWhile(() => {
-                if (Input.GetKey(KeyCode.S)) {
-                    SaveSystemCore.QuickSave();
-                    return false;
-                }
+            SaveSystemCore.BindKey(KeyCode.S);
 
-                return true;
-            });
-
+            await UniTask.WaitWhile(() => !testStopped);
             Assert.Greater(Storage.GetDataSize(), 0);
         });
 
@@ -178,21 +180,15 @@ namespace SaveSystem.Tests {
                         spheres.Add(sphereComponent);
                     }
 
-                    ObjectHandlersFactory.Create($"test_{i}.bytes", spheres);
+                    ObjectHandlersFactory.CreateHandler($"test_{i}.bytes", spheres);
                     await UniTask.NextFrame();
                 }
 
                 SaveSystemCore.SaveMode = saveMode;
-                var savingEnd = false;
-                SaveSystemCore.OnSaveEnd += saveType => {
-                    if (saveType == SaveType.QuickSave)
-                        savingEnd = true;
-                };
 
                 var stopwatch = new Stopwatch();
                 stopwatch.Start();
-                SaveSystemCore.QuickSave();
-                await UniTask.WaitWhile(() => !savingEnd);
+                await SaveSystemCore.SaveBeforeExit(false);
                 stopwatch.Stop();
                 Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
                 Assert.Greater(Storage.GetDataSize(), 0);
@@ -212,11 +208,19 @@ namespace SaveSystem.Tests {
             }
 
             SaveSystemCore.DebugEnabled = true;
-            SaveSystemCore.SaveMode = SaveMode.Async;
+            SaveSystemCore.SaveMode = SaveMode.Simple;
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.Create(FilePath, spheres);
-            await UniTask.Delay(1000);
+            ObjectHandlersFactory.CreateHandler(FilePath, spheres);
+            await SaveSystemCore.SaveBeforeExit(true);
+            Assert.Greater(Storage.GetDataSize(), 0);
         });
+
+
+        [TearDown]
+        public void EndTest () {
+            Storage.DeleteAllData();
+            Debug.Log("End test");
+        }
 
     }
 

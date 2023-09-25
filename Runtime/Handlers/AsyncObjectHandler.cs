@@ -3,28 +3,23 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.InternalServices;
+using SaveSystem.InternalServices.Diagnostic;
 using SaveSystem.UnityHandlers;
 
 namespace SaveSystem.Handlers {
 
     /// <summary>
-    /// It's same as <see cref="ObjectHandler{TO}">Object Handler</see> only for the IPersistentObjectAsync
+    /// It's same as <see cref="ObjectHandler{TO}">Object Handler</see> only for objects that are saved and loaded asynchronously
     /// </summary>
-    public sealed class AdvancedObjectHandler<TO> : AbstractHandler<AdvancedObjectHandler<TO>, TO>,
+    public sealed class AsyncObjectHandler<TO> : AbstractHandler<AsyncObjectHandler<TO>, TO>,
         IAsyncObjectHandler where TO : IPersistentObjectAsync {
 
-        internal AdvancedObjectHandler (string localFilePath, TO[] staticObjects
+        internal AsyncObjectHandler (string localFilePath, TO[] staticObjects
         ) : base(localFilePath, staticObjects) { }
 
 
-        internal AdvancedObjectHandler (string localFilePath, Func<TO> factoryFunc
+        internal AsyncObjectHandler (string localFilePath, Func<TO> factoryFunc
         ) : base(localFilePath, factoryFunc) { }
-
-
-        public override AdvancedObjectHandler<TO> ResetToDefault () {
-            base.ResetToDefault();
-            return this;
-        }
 
 
         public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
@@ -32,15 +27,14 @@ namespace SaveSystem.Handlers {
                 return HandlingResult.CanceledOperation;
 
             dynamicObjects.RemoveAll(obj => obj == null);
+            DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
             await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(destinationPath);
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
-            HandlingResult result = await InternalHandling.Advanced.TrySaveObjectsAsync(
-                savedObjects, unityWriter, savingProgress, token
-            );
+            HandlingResult result = await Handling.SaveObjectsAsync(savedObjects, unityWriter, savingProgress, token);
 
             if (result == HandlingResult.Success)
                 await unityWriter.WriteBufferToFileAsync();
@@ -58,18 +52,14 @@ namespace SaveSystem.Handlers {
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 int dynamicObjectsCount = unityReader.ReadInt();
 
-                HandlingResult result = await InternalHandling.Advanced.TryLoadDynamicObjectsAsync(
+                HandlingResult result = await Handling.LoadDynamicObjectsAsync(
                     factoryFunc, this, dynamicObjectsCount, unityReader, loadingProgress, token
                 );
 
                 if (result != HandlingResult.Success)
                     return result;
 
-                result = await InternalHandling.Advanced.TryLoadStaticObjectsAsync(
-                    staticObjects, unityReader, loadingProgress, token
-                );
-
-                return result;
+                return await Handling.LoadStaticObjectsAsync(staticObjects, unityReader, loadingProgress, token);
             }
 
             return HandlingResult.FileNotExists;

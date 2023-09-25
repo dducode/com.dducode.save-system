@@ -42,11 +42,9 @@ namespace SaveSystem.Handlers {
         public T AddObject ([NotNull] TO obj) {
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
-            if (staticObjects.Length > 0 && obj.GetType() != staticObjects[0].GetType())
-                throw new ArgumentException("Dynamic and static objects must be an equality type");
 
             dynamicObjects.Add(obj);
-            DiagnosticService.AddObject(diagnosticIndex);
+            DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             return (T)this;
         }
 
@@ -62,7 +60,7 @@ namespace SaveSystem.Handlers {
                 throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
             dynamicObjects.AddRange(objects);
-            DiagnosticService.AddObjects(diagnosticIndex, objects.Count);
+            DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             return (T)this;
         }
 
@@ -70,18 +68,8 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Add function for objects spawn. This is necessary to load dynamic objects
         /// </summary>
-        public T SetFuncFactory ([NotNull] Func<TO> funcFactory) {
-            this.factoryFunc = funcFactory ?? throw new ArgumentNullException(nameof(funcFactory));
-            return (T)this;
-        }
-
-
-        /// <summary>
-        /// Reset all parameters to default values
-        /// </summary>
-        public virtual T ResetToDefault () {
-            savingProgress = null;
-            loadingProgress = null;
+        public T SetFuncFactory ([NotNull] Func<TO> factoryFunc) {
+            this.factoryFunc = factoryFunc ?? throw new ArgumentNullException(nameof(factoryFunc));
             return (T)this;
         }
 

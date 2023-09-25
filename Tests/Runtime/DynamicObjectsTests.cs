@@ -27,7 +27,7 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator SaveLoad () => UniTask.ToCoroutine(async () => {
-            ObjectHandler<TestRigidbody> handler = ObjectHandlersFactory.Create(FilePath, FuncFactory);
+            ObjectHandler<TestRigidbody> handler = ObjectHandlersFactory.CreateHandler(FilePath, FuncFactory);
 
             var testObjects = new List<TestRigidbody>();
 
@@ -42,8 +42,9 @@ namespace SaveSystem.Tests {
 
             handler.AddObjects(testObjects);
             Debug.Log("Start objects saving");
-            await handler.SaveAsync();
+            handler.Save();
 
+            await UniTask.Delay(500);
             Debug.Log("Start objects destroying");
 
             foreach (TestRigidbody testObject in testObjects) {
@@ -52,8 +53,9 @@ namespace SaveSystem.Tests {
             }
 
             Debug.Log("Start objects loading");
-            await handler.LoadAsync();
+            handler.Load();
 
+            await UniTask.Delay(500);
             Assert.IsTrue(Object.FindAnyObjectByType<TestRigidbody>());
 
             TestRigidbody FuncFactory () {

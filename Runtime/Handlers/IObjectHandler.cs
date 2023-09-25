@@ -1,7 +1,7 @@
 ﻿namespace SaveSystem.Handlers {
 
     /// <summary>
-    /// TODO: add description
+    /// Defines methods for simple object handling
     /// </summary>
     public interface IObjectHandler {
 

@@ -30,7 +30,7 @@ namespace SaveSystem.Tests {
             Debug.Log("Create object");
             yield return new WaitForSeconds(2);
 
-            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, testMono);
+            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.CreateHandler(FilePath, testMono);
             objectHandler.Save();
             testMono.RemoveMesh();
             Debug.Log("Save and remove mesh");
@@ -45,22 +45,23 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator MeshesSaveLoadAsyncOnPlayerLoop () => UniTask.ToCoroutine(async () => {
-            var objects = new TestMesh[200];
+            var objects = new TestMeshAsyncPlayerLoop[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsyncPlayerLoop>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, objects);
+            AsyncObjectHandler<TestMeshAsyncPlayerLoop> objectHandler =
+                ObjectHandlersFactory.CreateAsyncHandler(FilePath, objects);
 
             HandlingResult result = await objectHandler.SaveAsync();
 
             if (result == HandlingResult.Success) {
-                foreach (TestMesh obj in objects)
+                foreach (TestMeshAsyncPlayerLoop obj in objects)
                     obj.RemoveMesh();
                 Debug.Log("Meshes saved and removed");
             }
@@ -68,41 +69,40 @@ namespace SaveSystem.Tests {
             Debug.Log("Start loading");
             result = await objectHandler.LoadAsync();
 
-            if (result == HandlingResult.Success) {
-                foreach (TestMesh testMesh in objects)
-                    testMesh.SetMesh();
+            if (result == HandlingResult.Success)
                 Debug.Log("Meshes loaded");
-            }
         });
 
 
         [UnityTest]
         public IEnumerator MeshesSaveLoadAsyncOnThreadPool () => UniTask.ToCoroutine(async () => {
-            var objects = new TestMesh[200];
+            var objects = new TestMeshAsyncThreadPool[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsyncThreadPool>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
-            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, objects);
+            AsyncObjectHandler<TestMeshAsyncThreadPool> objectHandler =
+                ObjectHandlersFactory.CreateAsyncHandler(FilePath, objects);
             Debug.Log("Start saving");
 
-            await UniTask.RunOnThreadPool(() => { objectHandler.Save(); });
+            HandlingResult result = await objectHandler.SaveAsync();
 
-            foreach (TestMesh obj in objects)
-                obj.RemoveMesh();
-            Debug.Log("Meshes saved and removed");
+            if (result == HandlingResult.Success) {
+                foreach (TestMeshAsyncThreadPool obj in objects)
+                    obj.RemoveMesh();
+                Debug.Log("Meshes saved and removed");
+            }
 
             Debug.Log("Start loading");
 
-            await UniTask.RunOnThreadPool(() => { objectHandler.Load(); });
+            result = await objectHandler.LoadAsync();
 
-            foreach (TestMesh testMesh in objects)
-                testMesh.SetMesh();
-            Debug.Log("Meshes loaded");
+            if (result == HandlingResult.Success)
+                Debug.Log("Meshes loaded");
         });
 
 

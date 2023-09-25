@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SaveSystem.InternalServices {
 
-    internal static class InternalLogger {
+    internal static class Logger {
 
         private static readonly string MessageHeader = $"<b>{nameof(SaveSystem)}:</b>";
 

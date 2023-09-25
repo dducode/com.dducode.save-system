@@ -11,7 +11,7 @@ namespace SaveSystem.Handlers {
 
     /// <summary>
     /// Use it to create <see cref="ObjectHandler{TO}">Object Handlers</see>,
-    /// <see cref="AdvancedObjectHandler{TO}">Async Object Handlers</see>
+    /// <see cref="AsyncObjectHandler{TO}">Async Object Handlers</see>
     /// and <see cref="RemoteHandler{TO}">Remote Handlers</see>
     /// </summary>
     public static class ObjectHandlersFactory {
@@ -41,12 +41,12 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates an empty handler
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
-        public static ObjectHandler<TO> Create<TO> (
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static ObjectHandler<TO> CreateHandler<TO> (
             [NotNull] string filePath,
             [NotNull] Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
@@ -69,10 +69,10 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Creates an object handler that will saving a single object
         /// </summary>
-        /// <param name="filePath"> Path to save object </param>
-        /// <param name="obj"> Object which will be saved </param>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="obj"> Object which will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
-        public static ObjectHandler<TO> Create<TO> (
+        public static ObjectHandler<TO> CreateHandler<TO> (
             [NotNull] string filePath,
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
@@ -95,10 +95,10 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Creates an object handler that will saving some objects
         /// </summary>
-        /// <param name="filePath"> Path to save objects </param>
-        /// <param name="objects"> Objects which will be saved </param>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
-        public static ObjectHandler<TO> Create<TO> (
+        public static ObjectHandler<TO> CreateHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
@@ -123,12 +123,12 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates an empty async handler
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
-        public static AdvancedObjectHandler<TO> CreateAdvancedHandler<TO> (
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
             [NotNull] Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
@@ -138,10 +138,10 @@ namespace SaveSystem.Handlers {
             if (factoryFunc == null)
                 throw new ArgumentNullException(nameof(factoryFunc));
 
-            var handler = new AdvancedObjectHandler<TO>(filePath, factoryFunc) {
+            var handler = new AsyncObjectHandler<TO>(filePath, factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 1));
+            DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 0));
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -151,10 +151,10 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Creates an object handler that will saving a single object async
         /// </summary>
-        /// <param name="filePath"> Path to save objects </param>
-        /// <param name="obj"> Object which will be saved </param>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="obj"> Objects which will be saved </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
-        public static AdvancedObjectHandler<TO> CreateAdvancedHandler<TO> (
+        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
@@ -164,7 +164,7 @@ namespace SaveSystem.Handlers {
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
 
-            var handler = new AdvancedObjectHandler<TO>(filePath, new[] {obj}) {
+            var handler = new AsyncObjectHandler<TO>(filePath, new[] {obj}) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 1));
@@ -177,10 +177,10 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Creates an object handler that will saving some objects async
         /// </summary>
-        /// <param name="filePath"> Path to save objects </param>
+        /// <param name="filePath"> Path to save and load objects </param>
         /// <param name="objects"> Objects which will be saved </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
-        public static AdvancedObjectHandler<TO> CreateAdvancedHandler<TO> (
+        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
@@ -192,7 +192,7 @@ namespace SaveSystem.Handlers {
             if (objects.Count == 0)
                 throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
-            var handler = new AdvancedObjectHandler<TO>(filePath, objects.ToArray()) {
+            var handler = new AsyncObjectHandler<TO>(filePath, objects.ToArray()) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
@@ -205,11 +205,11 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates an empty remote handler
         /// </summary>
-        /// <param name="url"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
+        /// <param name="url"> Link to a remote storage </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static RemoteHandler<TO> CreateRemoteHandler<TO> (
             [NotNull] string url,
             [NotNull] Func<TO> factoryFunc,
@@ -223,7 +223,7 @@ namespace SaveSystem.Handlers {
             var handler = new RemoteHandler<TO>(url, factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 1));
+            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 0));
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -234,7 +234,7 @@ namespace SaveSystem.Handlers {
         /// Creates an object handler that will saving single object at remote storage
         /// </summary>
         /// <param name="url"> Link to a remote storage </param>
-        /// <param name="obj"> Object that will be saved </param>
+        /// <param name="obj"> Objects that will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static RemoteHandler<TO> CreateRemoteHandler<TO> (
             [NotNull] string url,
@@ -260,7 +260,7 @@ namespace SaveSystem.Handlers {
         /// Creates an object handler that will saving some objects at remote storage
         /// </summary>
         /// <param name="url"> Link to a remote storage </param>
-        /// <param name="objects"> Objects that will be saved </param>
+        /// <param name="objects"> Objects that will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static RemoteHandler<TO> CreateRemoteHandler<TO> (
             [NotNull] string url,
@@ -275,6 +275,88 @@ namespace SaveSystem.Handlers {
                 throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
             var handler = new RemoteHandler<TO>(url, objects.ToArray()) {
+                diagnosticIndex = DiagnosticService.HandlersData.Count
+            };
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(url, caller, typeof(TO), objects.Count)
+            );
+            if (RegisterImmediately)
+                SaveSystemCore.RegisterAsyncObjectHandler(handler);
+            return handler;
+        }
+
+
+        /// <summary>
+        /// Creates an empty async remote handler
+        /// </summary>
+        /// <param name="url"> Link to a remote storage </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static AsyncRemoteHandler<TO> CreateAsyncRemoteHandler<TO> (
+            [NotNull] string url,
+            [NotNull] Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObjectAsync {
+            if (string.IsNullOrEmpty(url))
+                throw new ArgumentNullException(nameof(url));
+            if (factoryFunc == null)
+                throw new ArgumentNullException(nameof(factoryFunc));
+
+            var handler = new AsyncRemoteHandler<TO>(url, factoryFunc) {
+                diagnosticIndex = DiagnosticService.HandlersData.Count
+            };
+            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 0));
+            if (RegisterImmediately)
+                SaveSystemCore.RegisterAsyncObjectHandler(handler);
+            return handler;
+        }
+
+
+        /// <summary>
+        /// Creates an async object handler that will saving single object at remote storage
+        /// </summary>
+        /// <param name="url"> Link to a remote storage </param>
+        /// <param name="obj"> Objects that will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static AsyncRemoteHandler<TO> CreateAsyncRemoteHandler<TO> (
+            [NotNull] string url,
+            [NotNull] TO obj,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObjectAsync {
+            if (string.IsNullOrEmpty(url))
+                throw new ArgumentNullException(nameof(url));
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+
+            var handler = new AsyncRemoteHandler<TO>(url, new[] {obj}) {
+                diagnosticIndex = DiagnosticService.HandlersData.Count
+            };
+            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 1));
+            if (RegisterImmediately)
+                SaveSystemCore.RegisterAsyncObjectHandler(handler);
+            return handler;
+        }
+
+
+        /// <summary>
+        /// Creates an async object handler that will saving some objects at remote storage
+        /// </summary>
+        /// <param name="url"> Link to a remote storage </param>
+        /// <param name="objects"> Objects that will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static AsyncRemoteHandler<TO> CreateAsyncRemoteHandler<TO> (
+            [NotNull] string url,
+            [NotNull] ICollection<TO> objects,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObjectAsync {
+            if (string.IsNullOrEmpty(url))
+                throw new ArgumentNullException(nameof(url));
+            if (objects == null)
+                throw new ArgumentNullException(nameof(objects));
+            if (objects.Count == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
+
+            var handler = new AsyncRemoteHandler<TO>(url, objects.ToArray()) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(

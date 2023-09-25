@@ -8,11 +8,11 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private readonly SerializedObject m_serializedSettings;
 
+        private readonly SerializedProperty m_debugEnabledProperty;
         private readonly SerializedProperty m_autoSaveEnabledProperty;
         private readonly SerializedProperty m_savePeriodProperty;
-        private readonly SerializedProperty m_asyncSaveEnabledProperty;
         private readonly SerializedProperty m_saveModeProperty;
-        private readonly SerializedProperty m_debugEnabledProperty;
+        private readonly SerializedProperty m_asyncModeProperty;
 
         private readonly SerializedProperty m_destroyCheckPointsProperty;
         private readonly SerializedProperty m_playerTagProperty;
@@ -30,8 +30,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_autoSaveEnabledProperty = m_serializedSettings.FindProperty("autoSaveEnabled");
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
-            m_asyncSaveEnabledProperty = m_serializedSettings.FindProperty("asyncSaveEnabled");
             m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
+            m_asyncModeProperty = m_serializedSettings.FindProperty("asyncMode");
             m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
 
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
@@ -50,7 +50,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             DrawCheckpointsSettings();
 
             EditorGUILayout.Space(15);
-            DrawProviderSettings();
+            DrawFactorySettings();
 
             m_serializedSettings.ApplyModifiedProperties();
         }
@@ -59,11 +59,15 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private void DrawCoreSettings () {
             EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
 
+            EditorGUILayout.PropertyField(m_debugEnabledProperty);
+            
             EditorGUILayout.PropertyField(m_autoSaveEnabledProperty);
             if (m_autoSaveEnabledProperty.boolValue)
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
+            
             EditorGUILayout.PropertyField(m_saveModeProperty, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_debugEnabledProperty);
+            if (m_saveModeProperty.intValue == (int)SaveMode.Async)
+                EditorGUILayout.PropertyField(m_asyncModeProperty, GUILayout.MaxWidth(300));
         }
 
 
@@ -75,8 +79,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
         }
 
 
-        private void DrawProviderSettings () {
-            EditorGUILayout.LabelField("Handlers Provider settings", EditorStyles.boldLabel);
+        private void DrawFactorySettings () {
+            EditorGUILayout.LabelField("Handlers Factory settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_registerImmediatelyProperty);
         }
 

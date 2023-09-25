@@ -30,11 +30,6 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public bool MeshDataIsFilling () {
-            return m_meshData != default;
-        }
-
-
         private void Awake () {
             m_meshFilter = GetComponent<MeshFilter>();
             m_meshData = m_meshFilter.mesh;

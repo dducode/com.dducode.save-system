@@ -15,6 +15,9 @@ namespace SaveSystem.Core {
                     SavePeriod = 0;
                     OnSaveStart = null;
                     OnSaveEnd = null;
+                    Handlers.Clear();
+                    AsyncHandlers.Clear();
+                    m_quickSaveKey = default;
                     m_destroyedCheckpoints.Clear();
                     m_autoSaveLastTime = 0;
                 }
@@ -26,7 +29,7 @@ namespace SaveSystem.Core {
             if (ModifyUpdateSystem(ref modifiedLoop, saveSystemLoop, ModifyType.Remove))
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
-                InternalLogger.LogError("Remove system failed");
+                Logger.LogError("Remove system failed");
         }
 
     }

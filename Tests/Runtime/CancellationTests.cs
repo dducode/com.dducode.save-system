@@ -28,10 +28,10 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator MeshAsyncCancelSave () => UniTask.ToCoroutine(async () => {
-            var objects = new TestMesh[200];
+            var objects = new TestMeshAsyncThreadPool[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsyncThreadPool>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
@@ -40,8 +40,8 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Start saving");
             var cancellationSource = new CancellationTokenSource();
-            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory
-               .Create(FilePath, objects);
+            AsyncObjectHandler<TestMeshAsyncThreadPool> objectHandler =
+                ObjectHandlersFactory.CreateAsyncHandler(FilePath, objects);
 
             Debug.Log("Attempt to cancel saving after starting it");
             objectHandler.SaveAsync(cancellationSource.Token).Forget();
@@ -54,35 +54,37 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator MeshAsyncCancelLoad () => UniTask.ToCoroutine(async () => {
-            var objects = new TestMesh[200];
+            var objects = new TestMeshAsyncThreadPool[200];
 
             for (var i = 0; i < objects.Length; i++) {
-                objects[i] = Object.Instantiate(Resources.Load<TestMesh>(LpSphereName));
+                objects[i] = Object.Instantiate(Resources.Load<TestMeshAsyncThreadPool>(LpSphereName));
                 objects[i].transform.position = Random.insideUnitSphere * 10;
             }
 
             Debug.Log("Created objects");
 
             Debug.Log("Start saving");
-            ObjectHandler<TestMesh> objectHandler = ObjectHandlersFactory.Create(FilePath, objects);
+            AsyncObjectHandler<TestMeshAsyncThreadPool> objectHandler =
+                ObjectHandlersFactory.CreateAsyncHandler(FilePath, objects);
 
             HandlingResult result = await objectHandler.SaveAsync();
 
             if (result == HandlingResult.Success) {
-                foreach (TestMesh obj in objects)
+                foreach (TestMeshAsyncThreadPool obj in objects)
                     obj.RemoveMesh();
                 Debug.Log("Meshes saved and removed");
             }
 
-            Debug.Log("Start loading");
             var cancellationSource = new CancellationTokenSource();
 
             Debug.Log("Attempt to cancel loading before starting it");
             cancellationSource.Cancel();
 
+            Debug.Log("Start loading");
             objectHandler.LoadAsync(cancellationSource.Token).Forget();
 
-            Assert.IsFalse(objects.Any(obj => obj.MeshDataIsFilling()));
+            bool condition = objects.Any(obj => obj.MeshIsExists());
+            Assert.IsFalse(condition);
         });
 
 

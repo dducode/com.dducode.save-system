@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -9,7 +10,7 @@ using UnityEngine.Networking;
 namespace SaveSystem.InternalServices {
 
     /// <summary>
-    /// TODO: add description
+    /// Use this class to get information about data
     /// </summary>
     public static class Storage {
 
@@ -18,7 +19,7 @@ namespace SaveSystem.InternalServices {
 
         /// <returns> Returns the size of the data in bytes </returns>
         public static long GetDataSize () {
-            return GetDataSize(Application.persistentDataPath);
+            return GetDataSize(PersistentDataPath);
         }
 
 
@@ -33,45 +34,20 @@ namespace SaveSystem.InternalServices {
 
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
-            return GetDataSize(Application.persistentDataPath) > 0;
+            return GetDataSize(PersistentDataPath) > 0;
         }
 
 
-        internal static async UniTask<byte[]> GetDataFromRemote (string url) {
-            try {
-                using UnityWebRequest request = UnityWebRequest.Get(url);
-                await request.SendWebRequest();
-
-                if (request.result != UnityWebRequest.Result.Success) {
-                    InternalLogger.LogError(request.error);
-                    return null;
-                }
-
-                return request.downloadHandler.data;
-            }
-            catch (Exception e) {
-                Debug.LogException(e);
-                return null;
-            }
+        internal static async UniTask<byte[]> GetDataFromRemote (string url, CancellationToken token) {
+            using UnityWebRequest request = UnityWebRequest.Get(url);
+            await request.SendWebRequest().ToUniTask(cancellationToken: token);
+            return request.downloadHandler.data;
         }
 
 
-        internal static async UniTask<bool> SendDataToRemote (string url, byte[] data) {
-            try {
-                using UnityWebRequest request = UnityWebRequest.Put(url, data);
-                await request.SendWebRequest();
-
-                if (request.result != UnityWebRequest.Result.Success) {
-                    InternalLogger.LogError(request.error);
-                    return false;
-                }
-
-                return true;
-            }
-            catch (Exception e) {
-                Debug.LogException(e);
-                return false;
-            }
+        internal static async UniTask SendDataToRemote (string url, byte[] data, CancellationToken token) {
+            using UnityWebRequest request = UnityWebRequest.Put(url, data);
+            await request.SendWebRequest().ToUniTask(cancellationToken: token);
         }
 
 
@@ -126,7 +102,7 @@ namespace SaveSystem.InternalServices {
         /// It's unsafe calling. Make sure you want it
         /// </summary>
         internal static void DeleteAllData () {
-            string[] data = Directory.GetFileSystemEntries(Application.persistentDataPath);
+            string[] data = Directory.GetFileSystemEntries(PersistentDataPath);
 
             foreach (string filePath in data) {
                 if (File.Exists(filePath))

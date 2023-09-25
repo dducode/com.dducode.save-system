@@ -1,19 +1,21 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using SaveSystem.CheckPoints;
 using SaveSystem.Handlers;
 using SaveSystem.InternalServices;
 using SaveSystem.UnityHandlers;
-using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using Logger = SaveSystem.InternalServices.Logger;
 using Object = UnityEngine.Object;
 
 
@@ -48,6 +50,12 @@ namespace SaveSystem.Core {
         /// </summary>
         /// <seealso cref="SaveMode"/>
         public static SaveMode SaveMode { get; set; }
+
+        /// <summary>
+        /// Defines method to save simple objects (in the main thread or in the thread pool)
+        /// </summary>
+        /// <remarks> It's only used when async save mode is selected. Otherwise it'll be ignored </remarks>
+        public static AsyncMode AsyncMode { get; set; }
 
         /// <summary>
         /// Enables logs
@@ -93,10 +101,11 @@ namespace SaveSystem.Core {
         /// It will be canceled before exit game
         private static CancellationTokenSource m_cancellationSource;
 
-        private static readonly List<IObjectHandler> Handlers = new();
+        private static readonly ConcurrentBag<IObjectHandler> Handlers = new();
         private static readonly List<IAsyncObjectHandler> AsyncHandlers = new();
+        private static KeyCode m_quickSaveKey;
+
         private static List<Vector3> m_destroyedCheckpoints = new();
-        private static SavingJobHandle m_savingJobHandle;
         private static float m_autoSaveLastTime;
         private static bool m_requestsQueueIsFree = true;
 
@@ -116,7 +125,7 @@ namespace SaveSystem.Core {
             m_cancellationSource = new CancellationTokenSource();
 
             if (DebugEnabled)
-                InternalLogger.Log("Initialized");
+                Logger.Log("Initialized");
         }
 
 
@@ -130,7 +139,7 @@ namespace SaveSystem.Core {
                 DeleteTriggeredCheckpoints();
 
                 if (DebugEnabled)
-                    InternalLogger.Log("Internal data was loaded");
+                    Logger.Log("Internal data was loaded");
             }
         }
 
@@ -140,49 +149,50 @@ namespace SaveSystem.Core {
         /// </summary>
         /// <param name="obj"> Object that will be saved </param>
         /// <param name="filePath"> Path to object saving </param>
-        /// <param name="caller"> A method where the object handler was created </param>
-        /// <remarks> Internally, it creates an object handler without configured parameters </remarks>
-        public static void RegisterPersistentObject<TO> (
-            [NotNull] TO obj,
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static void RegisterPersistentObject (
+            [NotNull] IPersistentObject obj,
             [NotNull] string filePath,
-            [CallerMemberName] string caller = ""
-        ) where TO : IPersistentObject {
+            [CallerMemberName] string caller = null
+        ) {
             if (obj == null)
                 throw new ArgumentNullException(nameof(obj));
-
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
 
-            ObjectHandler<TO> objectHandler = ObjectHandlersFactory.Create(filePath, obj, caller);
+            ObjectHandler<IPersistentObject> objectHandler = ObjectHandlersFactory.CreateHandler(filePath, obj, caller);
             if (!ObjectHandlersFactory.RegisterImmediately)
                 RegisterObjectHandler(objectHandler);
 
             if (DebugEnabled)
-                InternalLogger.Log("Persistent object was register");
+                Logger.Log("Persistent object was register");
+        }
+
+
+        /// <inheritdoc cref="RegisterPersistentObject"/>
+        public static void RegisterPersistentObjectAsync (
+            [NotNull] IPersistentObjectAsync obj,
+            [NotNull] string filePath,
+            [CallerMemberName] string caller = ""
+        ) {
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentNullException(nameof(filePath));
+
+            AsyncObjectHandler<IPersistentObjectAsync> asyncObjectHandler =
+                ObjectHandlersFactory.CreateAsyncHandler(filePath, obj, caller);
+            if (!ObjectHandlersFactory.RegisterImmediately)
+                RegisterAsyncObjectHandler(asyncObjectHandler);
+
+            if (DebugEnabled)
+                Logger.Log("Async persistent object was register");
         }
 
 
         /// <summary>
         /// Registers a handler to automatic save, quick-save, save at checkpoit and at save on exit
         /// </summary>
-        /// <param name="handler"> The handler from which a save will be called </param>
-        public static void RegisterObjectHandler<TO> ([NotNull] ObjectHandler<TO> handler)
-            where TO : IPersistentObject {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            Handlers.Add(handler);
-            AsyncHandlers.Add(handler);
-
-            if (DebugEnabled)
-                InternalLogger.Log("Object handler was register");
-        }
-
-
-        /// <summary>
-        /// TODO: add description
-        /// </summary>
-        /// <param name="handler"></param>
         public static void RegisterObjectHandler ([NotNull] IObjectHandler handler) {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -190,14 +200,13 @@ namespace SaveSystem.Core {
             Handlers.Add(handler);
 
             if (DebugEnabled)
-                InternalLogger.Log("Object handler was register");
+                Logger.Log("Object handler was register");
         }
 
 
         /// <summary>
-        /// TODO: add description
+        /// Registers an async handler to automatic save, quick-save, save at checkpoit and at save on exit
         /// </summary>
-        /// <param name="handler"></param>
         public static void RegisterAsyncObjectHandler ([NotNull] IAsyncObjectHandler handler) {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -205,7 +214,7 @@ namespace SaveSystem.Core {
             AsyncHandlers.Add(handler);
 
             if (DebugEnabled)
-                InternalLogger.Log("Async object handler was register");
+                Logger.Log("Async object handler was register");
         }
 
 
@@ -213,31 +222,45 @@ namespace SaveSystem.Core {
         /// Configures all the Core parameters
         /// </summary>
         /// <param name="autoSaveEnabled"> <see cref="AutoSaveEnabled"/> </param>
-        /// <param name="savePeriod"> <see cref="SavePeriod"/> </param>
-        /// <param name="saveMode"> <see cref="SaveMode"/> </param>
         /// <param name="debugEnabled"> <see cref="DebugEnabled"/> </param>
         /// <param name="destroyCheckPoints"> <see cref="DestroyCheckPoints"/> </param>
+        /// <param name="saveMode"> <see cref="SaveMode"/> </param>
         /// <param name="playerTag"> <see cref="PlayerTag"/> </param>
+        /// <param name="savePeriod"> <see cref="SavePeriod"/> </param>
+        /// <param name="asyncMode"> <see cref="AsyncMode"/> </param>
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
         public static void ConfigureParameters (
-            bool autoSaveEnabled, float savePeriod, SaveMode saveMode,
-            bool debugEnabled, bool destroyCheckPoints, string playerTag
+            bool autoSaveEnabled,
+            bool debugEnabled,
+            bool destroyCheckPoints,
+            SaveMode saveMode,
+            string playerTag,
+            float savePeriod = 0,
+            AsyncMode asyncMode = AsyncMode.OnPlayerLoop
         ) {
             AutoSaveEnabled = autoSaveEnabled;
-            SavePeriod = savePeriod;
-            SaveMode = saveMode;
             DebugEnabled = debugEnabled;
             DestroyCheckPoints = destroyCheckPoints;
+            SaveMode = saveMode;
             PlayerTag = playerTag;
+            SavePeriod = savePeriod;
+            AsyncMode = asyncMode;
         }
 
 
         /// <summary>
-        /// TODO: add description
+        /// It's recommended to call before exit game for guaranteed save
         /// </summary>
-        public static async UniTask SaveBeforeQuitting () {
+        /// <param name="exitImmediately"> If true, application will be closed after saving.
+        /// Pass false if you want to do anything after this </param>
+        /// <remarks>
+        /// It resets some internal parameters and isn't recommended to be called except before quitting
+        /// </remarks>
+        public static async UniTask SaveBeforeExit (bool exitImmediately) {
             const string debugMessage = "Successful saving before quitting";
             m_cancellationSource.Cancel();
+            AutoSaveEnabled = false;
+            m_quickSaveKey = default;
 
             switch (SaveMode) {
                 case SaveMode.Simple:
@@ -247,13 +270,14 @@ namespace SaveSystem.Core {
                     await SaveAllAsync(SaveType.OnExit, debugMessage);
                     break;
                 case SaveMode.Parallel:
-                    ScheduleSaveJob(SaveType.OnExit, debugMessage);
-                    await UniTask.NextFrame();
-                    m_savingJobHandle.Complete();
+                    SaveAllParallel(SaveType.OnExit, debugMessage);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
+            if (exitImmediately)
+                Application.Quit();
         }
 
 
@@ -274,11 +298,19 @@ namespace SaveSystem.Core {
                     );
                     break;
                 case SaveMode.Parallel:
-                    ScheduleSaveJob(SaveType.QuickSave, message);
+                    SaveAllParallel(SaveType.QuickSave, message);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+
+
+        /// <summary>
+        /// Binds any key with quick save
+        /// </summary>
+        public static void BindKey (KeyCode keyCode) {
+            m_quickSaveKey = keyCode;
         }
 
 
@@ -301,7 +333,7 @@ namespace SaveSystem.Core {
                     );
                     break;
                 case SaveMode.Parallel:
-                    ScheduleSaveJob(SaveType.SaveAtCheckpoint, message);
+                    SaveAllParallel(SaveType.SaveAtCheckpoint, message);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -321,7 +353,8 @@ namespace SaveSystem.Core {
 
 
         private static async void UpdateSystem () {
-            m_savingJobHandle.Complete();
+            if (Input.GetKeyDown(m_quickSaveKey))
+                QuickSave();
 
             /*
              * Lock queue and call all requests only in one thread
@@ -363,7 +396,7 @@ namespace SaveSystem.Core {
                         );
                         break;
                     case SaveMode.Parallel:
-                        ScheduleSaveJob(SaveType.AutoSave, message);
+                        SaveAllParallel(SaveType.AutoSave, message);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -383,7 +416,7 @@ namespace SaveSystem.Core {
             OnSaveEnd?.Invoke(saveType);
 
             if (DebugEnabled)
-                InternalLogger.Log(debugMessage);
+                Logger.Log(debugMessage);
         }
 
 
@@ -393,29 +426,56 @@ namespace SaveSystem.Core {
         ) {
             OnSaveStart?.Invoke(saveType);
 
-            for (var i = 0; i < Handlers.Count; i++) {
-                if (token.IsCancellationRequested)
-                    return HandlingResult.CanceledOperation;
+            HandlingResult result;
 
-                HandlingResult result = await AsyncHandlers[i].SaveAsync(token);
+            for (var i = 0; i < AsyncHandlers.Count; i++) {
+                result = await AsyncHandlers[i].SaveAsync(token);
                 if (result != HandlingResult.Success)
                     return result;
             }
 
+            result = await Catcher.TryHandle(async () => {
+                switch (AsyncMode) {
+                    case AsyncMode.OnPlayerLoop:
+                        foreach (IObjectHandler handler in Handlers) {
+                            handler.Save();
+                            await UniTask.NextFrame(token);
+                        }
+
+                        break;
+                    case AsyncMode.OnThreadPool:
+                        await UniTask.RunOnThreadPool(() => {
+                            foreach (IObjectHandler handler in Handlers)
+                                handler.Save();
+                        }, cancellationToken: token);
+
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            });
+
+            if (result != HandlingResult.Success)
+                return result;
+
             OnSaveEnd?.Invoke(saveType);
 
             if (DebugEnabled)
-                InternalLogger.Log(debugMessage);
+                Logger.Log(debugMessage);
 
             return HandlingResult.Success;
         }
 
 
-        private static void ScheduleSaveJob (SaveType saveType, string debugMessage) {
-            var savingJob = new SavingJob();
-            m_savingJobHandle = new SavingJobHandle(
-                saveType, debugMessage, savingJob.Schedule(Handlers.Count, 1)
-            );
+        private static void SaveAllParallel (SaveType saveType, string debugMessage) {
+            OnSaveStart?.Invoke(saveType);
+
+            Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
+
+            OnSaveEnd?.Invoke(saveType);
+
+            if (DebugEnabled)
+                Logger.Log(debugMessage);
         }
 
 
@@ -423,7 +483,7 @@ namespace SaveSystem.Core {
             if (ModifyUpdateSystem(ref modifiedLoop, saveSystemLoop, ModifyType.Insert))
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
-                InternalLogger.LogError("Insert system failed");
+                Logger.LogError("Insert system failed");
         }
 
 
@@ -438,6 +498,7 @@ namespace SaveSystem.Core {
             AutoSaveEnabled = settings.autoSaveEnabled;
             SavePeriod = settings.savePeriod;
             SaveMode = settings.saveMode;
+            AsyncMode = settings.asyncMode;
             DebugEnabled = settings.debugEnabled;
 
             // Checkpoints settings
@@ -534,50 +595,6 @@ namespace SaveSystem.Core {
             PlayerLoopSystem modifiedLoop,
             PlayerLoopSystem saveSystemLoop
         );
-
-
-
-        private struct SavingJobHandle {
-
-            private readonly SaveType m_saveType;
-            private readonly string m_debugMessage;
-            private JobHandle m_jobHandle;
-
-            private bool m_isCompleted;
-
-
-            public SavingJobHandle (SaveType saveType, string debugMessage, JobHandle jobHandle) {
-                m_saveType = saveType;
-                m_debugMessage = debugMessage;
-                m_jobHandle = jobHandle;
-
-                m_isCompleted = false;
-            }
-
-
-            public void Complete () {
-                if (m_isCompleted)
-                    return;
-
-                m_jobHandle.Complete();
-                OnSaveEnd?.Invoke(m_saveType);
-                m_isCompleted = true;
-
-                if (DebugEnabled)
-                    InternalLogger.Log(m_debugMessage);
-            }
-
-        }
-
-
-
-        private struct SavingJob : IJobParallelFor {
-
-            public void Execute (int index) {
-                Handlers[index].Save();
-            }
-
-        }
 
     }
 

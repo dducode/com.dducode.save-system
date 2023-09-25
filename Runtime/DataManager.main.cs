@@ -126,20 +126,27 @@ namespace SaveSystem {
 
             await using UnityWriter unityWriter = UnityHandlersProvider.GetWriter(filePath);
 
-            var result = HandlingResult.UnknownError;
+            HandlingResult result;
 
             switch (asyncMode) {
                 case AsyncMode.OnPlayerLoop:
-                    result = await InternalHandling.TrySaveObjectsAsync(
-                        objects, unityWriter, progress, source.Token
-                    );
+                    var completedTasks = 0f;
+
+                    foreach (IPersistentObject obj in objects) {
+                        obj.Save(unityWriter);
+                        completedTasks++;
+                        progress?.Report(completedTasks / objects.Length);
+                        await UniTask.NextFrame(source.Token);
+                    }
+
+                    result = source.IsCancellationRequested ? HandlingResult.CanceledOperation : HandlingResult.Success;
+
                     break;
                 case AsyncMode.OnThreadPool:
-                    await UniTask.RunOnThreadPool(async () => {
-                        result = await InternalHandling.TrySaveObjectsAsync(
-                            objects, unityWriter, progress, source.Token
-                        );
-                    });
+                    await UniTask.RunOnThreadPool(() => { SaveObjects(filePath, objects); },
+                        cancellationToken: source.Token);
+
+                    result = source.IsCancellationRequested ? HandlingResult.CanceledOperation : HandlingResult.Success;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(asyncMode), asyncMode, null);
@@ -195,20 +202,32 @@ namespace SaveSystem {
             using UnityReader unityReader = UnityHandlersProvider.GetReader(filePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
-                var result = HandlingResult.UnknownError;
+                HandlingResult result;
 
                 switch (asyncMode) {
                     case AsyncMode.OnPlayerLoop:
-                        result = await InternalHandling.TryLoadStaticObjectsAsync(
-                            objects, unityReader, progress, source.Token
-                        );
+                        var completedTasks = 0f;
+
+                        foreach (IPersistentObject obj in objects) {
+                            obj.Load(unityReader);
+                            completedTasks++;
+                            progress?.Report(completedTasks / objects.Length);
+                            await UniTask.NextFrame(source.Token);
+                        }
+
+                        result = source.IsCancellationRequested
+                            ? HandlingResult.CanceledOperation
+                            : HandlingResult.Success;
+
                         break;
                     case AsyncMode.OnThreadPool:
-                        await UniTask.RunOnThreadPool(async () => {
-                            result = await InternalHandling.TryLoadStaticObjectsAsync(
-                                objects, unityReader, progress, source.Token
-                            );
-                        });
+                        await UniTask.RunOnThreadPool(() => { LoadObjects(filePath, objects); },
+                            cancellationToken: source.Token);
+
+                        result = source.IsCancellationRequested
+                            ? HandlingResult.CanceledOperation
+                            : HandlingResult.Success;
+
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(asyncMode), asyncMode, null);

@@ -9,20 +9,20 @@ using SaveSystem.UnityHandlers;
 namespace SaveSystem.Handlers {
 
     /// <summary>
-    /// This handler can help you to saving objects at remote storage and loading them from it
+    /// It's same as <see cref="RemoteHandler{TO}">Remote Handler</see> only for objects that are saved and loaded asynchronously
     /// </summary>
-    public sealed class RemoteHandler<TO> : AbstractHandler<RemoteHandler<TO>, TO>,
-        IAsyncObjectHandler where TO : IPersistentObject {
+    public class AsyncRemoteHandler<TO> : AbstractHandler<AsyncRemoteHandler<TO>, TO>, IAsyncObjectHandler
+        where TO : IPersistentObjectAsync {
 
-        internal RemoteHandler (string url, TO[] staticObjects) : base(url, staticObjects) { }
-
-
-        internal RemoteHandler (string url, Func<TO> factoryFunc) : base(url, factoryFunc) { }
+        public AsyncRemoteHandler (string destinationPath, TO[] staticObjects) :
+            base(destinationPath, staticObjects) { }
 
 
-        /// <summary>
-        /// Call it to start remote objects saving
-        /// </summary>
+        public AsyncRemoteHandler (string destinationPath, Func<TO> factoryFunc) :
+            base(destinationPath, factoryFunc) { }
+
+
+        /// <inheritdoc cref="RemoteHandler{TO}.SaveAsync"/>
         public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
@@ -35,18 +35,20 @@ namespace SaveSystem.Handlers {
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
-            Handling.SaveObjects(savedObjects, unityWriter, savingProgress);
+            HandlingResult result = await Handling.SaveObjectsAsync(savedObjects, unityWriter, savingProgress, token);
 
-            return await Catcher.TryHandle(
-                async () => await Storage.SendDataToRemote(destinationPath, unityWriter.GetBuffer(), token),
-                "Data sending was cancelled"
-            );
+            if (result == HandlingResult.Success) {
+                result = await Catcher.TryHandle(
+                    async () => await Storage.SendDataToRemote(destinationPath, unityWriter.GetBuffer(), token),
+                    "Data sending was cancelled"
+                );
+            }
+
+            return result;
         }
 
 
-        /// <summary>
-        /// Call it to start remote objects loading
-        /// </summary>
+        /// <inheritdoc cref="RemoteHandler{TO}.LoadAsync"/>
         public async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
@@ -65,27 +67,14 @@ namespace SaveSystem.Handlers {
             await unityReader.WriteToBufferAsync(data);
             int dynamicObjectsCount = unityReader.ReadInt();
 
-            List<TO> loadedObjects = SpawnObjects(dynamicObjectsCount);
-            AddObjects(loadedObjects);
-            loadedObjects.AddRange(staticObjects);
+            result = await Handling.LoadDynamicObjectsAsync(
+                factoryFunc, this, dynamicObjectsCount, unityReader, loadingProgress, token
+            );
 
-            Handling.LoadObjects(loadedObjects, unityReader, loadingProgress);
-            return HandlingResult.Success;
-        }
+            if (result != HandlingResult.Success)
+                return result;
 
-
-        private List<TO> SpawnObjects (int count) {
-            if (count > 0 && factoryFunc == null)
-                throw new ArgumentException(nameof(factoryFunc));
-
-            var objects = new List<TO>();
-
-            for (var i = 0; i < count; i++) {
-                TO obj = factoryFunc();
-                objects.Add(obj);
-            }
-
-            return objects;
+            return await Handling.LoadStaticObjectsAsync(staticObjects, unityReader, loadingProgress, token);
         }
 
     }

@@ -12,10 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59c64c1cf1404c00968e5863eb6b02bb, type: 3}
   m_Name: SaveSystemSettings
   m_EditorClassIdentifier: 
+  debugEnabled: 0
   autoSaveEnabled: 0
   savePeriod: 0
   saveMode: 0
-  debugEnabled: 0
+  asyncMode: 0
   destroyCheckPoints: 0
   playerTag: Player
   registerImmediately: 0

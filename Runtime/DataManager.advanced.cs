@@ -51,7 +51,7 @@ namespace SaveSystem {
                 if (source.IsCancellationRequested)
                     return;
 
-                HandlingResult result = await InternalHandling.Advanced.TrySaveObjectsAsync(
+                HandlingResult result = await Handling.SaveObjectsAsync(
                     objects, unityWriter, progress, source.Token
                 );
 
@@ -95,7 +95,7 @@ namespace SaveSystem {
                 using UnityReader unityReader = UnityHandlersProvider.GetReader(fileName);
 
                 if (await unityReader.ReadFileDataToBufferAsync()) {
-                    HandlingResult result = await InternalHandling.Advanced.TryLoadStaticObjectsAsync(
+                    HandlingResult result = await Handling.LoadStaticObjectsAsync(
                         objects, unityReader, progress, source.Token
                     );
 
