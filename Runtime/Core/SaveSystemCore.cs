@@ -31,17 +31,18 @@ namespace SaveSystem.Core {
         private static readonly string InternalDataPath =
             Path.Combine("save_system", "internal", "destroyed_checkpoints.bytes");
 
-        /// <summary>
-        /// It's used to enable/disable autosave loop
-        /// </summary>
-        /// <value> If true, autosave loop will be enabled, otherwise false </value>
-        public static bool AutoSaveEnabled { get; set; }
 
+        /// <summary>
+        /// It's used to enable/disable autosave loop, save on focus changed and on low memory
+        /// </summary>
+        /// <seealso cref="SaveEvents"/>
+        public static SaveEvents EnabledSaveEvents { get; set; }
 
         /// <summary>
         /// It's used into autosave loop to determine saving frequency
         /// </summary>
         /// <value> Saving period in seconds </value>
+        /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
         public static float SavePeriod { get; set; }
 
         /// <summary>
@@ -99,6 +100,7 @@ namespace SaveSystem.Core {
         private static KeyCode m_quickSaveKey;
 
         private static List<Vector3> m_destroyedCheckpoints = new();
+        private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
         private static bool m_requestsQueueIsFree = true;
         private static IProgress<float> m_progress;
@@ -118,6 +120,12 @@ namespace SaveSystem.Core {
             ResetOnExitPlayMode(modifiedLoop, saveSystemLoop);
             m_cancellationSource = new CancellationTokenSource();
 
+            if ((EnabledSaveEvents & SaveEvents.OnFocusChanged) != 0)
+                Application.focusChanged += OnFocusChanged;
+
+            if ((EnabledSaveEvents & SaveEvents.OnLowMemory) != 0)
+                Application.lowMemory += OnLowMemory;
+
             if (DebugEnabled)
                 Logger.Log("Initialized");
         }
@@ -129,11 +137,7 @@ namespace SaveSystem.Core {
 
             if (reader.ReadFileDataToBuffer()) {
                 m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
-
                 DeleteTriggeredCheckpoints();
-
-                if (DebugEnabled)
-                    Logger.Log("Internal data was loaded");
             }
         }
 
@@ -148,7 +152,7 @@ namespace SaveSystem.Core {
             Handlers.Add(handler);
 
             if (DebugEnabled)
-                Logger.Log("Object handler was register");
+                Logger.Log($"{handler.GetType().Name} was register");
         }
 
 
@@ -162,43 +166,53 @@ namespace SaveSystem.Core {
             AsyncHandlers.Add(handler);
 
             if (DebugEnabled)
-                Logger.Log("Async object handler was register");
+                Logger.Log($"{handler.GetType().Name} was register");
         }
 
 
         /// <summary>
         /// Configures all the Core parameters
         /// </summary>
-        /// <param name="autoSaveEnabled"> <see cref="AutoSaveEnabled"/> </param>
+        /// <param name="enabledSaveEvents"></param>
+        /// <param name="saveMode"> <see cref="SaveMode"/> </param>
         /// <param name="debugEnabled"> <see cref="DebugEnabled"/> </param>
         /// <param name="destroyCheckPoints"> <see cref="DestroyCheckPoints"/> </param>
-        /// <param name="saveMode"> <see cref="SaveMode"/> </param>
         /// <param name="playerTag"> <see cref="PlayerTag"/> </param>
         /// <param name="savePeriod"> <see cref="SavePeriod"/> </param>
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
         public static void ConfigureParameters (
-            bool autoSaveEnabled,
+            SaveEvents enabledSaveEvents,
+            SaveMode saveMode,
             bool debugEnabled,
             bool destroyCheckPoints,
-            SaveMode saveMode,
             string playerTag,
             float savePeriod = 0
         ) {
-            AutoSaveEnabled = autoSaveEnabled;
+            EnabledSaveEvents = enabledSaveEvents;
+            m_autoSaveEnabled = (EnabledSaveEvents & SaveEvents.AutoSave) != 0;
+            SaveMode = saveMode;
             DebugEnabled = debugEnabled;
             DestroyCheckPoints = destroyCheckPoints;
-            SaveMode = saveMode;
             PlayerTag = playerTag;
             SavePeriod = savePeriod;
 
+            Application.focusChanged -= OnFocusChanged;
+            Application.lowMemory -= OnLowMemory;
+
+            if ((EnabledSaveEvents & SaveEvents.OnFocusChanged) != 0)
+                Application.focusChanged += OnFocusChanged;
+
+            if ((EnabledSaveEvents & SaveEvents.OnLowMemory) != 0)
+                Application.lowMemory += OnLowMemory;
+
             if (DebugEnabled) {
                 Logger.Log("Parameters was configured:" +
-                           $"\nAutoSaveEnabled: {AutoSaveEnabled}" +
-                           $"\nDebugEnabled: {DebugEnabled}" +
-                           $"\nDestroyCheckPoints: {DestroyCheckPoints}" +
-                           $"\nSaveMode: {SaveMode}" +
-                           $"\nPlayerTag: {PlayerTag}" +
-                           $"\nSavePeriod: {SavePeriod}"
+                           $"\nEnabled Save Events: {EnabledSaveEvents}" +
+                           $"\nSave Mode: {SaveMode}" +
+                           $"\nDebug Enabled: {DebugEnabled}" +
+                           $"\nDestroy Check Points: {DestroyCheckPoints}" +
+                           $"\nPlayer Tag: {PlayerTag}" +
+                           $"\nSave Period: {SavePeriod}"
                 );
             }
         }
@@ -238,7 +252,7 @@ namespace SaveSystem.Core {
         public static async UniTask SaveBeforeExit (bool exitImmediately) {
             const string debugMessage = "Successful saving before quitting";
             m_cancellationSource.Cancel();
-            AutoSaveEnabled = false;
+            m_autoSaveEnabled = false;
             m_quickSaveKey = default;
 
             switch (SaveMode) {
@@ -261,7 +275,7 @@ namespace SaveSystem.Core {
 
 
         /// <summary>
-        /// You can call it when the player presses any key
+        /// You can call it when any event was happened
         /// </summary>
         public static void QuickSave () {
             const string message = "Successful quick-save";
@@ -322,6 +336,9 @@ namespace SaveSystem.Core {
 
 
         private static async void UpdateSystem () {
+            if (Application.exitCancellationToken.IsCancellationRequested)
+                m_cancellationSource.Cancel();
+
             /*
              * Lock queue and call all requests only in one thread
              * This is necessary to prevent sharing of the same file
@@ -345,7 +362,7 @@ namespace SaveSystem.Core {
             if (Input.GetKeyDown(m_quickSaveKey))
                 QuickSave();
 
-            if (AutoSaveEnabled)
+            if (m_autoSaveEnabled)
                 AutoSave();
         }
 
@@ -441,6 +458,50 @@ namespace SaveSystem.Core {
         }
 
 
+        private static void OnFocusChanged (bool hasFocus) {
+            if (!hasFocus) {
+                const string message = "Successful save on focus changed";
+
+                switch (SaveMode) {
+                    case SaveMode.Simple:
+                        SaveAll(SaveType.OnFocusChanged, message);
+                        break;
+                    case SaveMode.Async:
+                        SavingRequests.Enqueue(async () =>
+                            await SaveAllAsync(SaveType.OnFocusChanged, message, m_cancellationSource.Token)
+                        );
+                        break;
+                    case SaveMode.Parallel:
+                        SaveAllParallel(SaveType.OnFocusChanged, message);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+
+        private static void OnLowMemory () {
+            const string message = "Successful save on low memory";
+
+            switch (SaveMode) {
+                case SaveMode.Simple:
+                    SaveAll(SaveType.OnLowMemory, message);
+                    break;
+                case SaveMode.Async:
+                    SavingRequests.Enqueue(async () =>
+                        await SaveAllAsync(SaveType.OnLowMemory, message, m_cancellationSource.Token)
+                    );
+                    break;
+                case SaveMode.Parallel:
+                    SaveAllParallel(SaveType.OnLowMemory, message);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+
         private static void SetPlayerLoop (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
             if (ModifyUpdateSystem(ref modifiedLoop, saveSystemLoop, ModifyType.Insert))
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
@@ -457,7 +518,8 @@ namespace SaveSystem.Core {
             }
 
             // Core settings
-            AutoSaveEnabled = settings.autoSaveEnabled;
+            EnabledSaveEvents = settings.enabledSaveEvents;
+            m_autoSaveEnabled = (EnabledSaveEvents & SaveEvents.AutoSave) != 0;
             SavePeriod = settings.savePeriod;
             SaveMode = settings.saveMode;
             DebugEnabled = settings.debugEnabled;

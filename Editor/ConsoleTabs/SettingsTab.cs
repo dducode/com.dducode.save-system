@@ -9,7 +9,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedObject m_serializedSettings;
 
         private SerializedProperty m_debugEnabledProperty;
-        private SerializedProperty m_autoSaveEnabledProperty;
+        private SerializedProperty m_enabledSaveEvents;
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_saveModeProperty;
 
@@ -21,6 +21,12 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private readonly GUIContent m_playerTagContent = new() {
             text = "Player Tag",
             tooltip = "Player tag is used to filtering messages from triggered checkpoints"
+        };
+
+
+        private readonly GUIContent m_saveEventsContent = new() {
+            text = "Enabled Save Events",
+            tooltip = "It's used to manage autosave loop, save on focus changed and on low memory"
         };
 
 
@@ -65,7 +71,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private void Initialize (Object settings) {
             m_serializedSettings = new SerializedObject(settings);
 
-            m_autoSaveEnabledProperty = m_serializedSettings.FindProperty("autoSaveEnabled");
+            m_enabledSaveEvents = m_serializedSettings.FindProperty("enabledSaveEvents");
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
             m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
@@ -80,13 +86,17 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private void DrawCoreSettings () {
             EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
 
-            EditorGUILayout.PropertyField(m_debugEnabledProperty);
+            m_enabledSaveEvents.enumValueFlag = (int)(SaveEvents)EditorGUILayout.EnumFlagsField(
+                m_saveEventsContent,
+                (SaveEvents)m_enabledSaveEvents.enumValueFlag,
+                GUILayout.MaxWidth(300)
+            );
 
-            EditorGUILayout.PropertyField(m_autoSaveEnabledProperty);
-            if (m_autoSaveEnabledProperty.boolValue)
+            if ((m_enabledSaveEvents.enumValueFlag & (int)SaveEvents.AutoSave) != 0)
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
             EditorGUILayout.PropertyField(m_saveModeProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_debugEnabledProperty);
         }
 
 

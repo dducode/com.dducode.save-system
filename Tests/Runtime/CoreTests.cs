@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Cysharp.Threading.Tasks;
@@ -43,8 +42,8 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.SavePeriod = 1.5f;
-            SaveSystemCore.AutoSaveEnabled = true;
-            
+            SaveSystemCore.EnabledSaveEvents = SaveEvents.AutoSave;
+
             ObjectHandlersFactory.RegisterImmediately = true;
             ObjectHandlersFactory.CreateHandler(FilePath, simpleObject);
 
@@ -70,7 +69,7 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.BindKey(KeyCode.S);
-            
+
             ObjectHandlersFactory.RegisterImmediately = true;
             ObjectHandlersFactory.CreateHandler(FilePath, simpleObject);
 
@@ -97,10 +96,10 @@ namespace SaveSystem.Tests {
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
-            
+
             ObjectHandlersFactory.RegisterImmediately = true;
             ObjectHandlersFactory.CreateHandler(FilePath, sphereComponent);
-            
+
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -138,30 +137,15 @@ namespace SaveSystem.Tests {
             ObjectHandlersFactory.CreateHandler(FilePath, spheres);
 
             SaveSystemCore.ConfigureParameters(
-                true, true, true,
-                SaveMode.Async, "Player", 3
+                SaveEvents.AutoSave | SaveEvents.OnFocusChanged, SaveMode.Async, true,
+                true, "Player", 3
             );
 
             var testStopped = false;
 
             SaveSystemCore.OnSaveEnd += saveType => {
-                switch (saveType) {
-                    case SaveType.AutoSave:
-                        Debug.Log("<b>Test</b>: Successful auto save");
-                        break;
-                    case SaveType.QuickSave:
-                        testStopped = true;
-                        Debug.Log("<b>Test</b>: Successful quick-save");
-                        break;
-                    case SaveType.SaveAtCheckpoint:
-                        Debug.Log("<b>Test</b>: Successful save at checkpoint");
-                        break;
-                    case SaveType.OnExit:
-                        Debug.Log("<b>Test</b>: Successful save on exit");
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(saveType), saveType, null);
-                }
+                if (saveType == SaveType.QuickSave)
+                    testStopped = true;
             };
 
             SaveSystemCore.BindKey(KeyCode.S);
