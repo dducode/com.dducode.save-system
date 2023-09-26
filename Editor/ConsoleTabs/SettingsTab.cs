@@ -6,17 +6,17 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
     internal class SettingsTab : IConsoleTab {
 
-        private readonly SerializedObject m_serializedSettings;
+        private SerializedObject m_serializedSettings;
 
-        private readonly SerializedProperty m_debugEnabledProperty;
-        private readonly SerializedProperty m_autoSaveEnabledProperty;
-        private readonly SerializedProperty m_savePeriodProperty;
-        private readonly SerializedProperty m_saveModeProperty;
+        private SerializedProperty m_debugEnabledProperty;
+        private SerializedProperty m_autoSaveEnabledProperty;
+        private SerializedProperty m_savePeriodProperty;
+        private SerializedProperty m_saveModeProperty;
 
-        private readonly SerializedProperty m_destroyCheckPointsProperty;
-        private readonly SerializedProperty m_playerTagProperty;
+        private SerializedProperty m_destroyCheckPointsProperty;
+        private SerializedProperty m_playerTagProperty;
 
-        private readonly SerializedProperty m_registerImmediatelyProperty;
+        private SerializedProperty m_registerImmediatelyProperty;
 
         private readonly GUIContent m_playerTagContent = new() {
             text = "Player Tag",
@@ -25,21 +25,29 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         public SettingsTab () {
-            m_serializedSettings = new SerializedObject(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            var settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
 
-            m_autoSaveEnabledProperty = m_serializedSettings.FindProperty("autoSaveEnabled");
-            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
-            m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
-            m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
+            if (settings == null)
+                return;
 
-            m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
-            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
-
-            m_registerImmediatelyProperty = m_serializedSettings.FindProperty("registerImmediately");
+            Initialize(settings);
         }
 
 
         public void Draw () {
+            if (m_serializedSettings == null) {
+                EditorGUILayout.HelpBox(
+                    "You are missing settings asset. Click button to restore it", MessageType.Warning
+                );
+
+                if (GUILayout.Button("Restore Settings Asset", GUILayout.ExpandWidth(false))) {
+                    SaveSystemSettings.CreateSettings();
+                    Initialize(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+                }
+
+                return;
+            }
+
             m_serializedSettings.Update();
 
             DrawCoreSettings();
@@ -54,15 +62,30 @@ namespace SaveSystem.Editor.ConsoleTabs {
         }
 
 
+        private void Initialize (Object settings) {
+            m_serializedSettings = new SerializedObject(settings);
+
+            m_autoSaveEnabledProperty = m_serializedSettings.FindProperty("autoSaveEnabled");
+            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
+            m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
+            m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
+
+            m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
+            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
+
+            m_registerImmediatelyProperty = m_serializedSettings.FindProperty("registerImmediately");
+        }
+
+
         private void DrawCoreSettings () {
             EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
 
             EditorGUILayout.PropertyField(m_debugEnabledProperty);
-            
+
             EditorGUILayout.PropertyField(m_autoSaveEnabledProperty);
             if (m_autoSaveEnabledProperty.boolValue)
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
-            
+
             EditorGUILayout.PropertyField(m_saveModeProperty, GUILayout.MaxWidth(300));
         }
 

@@ -1,4 +1,8 @@
-﻿using UnityEngine;
+﻿using System.IO;
+using UnityEditor;
+using UnityEngine;
+using Directory = UnityEngine.Windows.Directory;
+using File = UnityEngine.Windows.File;
 
 namespace SaveSystem.Core {
 
@@ -26,6 +30,27 @@ namespace SaveSystem.Core {
 
         [Tooltip("Configure it to automatically register handlers in the Save System Core after creation")]
         public bool registerImmediately;
+
+
+    #if UNITY_EDITOR
+        [InitializeOnLoadMethod]
+        public static void CreateSettings () {
+            string resourcesPath = Path.Combine(Application.dataPath, "Resources");
+            string settingsFilePath = Path.Combine(resourcesPath, $"{nameof(SaveSystemSettings)}.asset");
+
+            if (!Directory.Exists(resourcesPath)) {
+                AssetDatabase.CreateFolder("Assets", "Resources");
+                AssetDatabase.Refresh();
+            }
+
+            if (!File.Exists(settingsFilePath)) {
+                var settings = CreateInstance<SaveSystemSettings>();
+                settings.playerTag = "Player";
+                AssetDatabase.CreateAsset(settings, $"Assets/Resources/{nameof(SaveSystemSettings)}.asset");
+                AssetDatabase.Refresh();
+            }
+        }
+    #endif
 
     }
 

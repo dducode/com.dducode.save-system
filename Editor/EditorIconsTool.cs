@@ -12,7 +12,7 @@ namespace SaveSystem.Editor {
             );
 #else
             return AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Packages/Save System/Editor/Icons/checkpoints_manager_icon.png"
+                "Packages/com.dducode.save-system/Editor/Icons/checkpoints_manager_icon.png"
             );
 #endif
         }
