@@ -1,5 +1,5 @@
 ﻿#if UNITY_EDITOR
-using SaveSystem.InternalServices;
+using SaveSystem.Internal;
 using UnityEditor;
 using UnityEngine.LowLevel;
 

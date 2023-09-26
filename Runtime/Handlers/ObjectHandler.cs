@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using SaveSystem.InternalServices;
-using SaveSystem.InternalServices.Diagnostic;
+using SaveSystem.Internal;
+using SaveSystem.Internal.Diagnostic;
 using SaveSystem.UnityHandlers;
 
 namespace SaveSystem.Handlers {

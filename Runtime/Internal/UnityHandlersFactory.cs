@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using SaveSystem.UnityHandlers;
 
-namespace SaveSystem.InternalServices {
+namespace SaveSystem.Internal {
 
     internal static class UnityHandlersFactory {
 

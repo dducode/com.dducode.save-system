@@ -9,12 +9,12 @@ using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using SaveSystem.CheckPoints;
 using SaveSystem.Handlers;
-using SaveSystem.InternalServices;
+using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using Logger = SaveSystem.InternalServices.Logger;
+using Logger = SaveSystem.Internal.Logger;
 using Object = UnityEngine.Object;
 
 

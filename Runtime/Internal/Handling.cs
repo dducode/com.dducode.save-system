@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.Handlers;
 using SaveSystem.UnityHandlers;
 
-namespace SaveSystem.InternalServices {
+namespace SaveSystem.Internal {
 
     internal static class Handling {
 

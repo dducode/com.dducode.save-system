@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.InternalServices;
-using SaveSystem.InternalServices.Diagnostic;
+using SaveSystem.Internal;
+using SaveSystem.Internal.Diagnostic;
 using SaveSystem.UnityHandlers;
 
 namespace SaveSystem.Handlers {

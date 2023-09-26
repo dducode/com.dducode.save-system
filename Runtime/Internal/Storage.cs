@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -7,7 +6,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace SaveSystem.InternalServices {
+namespace SaveSystem.Internal {
 
     /// <summary>
     /// Use this class to get information about data
@@ -51,8 +50,8 @@ namespace SaveSystem.InternalServices {
         }
 
 
-        internal static string GetFullPath (string filePath) {
-            return Path.Combine(PersistentDataPath, $"{filePath}");
+        internal static string GetFullPath (string localFilePath) {
+            return Path.Combine(PersistentDataPath, $"{localFilePath}");
         }
 
 
@@ -74,23 +73,27 @@ namespace SaveSystem.InternalServices {
         /// <param name="dataSize"> Size of data to will be formatted </param>
         /// <returns> Returns the formatted data size </returns>
         internal static string GetFormattedDataSize (long dataSize) {
+            const double kByte = 1024;
+            const double mByte = 1_048_576;
+            const double gByte = 1_073_741_824;
+            
             string label;
 
             switch (dataSize) {
                 case < 1_000:
-                    label = $"{Math.Round((double)dataSize, 2)} Bytes";
+                    label = $"{dataSize} Bytes";
                     break;
                 case < 1_000_000:
-                    double size = dataSize / 1024d;
-                    label = $"{Math.Round(size, 2)} KBytes";
+                    double size = dataSize / kByte;
+                    label = $"{size:F} KBytes";
                     break;
                 case < 1_000_000_000:
-                    size = dataSize / Math.Pow(1024, 2);
-                    label = $"{Math.Round(size, 2)} MBytes";
+                    size = dataSize / mByte;
+                    label = $"{size:F} MBytes";
                     break;
                 default:
-                    size = dataSize / Math.Pow(1024, 3);
-                    label = $"{Math.Round(size, 2)} GBytes";
+                    size = dataSize / gByte;
+                    label = $"{size:F} GBytes";
                     break;
             }
 

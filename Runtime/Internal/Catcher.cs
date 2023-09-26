@@ -3,7 +3,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.Handlers;
 using UnityEngine;
 
-namespace SaveSystem.InternalServices {
+namespace SaveSystem.Internal {
 
     internal static class Catcher {
 

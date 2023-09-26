@@ -7,7 +7,7 @@ using NUnit.Framework;
 using SaveSystem.CheckPoints;
 using SaveSystem.Core;
 using SaveSystem.Handlers;
-using SaveSystem.InternalServices;
+using SaveSystem.Internal;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -225,7 +225,7 @@ namespace SaveSystem.Tests {
 
         [TearDown]
         public void EndTest () {
-            Storage.DeleteAllData();
+            // Storage.DeleteAllData();
             Debug.Log("End test");
         }
 

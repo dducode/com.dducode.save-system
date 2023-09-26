@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace SaveSystem.InternalServices {
+namespace SaveSystem.Internal {
 
     internal static class Logger {
 

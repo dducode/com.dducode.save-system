@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using SaveSystem.Core;
-using SaveSystem.InternalServices.Diagnostic;
+using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
 
 namespace SaveSystem.Handlers {
@@ -59,7 +59,9 @@ namespace SaveSystem.Handlers {
             var objectHandler = new ObjectHandler<TO>(filePath, factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 0));
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), 0)
+            );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterObjectHandler(objectHandler);
             return objectHandler;
@@ -85,7 +87,9 @@ namespace SaveSystem.Handlers {
             var objectHandler = new ObjectHandler<TO>(filePath, new[] {obj}) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 1));
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), 1)
+            );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterObjectHandler(objectHandler);
             return objectHandler;
@@ -114,7 +118,7 @@ namespace SaveSystem.Handlers {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(TO), objects.Count)
+                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterObjectHandler(objectHandler);
@@ -141,7 +145,9 @@ namespace SaveSystem.Handlers {
             var handler = new AsyncObjectHandler<TO>(filePath, factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 0));
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), 0)
+            );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -167,7 +173,9 @@ namespace SaveSystem.Handlers {
             var handler = new AsyncObjectHandler<TO>(filePath, new[] {obj}) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(filePath, caller, typeof(TO), 1));
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), 1)
+            );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -196,7 +204,7 @@ namespace SaveSystem.Handlers {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(TO), objects.Count)
+                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
@@ -223,7 +231,7 @@ namespace SaveSystem.Handlers {
             var handler = new RemoteHandler<TO>(url, factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 0));
+            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(RemoteHandler<TO>), typeof(TO), 0));
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -249,7 +257,7 @@ namespace SaveSystem.Handlers {
             var handler = new RemoteHandler<TO>(url, new[] {obj}) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 1));
+            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(RemoteHandler<TO>), typeof(TO), 1));
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -278,7 +286,7 @@ namespace SaveSystem.Handlers {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(url, caller, typeof(TO), objects.Count)
+                new HandlerMetadata(url, caller, typeof(RemoteHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
@@ -305,7 +313,9 @@ namespace SaveSystem.Handlers {
             var handler = new AsyncRemoteHandler<TO>(url, factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 0));
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(url, caller, typeof(AsyncRemoteHandler<TO>), typeof(TO), 0)
+            );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -331,7 +341,9 @@ namespace SaveSystem.Handlers {
             var handler = new AsyncRemoteHandler<TO>(url, new[] {obj}) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
-            DiagnosticService.AddMetadata(new HandlerMetadata(url, caller, typeof(TO), 1));
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(url, caller, typeof(AsyncRemoteHandler<TO>), typeof(TO), 1)
+            );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
             return handler;
@@ -360,7 +372,7 @@ namespace SaveSystem.Handlers {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(url, caller, typeof(TO), objects.Count)
+                new HandlerMetadata(url, caller, typeof(AsyncRemoteHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);

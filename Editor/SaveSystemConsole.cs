@@ -26,7 +26,7 @@ namespace SaveSystem.Editor {
             },
             new() {
                 text = "Settings",
-                tooltip = "Configure system settings"
+                tooltip = "Configure save system settings"
             }
         };
 

@@ -9,7 +9,7 @@ namespace SaveSystem.Tests.TestObjects {
         private Vector3 m_position;
 
 
-        private void FixedUpdate () {
+        private void Update () {
             m_position = transform.position;
         }
 

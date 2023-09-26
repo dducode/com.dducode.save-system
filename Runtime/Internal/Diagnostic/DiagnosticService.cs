@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using UnityEditor;
 
-namespace SaveSystem.InternalServices.Diagnostic {
+namespace SaveSystem.Internal.Diagnostic {
 
     internal static class DiagnosticService {
 
@@ -27,13 +27,12 @@ namespace SaveSystem.InternalServices.Diagnostic {
 
         [Conditional("UNITY_EDITOR")]
         internal static void UpdateObjectsCount (int index, int count) {
-            // bug argument out of range
             if (index >= HandlersData.Count)
                 return;
 
             HandlerMetadata oldData = HandlersData[index];
             HandlersData[index] = new HandlerMetadata(
-                oldData.filePath, oldData.caller, oldData.objectsType, count
+                oldData.destinationPath, oldData.caller, oldData.handlerType, oldData.objectsType, count
             );
         }
 

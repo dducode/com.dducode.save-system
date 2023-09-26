@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
-using SaveSystem.InternalServices.Diagnostic;
+using SaveSystem.Internal.Diagnostic;
 
 namespace SaveSystem.Handlers {
 
@@ -56,8 +56,6 @@ namespace SaveSystem.Handlers {
         public T AddObjects ([NotNull] ICollection<TO> objects) {
             if (objects == null)
                 throw new ArgumentNullException(nameof(objects));
-            if (objects.Count == 0)
-                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
             dynamicObjects.AddRange(objects);
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);

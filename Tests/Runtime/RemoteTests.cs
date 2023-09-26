@@ -9,7 +9,7 @@ namespace SaveSystem.Tests {
 
     public class RemoteTests {
 
-        private const string URL = "https://127.0.0.1:80/fake_remote_storage/test.bytes";
+        private const string URL = "http://127.0.0.1:8000/fake_remote_storage/test.bytes";
 
 
         [UnityTest]

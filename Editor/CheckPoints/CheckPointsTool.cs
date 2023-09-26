@@ -66,8 +66,7 @@ namespace SaveSystem.Editor.CheckPoints {
 
             m_icon = new GUIContent {
                 image = EditorIconsTool.GetMainIcon(),
-                text = "Check Points Manager",
-                tooltip = "Check Points Creator"
+                tooltip = "Check Points Tool"
             };
         }
 
