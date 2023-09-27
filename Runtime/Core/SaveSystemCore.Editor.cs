@@ -1,6 +1,5 @@
 ﻿#if UNITY_EDITOR
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.LowLevel;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -10,8 +9,9 @@ namespace SaveSystem.Core {
 
         static partial void ResetOnExitPlayMode (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
             EditorApplication.playModeStateChanged += state => {
-                if (state is PlayModeStateChange.ExitingPlayMode) {
+                if (state is PlayModeStateChange.EnteredEditMode) {
                     ResetPlayerLoop(modifiedLoop, saveSystemLoop);
+                    EnabledSaveEvents = SaveEvents.None;
                     m_autoSaveEnabled = false;
                     SavePeriod = 0;
                     OnSaveStart = null;
@@ -21,14 +21,6 @@ namespace SaveSystem.Core {
                     m_quickSaveKey = default;
                     m_destroyedCheckpoints.Clear();
                     m_autoSaveLastTime = 0;
-
-                    if ((EnabledSaveEvents & SaveEvents.OnFocusChanged) != 0)
-                        Application.focusChanged -= OnFocusChanged;
-
-                    if ((EnabledSaveEvents & SaveEvents.OnLowMemory) != 0)
-                        Application.lowMemory -= OnLowMemory;
-
-                    EnabledSaveEvents = SaveEvents.None;
                 }
             };
         }

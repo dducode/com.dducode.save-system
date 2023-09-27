@@ -20,7 +20,7 @@ namespace SaveSystem.Handlers {
 
 
         public void Save () {
-            using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(destinationPath);
+            using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(localFilePath);
 
             dynamicObjects.RemoveAll(obj => obj == null);
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
@@ -34,7 +34,7 @@ namespace SaveSystem.Handlers {
 
 
         public HandlingResult Load () {
-            using UnityReader unityReader = UnityHandlersFactory.CreateReader(destinationPath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader(localFilePath);
 
             if (unityReader.ReadFileDataToBuffer()) {
                 int dynamicObjectsCount = unityReader.ReadInt();

@@ -1,6 +1,7 @@
 ﻿using SaveSystem.Core;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace SaveSystem.Editor.ConsoleTabs {
 
@@ -8,26 +9,27 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private SerializedObject m_serializedSettings;
 
-        private SerializedProperty m_debugEnabledProperty;
-        private SerializedProperty m_enabledSaveEvents;
+        private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_saveModeProperty;
+        private SerializedProperty m_isParallelProperty;
+        private SerializedProperty m_debugEnabledProperty;
 
         private SerializedProperty m_destroyCheckPointsProperty;
         private SerializedProperty m_playerTagProperty;
 
         private SerializedProperty m_registerImmediatelyProperty;
 
+        private readonly GUIContent m_saveEventsContent = new() {
+            text = "Enabled Save Events",
+            tooltip = "It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game"
+        };
+
         private readonly GUIContent m_playerTagContent = new() {
             text = "Player Tag",
             tooltip = "Player tag is used to filtering messages from triggered checkpoints"
         };
 
-
-        private readonly GUIContent m_saveEventsContent = new() {
-            text = "Enabled Save Events",
-            tooltip = "It's used to manage autosave loop, save on focus changed and on low memory"
-        };
+        private SaveEvents m_enabledSaveEvents;
 
 
         public SettingsTab () {
@@ -71,9 +73,11 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private void Initialize (Object settings) {
             m_serializedSettings = new SerializedObject(settings);
 
-            m_enabledSaveEvents = m_serializedSettings.FindProperty("enabledSaveEvents");
+            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
+            m_enabledSaveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
+            
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
-            m_saveModeProperty = m_serializedSettings.FindProperty("saveMode");
+            m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
             m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
 
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
@@ -86,16 +90,18 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private void DrawCoreSettings () {
             EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
 
-            m_enabledSaveEvents.enumValueFlag = (int)(SaveEvents)EditorGUILayout.EnumFlagsField(
+            m_enabledSaveEvents = (SaveEvents)EditorGUILayout.EnumFlagsField(
                 m_saveEventsContent,
-                (SaveEvents)m_enabledSaveEvents.enumValueFlag,
+                m_enabledSaveEvents,
                 GUILayout.MaxWidth(300)
             );
 
-            if ((m_enabledSaveEvents.enumValueFlag & (int)SaveEvents.AutoSave) != 0)
+            m_enabledSaveEventsProperty.enumValueFlag = (int)m_enabledSaveEvents;
+
+            if (m_enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
-            EditorGUILayout.PropertyField(m_saveModeProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_isParallelProperty);
             EditorGUILayout.PropertyField(m_debugEnabledProperty);
         }
 

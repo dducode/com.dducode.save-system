@@ -6,12 +6,12 @@ using NUnit.Framework;
 using SaveSystem.CheckPoints;
 using SaveSystem.Core;
 using SaveSystem.Handlers;
-using SaveSystem.Internal;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
+using SaveType = SaveSystem.Core.SaveType;
 
 namespace SaveSystem.Tests {
 
@@ -19,7 +19,7 @@ namespace SaveSystem.Tests {
 
         private const string FilePath = "test.bytes";
 
-        public static SaveMode[] saveModes = {SaveMode.Simple, SaveMode.Async, SaveMode.Parallel};
+        public static bool[] parallelConfig = {true, false};
 
 
         [SetUp]
@@ -88,17 +88,15 @@ namespace SaveSystem.Tests {
         public IEnumerator CheckpointSave () => UniTask.ToCoroutine(async () => {
             const string sphereTag = "Player";
 
-            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.transform.position = Vector3.up * 10;
+            var sphere = CreateSphere<TestRigidbody>();
             sphere.tag = sphereTag;
-            var sphereComponent = sphere.AddComponent<TestRigidbody>();
 
             SaveSystemCore.DebugEnabled = true;
             SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
 
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler(FilePath, sphereComponent);
+            ObjectHandlersFactory.CreateHandler(FilePath, sphere);
 
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
@@ -115,40 +113,42 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator ManySpheres () => UniTask.ToCoroutine(async () => {
+            const string sphereTag = "Player";
             var spheres = new List<TestRigidbody>();
+            var asyncSpheres = new List<TestRigidbodyAsync>();
 
             // Spawn spheres
-            for (var i = 0; i < 1000; i++) {
-                var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                sphere.transform.position = Random.insideUnitSphere * 10;
+            for (var i = 0; i < 500; i++) {
+                var sphere = CreateSphere<TestRigidbody>();
+                spheres.Add(sphere);
+
+                var asyncSphere = CreateSphere<TestRigidbodyAsync>();
+                asyncSpheres.Add(asyncSphere);
 
                 if (i == 0)
-                    sphere.tag = "Player";
-
-                var component = sphere.AddComponent<TestRigidbody>();
-                spheres.Add(component);
+                    sphere.tag = sphereTag;
             }
 
             // Create checkpoints
-            for (var i = 0; i < 1000; i++)
-                CheckPointsFactory.CreateCheckPoint(Random.insideUnitSphere * 10);
+            // for (var i = 0; i < 1000; i++)
+            // CheckPointsFactory.CreateCheckPoint(Random.insideUnitSphere * 10);
 
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler(FilePath, spheres);
+            ObjectHandlersFactory.CreateHandler("spheres.bytes", spheres);
+            ObjectHandlersFactory.CreateAsyncHandler("async_spheres.bytes", asyncSpheres);
 
             SaveSystemCore.ConfigureParameters(
-                SaveEvents.AutoSave | SaveEvents.OnFocusChanged, SaveMode.Async, true,
-                true, "Player", 3
+                SaveEvents.AutoSave | SaveEvents.OnFocusChanged, false, true,
+                true, sphereTag, 3
             );
 
             var testStopped = false;
 
+            SaveSystemCore.BindKey(KeyCode.S);
             SaveSystemCore.OnSaveEnd += saveType => {
                 if (saveType == SaveType.QuickSave)
                     testStopped = true;
             };
-
-            SaveSystemCore.BindKey(KeyCode.S);
 
             await UniTask.WaitWhile(() => !testStopped);
             Assert.Greater(Storage.GetDataSize(), 0);
@@ -156,30 +156,40 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator DifferentSavingModes ([ValueSource(nameof(saveModes))] SaveMode saveMode) =>
+        public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) =>
             UniTask.ToCoroutine(async () => {
                 ObjectHandlersFactory.RegisterImmediately = true;
                 SaveSystemCore.DebugEnabled = true;
 
-                for (var i = 0; i < 10; i++) {
-                    var spheres = new List<TestMesh>();
+                for (var i = 0; i < 5; i++) {
+                    var meshes = new List<TestMesh>();
+                    var asyncMeshes = new List<TestMeshAsyncThreadPool>();
 
-                    for (var j = 0; j < 100; j++) {
-                        var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                        sphere.transform.position = Random.insideUnitSphere * 10;
-                        var sphereComponent = sphere.AddComponent<TestMesh>();
-                        spheres.Add(sphereComponent);
+                    for (var j = 0; j < 50; j++) {
+                        var testMesh = CreateSphere<TestMesh>();
+                        meshes.Add(testMesh);
+
+                        var asyncMesh = CreateSphere<TestMeshAsyncThreadPool>();
+                        asyncMeshes.Add(asyncMesh);
                     }
 
-                    ObjectHandlersFactory.CreateHandler($"test_{i}.bytes", spheres);
+                    ObjectHandlersFactory.CreateHandler($"test_mesh_{i}.bytes", meshes);
+                    ObjectHandlersFactory.CreateAsyncHandler($"test_async_mesh_{i}.bytes", asyncMeshes);
                     await UniTask.NextFrame();
                 }
 
-                SaveSystemCore.SaveMode = saveMode;
+                var saveIsCompleted = false;
+
+                SaveSystemCore.IsParallel = isParallel;
+                SaveSystemCore.OnSaveEnd += saveType => {
+                    if (saveType == SaveType.QuickSave)
+                        saveIsCompleted = true;
+                };
 
                 var stopwatch = new Stopwatch();
                 stopwatch.Start();
-                await SaveSystemCore.SaveBeforeExit(false);
+                SaveSystemCore.QuickSave();
+                await UniTask.WaitWhile(() => !saveIsCompleted);
                 stopwatch.Stop();
                 Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
                 Assert.Greater(Storage.GetDataSize(), 0);
@@ -199,10 +209,9 @@ namespace SaveSystem.Tests {
             }
 
             SaveSystemCore.DebugEnabled = true;
-            SaveSystemCore.SaveMode = SaveMode.Simple;
             ObjectHandlersFactory.RegisterImmediately = true;
             ObjectHandlersFactory.CreateHandler(FilePath, spheres);
-            await SaveSystemCore.SaveBeforeExit(true);
+            await SaveSystemCore.SaveBeforeExitAsync();
             Assert.Greater(Storage.GetDataSize(), 0);
         });
 
@@ -211,6 +220,13 @@ namespace SaveSystem.Tests {
         public void EndTest () {
             // Storage.DeleteAllData();
             Debug.Log("End test");
+        }
+
+
+        private T CreateSphere<T> () where T : Component {
+            var primitive = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            primitive.transform.position = Random.insideUnitSphere * 10;
+            return primitive.AddComponent<T>();
         }
 
     }

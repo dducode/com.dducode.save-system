@@ -33,7 +33,7 @@ namespace SaveSystem.Core {
 
 
         /// <summary>
-        /// It's used to enable/disable autosave loop, save on focus changed and on low memory
+        /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
         /// </summary>
         /// <seealso cref="SaveEvents"/>
         public static SaveEvents EnabledSaveEvents { get; set; }
@@ -46,10 +46,9 @@ namespace SaveSystem.Core {
         public static float SavePeriod { get; set; }
 
         /// <summary>
-        /// You can choose 3 saving modes - simple mode, async saving and multithreading saving
+        /// Configure it to set parallel saving handlers
         /// </summary>
-        /// <seealso cref="SaveMode"/>
-        public static SaveMode SaveMode { get; set; }
+        public static bool IsParallel { get; set; }
 
         /// <summary>
         /// Enables logs
@@ -96,7 +95,7 @@ namespace SaveSystem.Core {
         private static CancellationTokenSource m_cancellationSource;
 
         private static readonly ConcurrentBag<IObjectHandler> Handlers = new();
-        private static readonly List<IAsyncObjectHandler> AsyncHandlers = new();
+        private static readonly ConcurrentBag<IAsyncObjectHandler> AsyncHandlers = new();
         private static KeyCode m_quickSaveKey;
 
         private static List<Vector3> m_destroyedCheckpoints = new();
@@ -104,6 +103,7 @@ namespace SaveSystem.Core {
         private static float m_autoSaveLastTime;
         private static bool m_requestsQueueIsFree = true;
         private static IProgress<float> m_progress;
+        private static bool m_exitSavingCompleted;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -120,11 +120,16 @@ namespace SaveSystem.Core {
             ResetOnExitPlayMode(modifiedLoop, saveSystemLoop);
             m_cancellationSource = new CancellationTokenSource();
 
-            if ((EnabledSaveEvents & SaveEvents.OnFocusChanged) != 0)
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusChanged))
                 Application.focusChanged += OnFocusChanged;
 
-            if ((EnabledSaveEvents & SaveEvents.OnLowMemory) != 0)
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                 Application.lowMemory += OnLowMemory;
+
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnExit))
+                Application.quitting += SaveBeforeExit;
+
+            Application.quitting += () => m_cancellationSource.Cancel();
 
             if (DebugEnabled)
                 Logger.Log("Initialized");
@@ -174,7 +179,7 @@ namespace SaveSystem.Core {
         /// Configures all the Core parameters
         /// </summary>
         /// <param name="enabledSaveEvents"></param>
-        /// <param name="saveMode"> <see cref="SaveMode"/> </param>
+        /// <param name="isParallel"></param>
         /// <param name="debugEnabled"> <see cref="DebugEnabled"/> </param>
         /// <param name="destroyCheckPoints"> <see cref="DestroyCheckPoints"/> </param>
         /// <param name="playerTag"> <see cref="PlayerTag"/> </param>
@@ -182,15 +187,15 @@ namespace SaveSystem.Core {
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
         public static void ConfigureParameters (
             SaveEvents enabledSaveEvents,
-            SaveMode saveMode,
+            bool isParallel,
             bool debugEnabled,
             bool destroyCheckPoints,
             string playerTag,
             float savePeriod = 0
         ) {
             EnabledSaveEvents = enabledSaveEvents;
-            m_autoSaveEnabled = (EnabledSaveEvents & SaveEvents.AutoSave) != 0;
-            SaveMode = saveMode;
+            m_autoSaveEnabled = EnabledSaveEvents.HasFlag(SaveEvents.AutoSave);
+            IsParallel = isParallel;
             DebugEnabled = debugEnabled;
             DestroyCheckPoints = destroyCheckPoints;
             PlayerTag = playerTag;
@@ -198,17 +203,21 @@ namespace SaveSystem.Core {
 
             Application.focusChanged -= OnFocusChanged;
             Application.lowMemory -= OnLowMemory;
+            Application.quitting -= SaveBeforeExit;
 
-            if ((EnabledSaveEvents & SaveEvents.OnFocusChanged) != 0)
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusChanged))
                 Application.focusChanged += OnFocusChanged;
 
-            if ((EnabledSaveEvents & SaveEvents.OnLowMemory) != 0)
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                 Application.lowMemory += OnLowMemory;
+
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnExit))
+                Application.quitting += SaveBeforeExit;
 
             if (DebugEnabled) {
                 Logger.Log("Parameters was configured:" +
                            $"\nEnabled Save Events: {EnabledSaveEvents}" +
-                           $"\nSave Mode: {SaveMode}" +
+                           $"\nIs Parallel: {IsParallel}" +
                            $"\nDebug Enabled: {DebugEnabled}" +
                            $"\nDestroy Check Points: {DestroyCheckPoints}" +
                            $"\nPlayer Tag: {PlayerTag}" +
@@ -219,9 +228,10 @@ namespace SaveSystem.Core {
 
 
         /// <summary>
-        /// Pass <see cref="IProgress{T}"> IProgress object </see> to observe saving progress when it'll be started
+        /// Pass <see cref="IProgress{T}"> IProgress object </see> to observe async saving progress
+        /// when it'll be started
         /// </summary>
-        /// <remarks> The Core will report progress only in async save mode </remarks>
+        /// <remarks> The Core will report progress only during async save </remarks>
         public static void ObserveProgress ([NotNull] IProgress<float> progress) {
             m_progress = progress ?? throw new ArgumentNullException(nameof(progress));
 
@@ -242,35 +252,29 @@ namespace SaveSystem.Core {
 
 
         /// <summary>
-        /// It's recommended to call before exit game for guaranteed save
+        /// It's recommended to call before quitting the game for guaranteed save async handlers.
+        /// To save simple handlers,
+        /// will be enought to set <b>SaveEvents.OnExit</b> flag to <see cref="EnabledSaveEvents"/> property
         /// </summary>
-        /// <param name="exitImmediately"> If true, application will be closed after saving.
-        /// Pass false if you want to do anything after this </param>
         /// <remarks>
-        /// It resets some internal parameters. It isn't recommended to call except before quitting
+        /// This will immediately exit the game after saving.
+        /// You should make sure that you don't need to do anything else before calling it
         /// </remarks>
-        public static async UniTask SaveBeforeExit (bool exitImmediately) {
-            const string debugMessage = "Successful saving before quitting";
+        public static async UniTask SaveBeforeExitAsync () {
             m_cancellationSource.Cancel();
             m_autoSaveEnabled = false;
             m_quickSaveKey = default;
 
-            switch (SaveMode) {
-                case SaveMode.Simple:
-                    SaveAll(SaveType.OnExit, debugMessage);
-                    break;
-                case SaveMode.Async:
-                    await SaveAllAsync(SaveType.OnExit, debugMessage);
-                    break;
-                case SaveMode.Parallel:
-                    SaveAllParallel(SaveType.OnExit, debugMessage);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            OnSaveStart?.Invoke(SaveType.OnExit);
+            SaveHandlers();
+            await SaveAsyncHandlers();
+            OnSaveEnd?.Invoke(SaveType.OnExit);
 
-            if (exitImmediately)
-                Application.Quit();
+            if (DebugEnabled)
+                Logger.Log("Successful async saving before the quitting");
+
+            Application.quitting -= SaveBeforeExit;
+            Application.Quit();
         }
 
 
@@ -279,22 +283,7 @@ namespace SaveSystem.Core {
         /// </summary>
         public static void QuickSave () {
             const string message = "Successful quick-save";
-
-            switch (SaveMode) {
-                case SaveMode.Simple:
-                    SaveAll(SaveType.QuickSave, message);
-                    break;
-                case SaveMode.Async:
-                    SavingRequests.Enqueue(async () =>
-                        await SaveAllAsync(SaveType.QuickSave, message, m_cancellationSource.Token)
-                    );
-                    break;
-                case SaveMode.Parallel:
-                    SaveAllParallel(SaveType.QuickSave, message);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            ProcessSave(SaveType.QuickSave, message, m_cancellationSource.Token);
         }
 
 
@@ -305,22 +294,7 @@ namespace SaveSystem.Core {
             checkPoint.Disable();
 
             const string message = "Successful save at checkpoint";
-
-            switch (SaveMode) {
-                case SaveMode.Simple:
-                    SaveAll(SaveType.SaveAtCheckpoint, message);
-                    break;
-                case SaveMode.Async:
-                    SavingRequests.Enqueue(async () =>
-                        await SaveAllAsync(SaveType.SaveAtCheckpoint, message, m_cancellationSource.Token)
-                    );
-                    break;
-                case SaveMode.Parallel:
-                    SaveAllParallel(SaveType.SaveAtCheckpoint, message);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            ProcessSave(SaveType.SaveAtCheckpoint, message, m_cancellationSource.Token);
 
             if (checkPoint == null)
                 return;
@@ -336,8 +310,8 @@ namespace SaveSystem.Core {
 
 
         private static async void UpdateSystem () {
-            if (Application.exitCancellationToken.IsCancellationRequested)
-                m_cancellationSource.Cancel();
+            if (m_cancellationSource.IsCancellationRequested)
+                return;
 
             /*
              * Lock queue and call all requests only in one thread
@@ -370,134 +344,90 @@ namespace SaveSystem.Core {
         private static void AutoSave () {
             if (m_autoSaveLastTime + SavePeriod < Time.time) {
                 const string message = "Successful auto save";
-
-                switch (SaveMode) {
-                    case SaveMode.Simple:
-                        SaveAll(SaveType.AutoSave, message);
-                        break;
-                    case SaveMode.Async:
-                        SavingRequests.Enqueue(async () =>
-                            await SaveAllAsync(SaveType.AutoSave, message, m_cancellationSource.Token)
-                        );
-                        break;
-                    case SaveMode.Parallel:
-                        SaveAllParallel(SaveType.AutoSave, message);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-
+                ProcessSave(SaveType.AutoSave, message, m_cancellationSource.Token);
                 m_autoSaveLastTime = Time.time;
             }
         }
 
 
-        private static void SaveAll (SaveType saveType, string debugMessage) {
-            OnSaveStart?.Invoke(saveType);
-
-            foreach (IObjectHandler objectHandler in Handlers)
-                objectHandler.Save();
-
-            OnSaveEnd?.Invoke(saveType);
-
-            if (DebugEnabled)
-                Logger.Log(debugMessage);
-        }
-
-
-        [SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
-        private static async UniTask<HandlingResult> SaveAllAsync (
-            SaveType saveType, string debugMessage, CancellationToken token = default
-        ) {
-            OnSaveStart?.Invoke(saveType);
-
-            HandlingResult result;
-
-            float completedHandlers = 0;
-            int totalHandlers = AsyncHandlers.Count + Handlers.Count;
-
-            for (var i = 0; i < AsyncHandlers.Count; i++) {
-                result = await AsyncHandlers[i].SaveAsync(token);
-                if (result != HandlingResult.Success)
-                    return result;
-
-                completedHandlers++;
-                m_progress?.Report(completedHandlers / totalHandlers);
-            }
-
-            result = await Catcher.TryHandle(async () => {
-                foreach (IObjectHandler handler in Handlers) {
-                    handler.Save();
-                    completedHandlers++;
-                    m_progress?.Report(completedHandlers / totalHandlers);
-                    await UniTask.NextFrame(token);
-                }
-            });
-
-            if (result != HandlingResult.Success)
-                return result;
-
-            OnSaveEnd?.Invoke(saveType);
-
-            if (DebugEnabled)
-                Logger.Log(debugMessage);
-
-            return HandlingResult.Success;
-        }
-
-
-        private static void SaveAllParallel (SaveType saveType, string debugMessage) {
-            OnSaveStart?.Invoke(saveType);
-
-            Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
-
-            OnSaveEnd?.Invoke(saveType);
-
-            if (DebugEnabled)
-                Logger.Log(debugMessage);
-        }
-
-
         private static void OnFocusChanged (bool hasFocus) {
             if (!hasFocus) {
-                const string message = "Successful save on focus changed";
-
-                switch (SaveMode) {
-                    case SaveMode.Simple:
-                        SaveAll(SaveType.OnFocusChanged, message);
-                        break;
-                    case SaveMode.Async:
-                        SavingRequests.Enqueue(async () =>
-                            await SaveAllAsync(SaveType.OnFocusChanged, message, m_cancellationSource.Token)
-                        );
-                        break;
-                    case SaveMode.Parallel:
-                        SaveAllParallel(SaveType.OnFocusChanged, message);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                const string message = "Successful saving on focus changed";
+                ProcessSave(SaveType.OnFocusChanged, message, m_cancellationSource.Token);
             }
         }
 
 
         private static void OnLowMemory () {
-            const string message = "Successful save on low memory";
+            const string message = "Successful saving on low memory";
+            ProcessSave(SaveType.OnLowMemory, message, m_cancellationSource.Token);
+        }
 
-            switch (SaveMode) {
-                case SaveMode.Simple:
-                    SaveAll(SaveType.OnLowMemory, message);
-                    break;
-                case SaveMode.Async:
-                    SavingRequests.Enqueue(async () =>
-                        await SaveAllAsync(SaveType.OnLowMemory, message, m_cancellationSource.Token)
-                    );
-                    break;
-                case SaveMode.Parallel:
-                    SaveAllParallel(SaveType.OnLowMemory, message);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+
+        private static void SaveBeforeExit () {
+            const string message = "Successful saving during the quitting";
+            OnSaveStart?.Invoke(SaveType.OnExit);
+            SaveHandlers();
+            OnSaveEnd?.Invoke(SaveType.OnExit);
+
+            if (DebugEnabled)
+                Logger.Log(message);
+        }
+
+
+        private static void ProcessSave (SaveType saveType, string debugMessage, CancellationToken token) {
+            SavingRequests.Enqueue(async () => {
+                OnSaveStart?.Invoke(saveType);
+
+                SaveHandlers();
+                await SaveAsyncHandlers(token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                OnSaveEnd?.Invoke(saveType);
+
+                if (DebugEnabled)
+                    Logger.Log(debugMessage);
+            });
+        }
+
+
+        private static void SaveHandlers () {
+            if (IsParallel) {
+                Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
+            }
+            else {
+                foreach (IObjectHandler objectHandler in Handlers)
+                    objectHandler.Save();
+            }
+        }
+
+
+        private static async UniTask SaveAsyncHandlers (CancellationToken token = default) {
+            if (token.IsCancellationRequested)
+                return;
+
+            float completedTasks = 0;
+
+            if (IsParallel) {
+                await ParallelLoop.ForEachAsync(AsyncHandlers, async asyncHandler => {
+                    await asyncHandler.SaveAsync(token);
+                    if (token.IsCancellationRequested)
+                        return;
+
+                    completedTasks++;
+                    m_progress?.Report(completedTasks / AsyncHandlers.Count);
+                });
+            }
+            else {
+                foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers) {
+                    await asyncHandler.SaveAsync(token);
+                    if (token.IsCancellationRequested)
+                        return;
+
+                    completedTasks++;
+                    m_progress?.Report(completedTasks / AsyncHandlers.Count);
+                }
             }
         }
 
@@ -521,7 +451,7 @@ namespace SaveSystem.Core {
             EnabledSaveEvents = settings.enabledSaveEvents;
             m_autoSaveEnabled = (EnabledSaveEvents & SaveEvents.AutoSave) != 0;
             SavePeriod = settings.savePeriod;
-            SaveMode = settings.saveMode;
+            IsParallel = settings.isParallel;
             DebugEnabled = settings.debugEnabled;
 
             // Checkpoints settings

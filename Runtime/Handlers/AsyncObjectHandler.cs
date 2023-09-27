@@ -30,7 +30,7 @@ namespace SaveSystem.Handlers {
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
-            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(destinationPath);
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(localFilePath);
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
@@ -47,7 +47,7 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersFactory.CreateReader(destinationPath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateReader(localFilePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 int dynamicObjectsCount = unityReader.ReadInt();

@@ -14,7 +14,7 @@ namespace SaveSystem.Handlers {
 
         internal int diagnosticIndex;
 
-        protected readonly string destinationPath;
+        protected readonly string localFilePath;
         protected readonly TO[] staticObjects = Array.Empty<TO>();
         protected readonly List<TO> dynamicObjects = new();
 
@@ -23,14 +23,14 @@ namespace SaveSystem.Handlers {
         protected Func<TO> factoryFunc;
 
 
-        protected AbstractHandler (string destinationPath, TO[] staticObjects) {
-            this.destinationPath = destinationPath;
+        protected AbstractHandler (string localFilePath, TO[] staticObjects) {
+            this.localFilePath = localFilePath;
             this.staticObjects = staticObjects;
         }
 
 
-        protected AbstractHandler (string destinationPath, Func<TO> factoryFunc) {
-            this.destinationPath = destinationPath;
+        protected AbstractHandler (string localFilePath, Func<TO> factoryFunc) {
+            this.localFilePath = localFilePath;
             this.factoryFunc = factoryFunc;
         }
 

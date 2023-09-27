@@ -1,12 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Networking;
 
-namespace SaveSystem.Internal {
+namespace SaveSystem {
 
     /// <summary>
     /// Use this class to get information about data
@@ -34,19 +31,6 @@ namespace SaveSystem.Internal {
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
             return GetDataSize(PersistentDataPath) > 0;
-        }
-
-
-        internal static async UniTask<byte[]> GetDataFromRemote (string url, CancellationToken token) {
-            using UnityWebRequest request = UnityWebRequest.Get(url);
-            await request.SendWebRequest().ToUniTask(cancellationToken: token);
-            return request.downloadHandler.data;
-        }
-
-
-        internal static async UniTask SendDataToRemote (string url, byte[] data, CancellationToken token) {
-            using UnityWebRequest request = UnityWebRequest.Put(url, data);
-            await request.SendWebRequest().ToUniTask(cancellationToken: token);
         }
 
 

@@ -31,6 +31,11 @@ namespace SaveSystem.Core {
         OnLowMemory = 4,
 
         /// <summary>
+        /// This event will be executed when the player will exit the game
+        /// </summary>
+        OnExit = 8,
+
+        /// <summary>
         /// All events will be executed
         /// </summary>
         All = ~0
