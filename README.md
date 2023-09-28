@@ -22,13 +22,11 @@ to learn how to use the save system:
 
 The save system is a package for saving and loading game data.
 This system allows you to save the state of the game at a some moment
-(ex. before quitting) and restore it after entering.
-You can choose one of the following ways to commit
-the state of the game:
+and restore it after entering.
 
-* Synchronous
-* Asynchronous single threading mode (on the player loop)
-* Asynchronous multithreading mode (on the thread pool)
+You can save the game in different ways - before exit;
+automatically during each specified period; when the player
+triggered any checkpoint; quick save at any time, etc.
 
 In low level you can control unity structures such as Vector2,
 Vector3, Vector4, Quaternion, Color, Color32, Matrix4X4, Mesh.
