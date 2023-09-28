@@ -198,27 +198,31 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator Quitting () => UniTask.ToCoroutine(async () => {
-            var spheres = new List<TestRigidbody>();
+            var spheres = new List<TestMesh>();
+            var asyncSpheres = new List<TestMeshAsyncThreadPool>();
 
             // Spawn spheres
-            for (var i = 0; i < 1000; i++) {
-                var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                sphere.transform.position = Random.insideUnitSphere * 10;
-                var component = sphere.AddComponent<TestRigidbody>();
-                spheres.Add(component);
+            for (var i = 0; i < 250; i++) {
+                var sphere = CreateSphere<TestMesh>();
+                spheres.Add(sphere);
+
+                var asyncSphere = CreateSphere<TestMeshAsyncThreadPool>();
+                asyncSpheres.Add(asyncSphere);
             }
 
             SaveSystemCore.DebugEnabled = true;
+            SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
             ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler(FilePath, spheres);
-            await SaveSystemCore.SaveBeforeExitAsync();
-            Assert.Greater(Storage.GetDataSize(), 0);
+            ObjectHandlersFactory.CreateHandler("spheres.bytes", spheres);
+            ObjectHandlersFactory.CreateAsyncHandler("async_spheres.bytes", asyncSpheres);
+            await UniTask.NextFrame();
+            Application.Quit();
         });
 
 
         [TearDown]
         public void EndTest () {
-            // Storage.DeleteAllData();
+            Storage.DeleteAllData();
             Debug.Log("End test");
         }
 

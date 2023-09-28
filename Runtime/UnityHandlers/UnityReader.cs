@@ -489,11 +489,6 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
-        internal async UniTask WriteToBufferAsync (ReadOnlyMemory<byte> data) {
-            await ((MemoryStream)m_reader.BaseStream).WriteAsync(data);
-        }
-
-
         internal bool ReadFileDataToBuffer () {
             if (File.Exists(m_fullPath)) {
                 var memoryStream = (MemoryStream)m_reader.BaseStream;

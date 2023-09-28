@@ -11,7 +11,7 @@ namespace SaveSystem.Tests.TestObjects {
 
 
         public async UniTask Save (UnityWriter writer) {
-            await writer.WriteAsync(m_meshFilter.mesh);
+            await writer.WriteAsync(m_meshData);
         }
 
 

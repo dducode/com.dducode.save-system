@@ -11,6 +11,7 @@ using SaveSystem.CheckPoints;
 using SaveSystem.Handlers;
 using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -252,15 +253,13 @@ namespace SaveSystem.Core {
 
 
         /// <summary>
-        /// It's recommended to call before quitting the game for guaranteed save async handlers.
-        /// To save simple handlers,
-        /// will be enought to set <b>SaveEvents.OnExit</b> flag to <see cref="EnabledSaveEvents"/> property
+        /// Call this to manually save handlers before quitting the application
         /// </summary>
         /// <remarks>
         /// This will immediately exit the game after saving.
         /// You should make sure that you don't need to do anything else before calling it
         /// </remarks>
-        public static async UniTask SaveBeforeExitAsync () {
+        public static async UniTask SaveAndQuit () {
             m_cancellationSource.Cancel();
             m_autoSaveEnabled = false;
             m_quickSaveKey = default;
@@ -274,7 +273,12 @@ namespace SaveSystem.Core {
                 Logger.Log("Successful async saving before the quitting");
 
             Application.quitting -= SaveBeforeExit;
+
+        #if UNITY_EDITOR
+            EditorApplication.ExitPlaymode();
+        #else
             Application.Quit();
+        #endif
         }
 
 
@@ -367,7 +371,10 @@ namespace SaveSystem.Core {
         private static void SaveBeforeExit () {
             const string message = "Successful saving during the quitting";
             OnSaveStart?.Invoke(SaveType.OnExit);
+
             SaveHandlers();
+            Task.WaitAll(Task.Run(SaveAsyncHandlers));
+
             OnSaveEnd?.Invoke(SaveType.OnExit);
 
             if (DebugEnabled)
@@ -403,7 +410,12 @@ namespace SaveSystem.Core {
         }
 
 
-        private static async UniTask SaveAsyncHandlers (CancellationToken token = default) {
+        private static async UniTask SaveAsyncHandlers () {
+            await SaveAsyncHandlers(default);
+        }
+
+
+        private static async UniTask SaveAsyncHandlers (CancellationToken token) {
             if (token.IsCancellationRequested)
                 return;
 

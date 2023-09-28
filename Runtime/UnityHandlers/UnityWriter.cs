@@ -463,11 +463,6 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
-        internal byte[] GetBuffer () {
-            return ((MemoryStream)m_writer.BaseStream).GetBuffer();
-        }
-
-
         internal void WriteBufferToFile () {
             File.WriteAllBytes(m_fullPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
         }

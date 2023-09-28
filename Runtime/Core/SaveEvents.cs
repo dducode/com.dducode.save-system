@@ -33,6 +33,16 @@ namespace SaveSystem.Core {
         /// <summary>
         /// This event will be executed when the player will exit the game
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The Core will start saving all handlers, but async handlers will be run in the thread pool
+        /// and the Core will wait for them on the main thread.
+        /// </para>
+        /// <para>
+        /// If you want to manually save handlers and then quit the game, you can use
+        /// <see cref="SaveSystemCore.SaveAndQuit"/> method
+        /// </para>
+        /// </remarks>
         OnExit = 8,
 
         /// <summary>
