@@ -72,7 +72,7 @@ namespace SaveSystem.Core {
         public static string PlayerTag { get; set; }
 
         /// <summary>
-        /// Event that called before saving. It can be useful when you use async saving
+        /// Event that is called before saving. It can be useful when you use async saving
         /// </summary>
         /// <value>
         /// Listeners that will be called when core will start saving.
@@ -81,7 +81,7 @@ namespace SaveSystem.Core {
         public static event Action<SaveType> OnSaveStart;
 
         /// <summary>
-        /// Event that called after saving
+        /// Event that is called after saving
         /// </summary>
         /// <value>
         /// Listeners that will be called when core will finish saving.
@@ -104,11 +104,9 @@ namespace SaveSystem.Core {
         private static float m_autoSaveLastTime;
         private static bool m_requestsQueueIsFree = true;
         private static IProgress<float> m_progress;
-        private static bool m_exitSavingCompleted;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
         private static void Initialize () {
             PlayerLoopSystem modifiedLoop = PlayerLoop.GetCurrentPlayerLoop();
             var saveSystemLoop = new PlayerLoopSystem {
@@ -120,9 +118,10 @@ namespace SaveSystem.Core {
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
             ResetOnExitPlayMode(modifiedLoop, saveSystemLoop);
             m_cancellationSource = new CancellationTokenSource();
+            m_autoSaveEnabled = EnabledSaveEvents.HasFlag(SaveEvents.AutoSave);
 
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusChanged))
-                Application.focusChanged += OnFocusChanged;
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
+                Application.focusChanged += OnFocusLost;
 
             if (EnabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                 Application.lowMemory += OnLowMemory;
@@ -133,7 +132,7 @@ namespace SaveSystem.Core {
             Application.quitting += () => m_cancellationSource.Cancel();
 
             if (DebugEnabled)
-                Logger.Log("Initialized");
+                Logger.Log("Save System Core initialized");
         }
 
 
@@ -143,7 +142,7 @@ namespace SaveSystem.Core {
 
             if (reader.ReadFileDataToBuffer()) {
                 m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
-                DeleteTriggeredCheckpoints();
+                DestroyTriggeredCheckpoints();
             }
         }
 
@@ -202,12 +201,12 @@ namespace SaveSystem.Core {
             PlayerTag = playerTag;
             SavePeriod = savePeriod;
 
-            Application.focusChanged -= OnFocusChanged;
+            Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
             Application.quitting -= SaveBeforeExit;
 
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusChanged))
-                Application.focusChanged += OnFocusChanged;
+            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
+                Application.focusChanged += OnFocusLost;
 
             if (EnabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                 Application.lowMemory += OnLowMemory;
@@ -354,10 +353,10 @@ namespace SaveSystem.Core {
         }
 
 
-        private static void OnFocusChanged (bool hasFocus) {
+        private static void OnFocusLost (bool hasFocus) {
             if (!hasFocus) {
-                const string message = "Successful saving on focus changed";
-                ProcessSave(SaveType.OnFocusChanged, message, m_cancellationSource.Token);
+                const string message = "Successful saving on focus lost";
+                ProcessSave(SaveType.OnFocusLost, message, m_cancellationSource.Token);
             }
         }
 
@@ -461,7 +460,6 @@ namespace SaveSystem.Core {
 
             // Core settings
             EnabledSaveEvents = settings.enabledSaveEvents;
-            m_autoSaveEnabled = (EnabledSaveEvents & SaveEvents.AutoSave) != 0;
             SavePeriod = settings.savePeriod;
             IsParallel = settings.isParallel;
             DebugEnabled = settings.debugEnabled;
@@ -538,7 +536,7 @@ namespace SaveSystem.Core {
         }
 
 
-        private static void DeleteTriggeredCheckpoints () {
+        private static void DestroyTriggeredCheckpoints () {
             IReadOnlyCollection<CheckPointBase> checkPoints =
                 Object.FindObjectsByType<CheckPointBase>(FindObjectsSortMode.None);
 

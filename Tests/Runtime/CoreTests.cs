@@ -138,7 +138,7 @@ namespace SaveSystem.Tests {
             ObjectHandlersFactory.CreateAsyncHandler("async_spheres.bytes", asyncSpheres);
 
             SaveSystemCore.ConfigureParameters(
-                SaveEvents.AutoSave | SaveEvents.OnFocusChanged, false, true,
+                SaveEvents.AutoSave | SaveEvents.OnFocusLost, false, true,
                 true, sphereTag, 3
             );
 

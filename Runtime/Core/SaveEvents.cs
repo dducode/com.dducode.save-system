@@ -23,7 +23,7 @@ namespace SaveSystem.Core {
         /// <summary>
         /// If the application lose focus, this event will be invoked
         /// </summary>
-        OnFocusChanged = 2,
+        OnFocusLost = 2,
 
         /// <summary>
         /// This event will be invoked when the application receives a low-memory notification

@@ -12,7 +12,7 @@ namespace SaveSystem.Internal.Diagnostic {
     #if UNITY_EDITOR
         static DiagnosticService () {
             EditorApplication.playModeStateChanged += state => {
-                if (state is PlayModeStateChange.ExitingPlayMode)
+                if (state is PlayModeStateChange.EnteredEditMode)
                     HandlersData.Clear();
             };
         }

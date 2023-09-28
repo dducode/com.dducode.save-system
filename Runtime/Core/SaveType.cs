@@ -28,7 +28,7 @@
         /// <summary>
         /// This is sent when the application loses focus
         /// </summary>
-        OnFocusChanged,
+        OnFocusLost,
         
         /// <summary>
         /// This is sent when the application receives a low-memory notification

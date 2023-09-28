@@ -4,12 +4,12 @@ using Cysharp.Threading.Tasks;
 
 namespace SaveSystem.Internal {
 
-    public static class ParallelLoop {
+    internal static class ParallelLoop {
 
         /// <summary>
         /// Parallel version of foreach loop
         /// </summary>
-        public static async UniTask ForEachAsync<T> (IEnumerable<T> source, Func<T, UniTask> body) {
+        internal static async UniTask ForEachAsync<T> (IEnumerable<T> source, Func<T, UniTask> body) {
             var tasks = new List<UniTask>();
 
             foreach (T obj in source)

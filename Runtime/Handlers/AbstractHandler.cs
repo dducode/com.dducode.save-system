@@ -66,7 +66,7 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Add function for objects spawn. This is necessary to load dynamic objects
         /// </summary>
-        public T SetFuncFactory ([NotNull] Func<TO> factoryFunc) {
+        public T SetFactoryFunc ([NotNull] Func<TO> factoryFunc) {
             this.factoryFunc = factoryFunc ?? throw new ArgumentNullException(nameof(factoryFunc));
             return (T)this;
         }
