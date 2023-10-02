@@ -55,7 +55,7 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// Creates an object handler that will saving a single object
+        /// Creates an object handler that will saving and loading a single object
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
         /// <param name="obj"> Object which will be saved and loaded </param>
@@ -71,7 +71,7 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// Creates an object handler that will saving some objects
+        /// Creates an object handler that will saving and loading some objects
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
         /// <param name="objects"> Objects which will be saved and loaded </param>
@@ -86,12 +86,12 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates an object handler that will saving and loading some objects
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="objects"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static ObjectHandler<TO> CreateHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
@@ -131,10 +131,10 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// Creates an object handler that will saving a single object async
+        /// Creates an async object handler that will saving and loading a single object async
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
-        /// <param name="obj"> Objects which will be saved </param>
+        /// <param name="obj"> Objects which will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
@@ -147,10 +147,10 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// Creates an object handler that will saving some objects async
+        /// Creates an object handler that will saving and loading some objects async
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
-        /// <param name="objects"> Objects which will be saved </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
@@ -162,12 +162,12 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates an object handler that will saving and loading some objects async
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="objects"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
@@ -192,72 +192,72 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates an empty smart handler
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
-        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
             [NotNull] string filePath,
             Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
-        ) where TO : IBufferableObject {
-            return CreateBufferableHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
+        ) where TO : IStorable {
+            return CreateSmartHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
         }
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates a smart handler that will saving and loading a single storable object
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="obj"></param>
-        /// <param name="caller"></param>
-        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="obj"> Objects which will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
             [NotNull] string filePath,
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
-        ) where TO : IBufferableObject {
+        ) where TO : IStorable {
             if (obj == null) throw new ArgumentNullException(nameof(obj));
-            return CreateBufferableHandler(filePath, new[] {obj}, null, caller);
+            return CreateSmartHandler(filePath, new[] {obj}, null, caller);
         }
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates a smart handler that will saving and loading some storable objects
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="objects"></param>
-        /// <param name="caller"></param>
-        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
-        ) where TO : IBufferableObject {
-            return CreateBufferableHandler(filePath, objects, null, caller);
+        ) where TO : IStorable {
+            return CreateSmartHandler(filePath, objects, null, caller);
         }
 
 
         /// <summary>
-        /// TODO: add description
+        /// Creates a smart handler that will saving and loading some storable objects
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="objects"></param>
-        /// <param name="factoryFunc"></param>
-        /// <param name="caller"></param>
-        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
             Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
-        ) where TO : IBufferableObject {
+        ) where TO : IStorable {
             if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
             if (objects == null) throw new ArgumentNullException(nameof(objects));
 
-            var handler = new BufferableObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
+            var handler = new SmartHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(BufferableObjectHandler<TO>), typeof(TO), objects.Count)
+                new HandlerMetadata(filePath, caller, typeof(SmartHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);

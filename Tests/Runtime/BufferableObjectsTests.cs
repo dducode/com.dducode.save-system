@@ -21,18 +21,18 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator SimpleTest () => UniTask.ToCoroutine(async () => {
-            var bufferableObjects = new BufferableObject[100];
+            var bufferableObjects = new Storable[100];
 
             for (var i = 0; i < bufferableObjects.Length; i++)
                 bufferableObjects[i] = CreatePrimitive();
 
-            BufferableObjectHandler<BufferableObject> handler =
-                ObjectHandlersFactory.CreateBufferableHandler(".bytes", bufferableObjects);
+            SmartHandler<Storable> handler =
+                ObjectHandlersFactory.CreateSmartHandler(".bytes", bufferableObjects);
 
             await handler.SaveAsync();
             await UniTask.Delay(2000);
 
-            foreach (BufferableObject obj in bufferableObjects)
+            foreach (Storable obj in bufferableObjects)
                 obj.Reset();
 
             await handler.LoadAsync();
@@ -47,10 +47,10 @@ namespace SaveSystem.Tests {
         }
 
 
-        private BufferableObject CreatePrimitive () {
+        private Storable CreatePrimitive () {
             return GameObject
                .CreatePrimitive(PrimitiveType.Cube)
-               .AddComponent<BufferableObject>()
+               .AddComponent<Storable>()
                .SetRandomTransform()
                .SetRandomColor();
         }

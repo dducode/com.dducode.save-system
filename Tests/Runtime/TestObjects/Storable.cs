@@ -2,7 +2,7 @@
 
 namespace SaveSystem.Tests.TestObjects {
 
-    public class BufferableObject : MonoBehaviour, IBufferableObject {
+    public class Storable : MonoBehaviour, IStorable {
 
         private MeshFilter m_filter;
         private MeshRenderer m_renderer;
@@ -14,7 +14,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public BufferableObject SetRandomTransform () {
+        public Storable SetRandomTransform () {
             transform.position = Random.insideUnitSphere * 10;
             transform.rotation = Random.rotation;
 
@@ -22,7 +22,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public BufferableObject SetRandomColor () {
+        public Storable SetRandomColor () {
             m_renderer.material.color = Random.ColorHSV(
                 0.5f, 1f, 0.75f, 1f, 0, 1
             );

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace SaveSystem {
 
     /// <summary>
-    /// TODO: add description
+    /// The buffer for writing and reading data from buffered objects
     /// </summary>
     [StructLayout(LayoutKind.Auto)]
     public struct DataBuffer {

@@ -9,12 +9,12 @@ using SaveSystem.UnityHandlers;
 namespace SaveSystem.Handlers {
 
     /// <summary>
-    /// TODO: add description
+    /// You can handle <see cref="IStorable">storable objects</see> using this
     /// </summary>
-    public class BufferableObjectHandler<TO> : AbstractHandler<BufferableObjectHandler<TO>, TO>, IAsyncObjectHandler
-        where TO : IBufferableObject {
+    public class SmartHandler<TO> : AbstractHandler<SmartHandler<TO>, TO>, IAsyncObjectHandler
+        where TO : IStorable {
 
-        internal BufferableObjectHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc) :
+        internal SmartHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc) :
             base(localFilePath, staticObjects, factoryFunc) { }
 
 
