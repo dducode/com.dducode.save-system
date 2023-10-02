@@ -14,12 +14,8 @@ namespace SaveSystem.Handlers {
     public sealed class AsyncObjectHandler<TO> : AbstractHandler<AsyncObjectHandler<TO>, TO>,
         IAsyncObjectHandler where TO : IPersistentObjectAsync {
 
-        internal AsyncObjectHandler (string localFilePath, TO[] staticObjects
-        ) : base(localFilePath, staticObjects) { }
-
-
-        internal AsyncObjectHandler (string localFilePath, Func<TO> factoryFunc
-        ) : base(localFilePath, factoryFunc) { }
+        internal AsyncObjectHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc
+        ) : base(localFilePath, staticObjects, factoryFunc) { }
 
 
         public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
@@ -51,6 +47,8 @@ namespace SaveSystem.Handlers {
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 int dynamicObjectsCount = unityReader.ReadInt();
+                if (dynamicObjectsCount > 0 && factoryFunc == null)
+                    throw new ArgumentNullException(nameof(factoryFunc));
 
                 HandlingResult result = await Handling.LoadDynamicObjectsAsync(
                     factoryFunc, this, dynamicObjectsCount, unityReader, loadingProgress, token

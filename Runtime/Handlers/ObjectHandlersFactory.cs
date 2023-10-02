@@ -47,23 +47,10 @@ namespace SaveSystem.Handlers {
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static ObjectHandler<TO> CreateHandler<TO> (
             [NotNull] string filePath,
-            [NotNull] Func<TO> factoryFunc,
+            Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObject {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (factoryFunc == null)
-                throw new ArgumentNullException(nameof(factoryFunc));
-
-            var objectHandler = new ObjectHandler<TO>(filePath, factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), 0)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterObjectHandler(objectHandler);
-            return objectHandler;
+            return CreateHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
         }
 
 
@@ -78,20 +65,8 @@ namespace SaveSystem.Handlers {
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObject {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-
-            var objectHandler = new ObjectHandler<TO>(filePath, new[] {obj}) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), 1)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterObjectHandler(objectHandler);
-            return objectHandler;
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return CreateHandler(filePath, new[] {obj}, null, caller);
         }
 
 
@@ -106,14 +81,29 @@ namespace SaveSystem.Handlers {
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObject {
+            return CreateHandler(filePath, objects, null, caller);
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="objects"></param>
+        /// <param name="factoryFunc"></param>
+        /// <param name="caller"></param>
+        public static ObjectHandler<TO> CreateHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObject {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (objects == null)
                 throw new ArgumentNullException(nameof(objects));
-            if (objects.Count == 0)
-                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
-            var objectHandler = new ObjectHandler<TO>(filePath, objects.ToArray()) {
+            var objectHandler = new ObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
@@ -133,23 +123,10 @@ namespace SaveSystem.Handlers {
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
-            [NotNull] Func<TO> factoryFunc,
+            Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObjectAsync {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (factoryFunc == null)
-                throw new ArgumentNullException(nameof(factoryFunc));
-
-            var handler = new AsyncObjectHandler<TO>(filePath, factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), 0)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterAsyncObjectHandler(handler);
-            return handler;
+            return CreateAsyncHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
         }
 
 
@@ -164,20 +141,8 @@ namespace SaveSystem.Handlers {
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObjectAsync {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-
-            var handler = new AsyncObjectHandler<TO>(filePath, new[] {obj}) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), 1)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterAsyncObjectHandler(handler);
-            return handler;
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return CreateAsyncHandler(filePath, new[] {obj}, null, caller);
         }
 
 
@@ -192,18 +157,107 @@ namespace SaveSystem.Handlers {
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObjectAsync {
+            return CreateAsyncHandler(filePath, objects, null, caller);
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="objects"></param>
+        /// <param name="factoryFunc"></param>
+        /// <param name="caller"></param>
+        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObjectAsync {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (objects == null)
                 throw new ArgumentNullException(nameof(objects));
-            if (objects.Count == 0)
-                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
-            var handler = new AsyncObjectHandler<TO>(filePath, objects.ToArray()) {
+            var handler = new AsyncObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
                 new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), objects.Count)
+            );
+            if (RegisterImmediately)
+                SaveSystemCore.RegisterAsyncObjectHandler(handler);
+            return handler;
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="factoryFunc"></param>
+        /// <param name="caller"></param>
+        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+            [NotNull] string filePath,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IBufferableObject {
+            return CreateBufferableHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="obj"></param>
+        /// <param name="caller"></param>
+        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] TO obj,
+            [CallerMemberName] string caller = ""
+        ) where TO : IBufferableObject {
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return CreateBufferableHandler(filePath, new[] {obj}, null, caller);
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="objects"></param>
+        /// <param name="caller"></param>
+        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            [CallerMemberName] string caller = ""
+        ) where TO : IBufferableObject {
+            return CreateBufferableHandler(filePath, objects, null, caller);
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="objects"></param>
+        /// <param name="factoryFunc"></param>
+        /// <param name="caller"></param>
+        public static BufferableObjectHandler<TO> CreateBufferableHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IBufferableObject {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
+
+            var handler = new BufferableObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
+                diagnosticIndex = DiagnosticService.HandlersData.Count
+            };
+            DiagnosticService.AddMetadata(
+                new HandlerMetadata(filePath, caller, typeof(BufferableObjectHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);

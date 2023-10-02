@@ -13,10 +13,8 @@ namespace SaveSystem.Handlers {
     public sealed class ObjectHandler<TO> : AbstractHandler<ObjectHandler<TO>, TO>, IObjectHandler
         where TO : IPersistentObject {
 
-        internal ObjectHandler (string localFilePath, TO[] staticObjects) : base(localFilePath, staticObjects) { }
-
-
-        internal ObjectHandler (string localFilePath, Func<TO> factoryFunc) : base(localFilePath, factoryFunc) { }
+        internal ObjectHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc)
+            : base(localFilePath, staticObjects, factoryFunc) { }
 
 
         public void Save () {
