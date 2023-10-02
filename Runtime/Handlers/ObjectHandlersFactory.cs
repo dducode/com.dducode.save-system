@@ -47,28 +47,15 @@ namespace SaveSystem.Handlers {
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static ObjectHandler<TO> CreateHandler<TO> (
             [NotNull] string filePath,
-            [NotNull] Func<TO> factoryFunc,
+            Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObject {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (factoryFunc == null)
-                throw new ArgumentNullException(nameof(factoryFunc));
-
-            var objectHandler = new ObjectHandler<TO>(filePath, factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), 0)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterObjectHandler(objectHandler);
-            return objectHandler;
+            return CreateHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
         }
 
 
         /// <summary>
-        /// Creates an object handler that will saving a single object
+        /// Creates an object handler that will saving and loading a single object
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
         /// <param name="obj"> Object which will be saved and loaded </param>
@@ -78,25 +65,13 @@ namespace SaveSystem.Handlers {
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObject {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-
-            var objectHandler = new ObjectHandler<TO>(filePath, new[] {obj}) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), 1)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterObjectHandler(objectHandler);
-            return objectHandler;
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return CreateHandler(filePath, new[] {obj}, null, caller);
         }
 
 
         /// <summary>
-        /// Creates an object handler that will saving some objects
+        /// Creates an object handler that will saving and loading some objects
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
         /// <param name="objects"> Objects which will be saved and loaded </param>
@@ -106,14 +81,29 @@ namespace SaveSystem.Handlers {
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObject {
+            return CreateHandler(filePath, objects, null, caller);
+        }
+
+
+        /// <summary>
+        /// Creates an object handler that will saving and loading some objects
+        /// </summary>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static ObjectHandler<TO> CreateHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObject {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (objects == null)
                 throw new ArgumentNullException(nameof(objects));
-            if (objects.Count == 0)
-                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
 
-            var objectHandler = new ObjectHandler<TO>(filePath, objects.ToArray()) {
+            var objectHandler = new ObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
@@ -133,47 +123,67 @@ namespace SaveSystem.Handlers {
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
-            [NotNull] Func<TO> factoryFunc,
+            Func<TO> factoryFunc,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObjectAsync {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (factoryFunc == null)
-                throw new ArgumentNullException(nameof(factoryFunc));
-
-            var handler = new AsyncObjectHandler<TO>(filePath, factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
-            };
-            DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), 0)
-            );
-            if (RegisterImmediately)
-                SaveSystemCore.RegisterAsyncObjectHandler(handler);
-            return handler;
+            return CreateAsyncHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
         }
 
 
         /// <summary>
-        /// Creates an object handler that will saving a single object async
+        /// Creates an async object handler that will saving and loading a single object async
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
-        /// <param name="obj"> Objects which will be saved </param>
+        /// <param name="obj"> Objects which will be saved and loaded </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
         public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
             [NotNull] string filePath,
             [NotNull] TO obj,
             [CallerMemberName] string caller = ""
         ) where TO : IPersistentObjectAsync {
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return CreateAsyncHandler(filePath, new[] {obj}, null, caller);
+        }
+
+
+        /// <summary>
+        /// Creates an object handler that will saving and loading some objects async
+        /// </summary>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObjectAsync {
+            return CreateAsyncHandler(filePath, objects, null, caller);
+        }
+
+
+        /// <summary>
+        /// Creates an object handler that will saving and loading some objects async
+        /// </summary>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IPersistentObjectAsync {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
+            if (objects == null)
+                throw new ArgumentNullException(nameof(objects));
 
-            var handler = new AsyncObjectHandler<TO>(filePath, new[] {obj}) {
+            var handler = new AsyncObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), 1)
+                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
@@ -182,28 +192,72 @@ namespace SaveSystem.Handlers {
 
 
         /// <summary>
-        /// Creates an object handler that will saving some objects async
+        /// Creates an empty smart handler
         /// </summary>
         /// <param name="filePath"> Path to save and load objects </param>
-        /// <param name="objects"> Objects which will be saved </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
         /// <param name="caller"> For internal use (no need to pass it manually) </param>
-        public static AsyncObjectHandler<TO> CreateAsyncHandler<TO> (
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
+            [NotNull] string filePath,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IStorable {
+            return CreateSmartHandler(filePath, Array.Empty<TO>(), factoryFunc, caller);
+        }
+
+
+        /// <summary>
+        /// Creates a smart handler that will saving and loading a single storable object
+        /// </summary>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="obj"> Objects which will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] TO obj,
+            [CallerMemberName] string caller = ""
+        ) where TO : IStorable {
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
+            return CreateSmartHandler(filePath, new[] {obj}, null, caller);
+        }
+
+
+        /// <summary>
+        /// Creates a smart handler that will saving and loading some storable objects
+        /// </summary>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
             [NotNull] string filePath,
             [NotNull] ICollection<TO> objects,
             [CallerMemberName] string caller = ""
-        ) where TO : IPersistentObjectAsync {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
-            if (objects == null)
-                throw new ArgumentNullException(nameof(objects));
-            if (objects.Count == 0)
-                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
+        ) where TO : IStorable {
+            return CreateSmartHandler(filePath, objects, null, caller);
+        }
 
-            var handler = new AsyncObjectHandler<TO>(filePath, objects.ToArray()) {
+
+        /// <summary>
+        /// Creates a smart handler that will saving and loading some storable objects
+        /// </summary>
+        /// <param name="filePath"> Path to save and load objects </param>
+        /// <param name="objects"> Objects which will be saved and loaded </param>
+        /// <param name="factoryFunc"> Function for objects spawn. This is necessary to load dynamic objects </param>
+        /// <param name="caller"> For internal use (no need to pass it manually) </param>
+        public static SmartHandler<TO> CreateSmartHandler<TO> (
+            [NotNull] string filePath,
+            [NotNull] ICollection<TO> objects,
+            Func<TO> factoryFunc,
+            [CallerMemberName] string caller = ""
+        ) where TO : IStorable {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
+
+            var handler = new SmartHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), objects.Count)
+                new HandlerMetadata(filePath, caller, typeof(SmartHandler<TO>), typeof(TO), objects.Count)
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);

@@ -25,6 +25,11 @@ namespace SaveSystem.Internal {
             Debug.LogError($"{MessageHeader} {message}");
         }
 
+
+        internal static string FormattedMessage (string message) {
+            return $"{MessageHeader} {message}";
+        }
+
     }
 
 }

@@ -463,6 +463,53 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        internal async UniTask WriteAsync (DataBuffer buffer) {
+            Write(buffer.vector2);
+            Write(buffer.vector3);
+            Write(buffer.vector4);
+            Write(buffer.quaternion);
+            Write(buffer.color);
+            Write(buffer.color32);
+            Write(buffer.matrix);
+            Write(buffer.boolean);
+
+            if (!buffer.HasAnyBuffer()) {
+                Write(false);
+                return;
+            }
+            else {
+                Write(true);
+            }
+
+            await UniTask.RunOnThreadPool(() => {
+                Write(buffer.vector2Buffer.ToArray());
+                Write(buffer.vector3Buffer.ToArray());
+                Write(buffer.vector4Buffer.ToArray());
+                Write(buffer.colors.ToArray());
+                Write(buffer.colors32.ToArray());
+                Write(buffer.matrices.ToArray());
+                Write(buffer.bytes.ToArray());
+                Write(buffer.shorts.ToArray());
+                Write(buffer.intBuffer.ToArray());
+                Write(buffer.longBuffer.ToArray());
+                Write(buffer.charBuffer.ToArray());
+                Write(buffer.stringBuffer.ToArray());
+                Write(buffer.floatBuffer.ToArray());
+                Write(buffer.doubleBuffer.ToArray());
+
+                if (buffer.meshData == default) {
+                    Write(false);
+                    return;
+                }
+                else {
+                    Write(true);
+                }
+
+                Write(buffer.meshData);
+            });
+        }
+
+
         internal void WriteBufferToFile () {
             File.WriteAllBytes(m_fullPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
         }

@@ -37,14 +37,52 @@ namespace SaveSystem.Core {
         /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
         /// </summary>
         /// <seealso cref="SaveEvents"/>
-        public static SaveEvents EnabledSaveEvents { get; set; }
+        public static SaveEvents EnabledSaveEvents {
+            get => m_enabledSaveEvents;
+            set {
+                m_enabledSaveEvents = value;
+                m_autoSaveEnabled = false;
+                Application.quitting -= SaveBeforeExit;
+                Application.focusChanged -= OnFocusLost;
+                Application.lowMemory -= OnLowMemory;
+
+                switch (m_enabledSaveEvents) {
+                    case SaveEvents.None:
+                        return;
+                    case not SaveEvents.All:
+                        m_autoSaveEnabled = m_enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
+                        if (m_enabledSaveEvents.HasFlag(SaveEvents.OnExit))
+                            Application.quitting += SaveBeforeExit;
+                        if (m_enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
+                            Application.focusChanged += OnFocusLost;
+                        if (m_enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
+                            Application.lowMemory += OnLowMemory;
+                        break;
+                    case SaveEvents.All:
+                        m_autoSaveEnabled = true;
+                        Application.quitting += SaveBeforeExit;
+                        Application.focusChanged += OnFocusLost;
+                        Application.lowMemory += OnLowMemory;
+                        break;
+                }
+            }
+        }
 
         /// <summary>
         /// It's used into autosave loop to determine saving frequency
         /// </summary>
         /// <value> Saving period in seconds </value>
         /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
-        public static float SavePeriod { get; set; }
+        public static float SavePeriod {
+            get => m_savePeriod;
+            set {
+                if (value < 0)
+                    throw new ArgumentException(
+                        Logger.FormattedMessage("Save period cannot be less than 0."), nameof(SavePeriod)
+                    );
+                m_savePeriod = value;
+            }
+        }
 
         /// <summary>
         /// Configure it to set parallel saving handlers
@@ -69,7 +107,16 @@ namespace SaveSystem.Core {
         /// Player tag is used to filtering messages from triggered checkpoints
         /// </summary>
         /// <value> Tag of the player object </value>
-        public static string PlayerTag { get; set; }
+        public static string PlayerTag {
+            get => m_playerTag;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(
+                        Logger.FormattedMessage("Player tag cannot be null or empty."), nameof(PlayerTag)
+                    );
+                m_playerTag = value;
+            }
+        }
 
         /// <summary>
         /// Event that is called before saving. It can be useful when you use async saving
@@ -88,6 +135,10 @@ namespace SaveSystem.Core {
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
         public static event Action<SaveType> OnSaveEnd;
+
+        private static SaveEvents m_enabledSaveEvents;
+        private static float m_savePeriod;
+        private static string m_playerTag;
 
         /// It's used for delayed async saving
         private static readonly Queue<Func<UniTask>> SavingRequests = new();
@@ -118,17 +169,6 @@ namespace SaveSystem.Core {
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
             ResetOnExitPlayMode(modifiedLoop, saveSystemLoop);
             m_cancellationSource = new CancellationTokenSource();
-            m_autoSaveEnabled = EnabledSaveEvents.HasFlag(SaveEvents.AutoSave);
-
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
-                Application.focusChanged += OnFocusLost;
-
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
-                Application.lowMemory += OnLowMemory;
-
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnExit))
-                Application.quitting += SaveBeforeExit;
-
             Application.quitting += () => m_cancellationSource.Cancel();
 
             if (DebugEnabled)
@@ -138,9 +178,9 @@ namespace SaveSystem.Core {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void LoadInternalData () {
-            using UnityReader reader = UnityHandlersFactory.CreateReader(InternalDataPath);
+            using UnityReader reader = UnityHandlersFactory.CreateDirectReader(InternalDataPath);
 
-            if (reader.ReadFileDataToBuffer()) {
+            if (reader != null) {
                 m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
                 DestroyTriggeredCheckpoints();
             }
@@ -194,25 +234,11 @@ namespace SaveSystem.Core {
             float savePeriod = 0
         ) {
             EnabledSaveEvents = enabledSaveEvents;
-            m_autoSaveEnabled = EnabledSaveEvents.HasFlag(SaveEvents.AutoSave);
             IsParallel = isParallel;
             DebugEnabled = debugEnabled;
             DestroyCheckPoints = destroyCheckPoints;
             PlayerTag = playerTag;
             SavePeriod = savePeriod;
-
-            Application.focusChanged -= OnFocusLost;
-            Application.lowMemory -= OnLowMemory;
-            Application.quitting -= SaveBeforeExit;
-
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
-                Application.focusChanged += OnFocusLost;
-
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
-                Application.lowMemory += OnLowMemory;
-
-            if (EnabledSaveEvents.HasFlag(SaveEvents.OnExit))
-                Application.quitting += SaveBeforeExit;
 
             if (DebugEnabled) {
                 Logger.Log("Parameters was configured:" +
@@ -471,9 +497,8 @@ namespace SaveSystem.Core {
 
 
         private static void SaveInternalData () {
-            using UnityWriter writer = UnityHandlersFactory.CreateWriter(InternalDataPath);
+            using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(InternalDataPath);
             writer.Write(m_destroyedCheckpoints);
-            writer.WriteBufferToFile();
         }
 
 

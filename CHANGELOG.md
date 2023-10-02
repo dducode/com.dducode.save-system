@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.6.0] - 2023-10-02
+
+### Added
+
+* Added new feature - saving and loading data using a
+  data buffer
+    * Added new structure - DataBuffer
+    * Added new interface - IStorable, the interface implemented by objects
+      that write data to DataBuffer and read data from it
+    * Added new handler - SmartHandler, the new handler
+      handles IStorable objects
+
+### Changed
+
+* Unity handlers was separated as buffering and direct.
+  Buffering handlers write and read data using MemoryStream,
+  direct handlers write and read data using FileStream
+
+### Fixed
+
+* Fixed missing validation in the DataManager methods parameters
+* Fixed missing validation in the SaveSystemCore properties
+
 ## [1.5.0] - 2023-09-28
 
 ### Added

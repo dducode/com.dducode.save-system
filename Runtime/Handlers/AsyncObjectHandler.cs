@@ -14,12 +14,8 @@ namespace SaveSystem.Handlers {
     public sealed class AsyncObjectHandler<TO> : AbstractHandler<AsyncObjectHandler<TO>, TO>,
         IAsyncObjectHandler where TO : IPersistentObjectAsync {
 
-        internal AsyncObjectHandler (string localFilePath, TO[] staticObjects
-        ) : base(localFilePath, staticObjects) { }
-
-
-        internal AsyncObjectHandler (string localFilePath, Func<TO> factoryFunc
-        ) : base(localFilePath, factoryFunc) { }
+        internal AsyncObjectHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc
+        ) : base(localFilePath, staticObjects, factoryFunc) { }
 
 
         public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
@@ -30,7 +26,7 @@ namespace SaveSystem.Handlers {
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
-            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(localFilePath);
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateBufferingWriter(localFilePath);
             unityWriter.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
@@ -47,10 +43,12 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader unityReader = UnityHandlersFactory.CreateReader(localFilePath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateBufferingReader(localFilePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 int dynamicObjectsCount = unityReader.ReadInt();
+                if (dynamicObjectsCount > 0 && factoryFunc == null)
+                    throw new ArgumentNullException(nameof(factoryFunc));
 
                 HandlingResult result = await Handling.LoadDynamicObjectsAsync(
                     factoryFunc, this, dynamicObjectsCount, unityReader, loadingProgress, token

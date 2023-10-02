@@ -34,13 +34,13 @@ namespace SaveSystem {
         }
 
 
-        internal static string GetFullPath (string localFilePath) {
-            return Path.Combine(PersistentDataPath, $"{localFilePath}");
+        internal static string GetFullPath (string filePath) {
+            return Path.IsPathRooted(filePath) ? filePath : Path.Combine(PersistentDataPath, filePath);
         }
 
 
-        internal static void CreateFoldersIfNotExists (string localFilePath) {
-            List<string> directoryPaths = localFilePath.Split(new[] {Path.DirectorySeparatorChar}).ToList();
+        internal static void CreateFoldersIfNotExists (string filePath) {
+            List<string> directoryPaths = filePath.Split(new[] {Path.DirectorySeparatorChar}).ToList();
             directoryPaths.RemoveAt(directoryPaths.Count - 1); // last element is a file, not a folder
 
             var path = "";
@@ -60,7 +60,7 @@ namespace SaveSystem {
             const double kByte = 1024;
             const double mByte = 1_048_576;
             const double gByte = 1_073_741_824;
-            
+
             string label;
 
             switch (dataSize) {

@@ -13,14 +13,12 @@ namespace SaveSystem.Handlers {
     public sealed class ObjectHandler<TO> : AbstractHandler<ObjectHandler<TO>, TO>, IObjectHandler
         where TO : IPersistentObject {
 
-        internal ObjectHandler (string localFilePath, TO[] staticObjects) : base(localFilePath, staticObjects) { }
-
-
-        internal ObjectHandler (string localFilePath, Func<TO> factoryFunc) : base(localFilePath, factoryFunc) { }
+        internal ObjectHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc)
+            : base(localFilePath, staticObjects, factoryFunc) { }
 
 
         public void Save () {
-            using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(localFilePath);
+            using UnityWriter unityWriter = UnityHandlersFactory.CreateDirectWriter(localFilePath);
 
             dynamicObjects.RemoveAll(obj => obj == null);
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
@@ -29,14 +27,13 @@ namespace SaveSystem.Handlers {
             savedObjects.AddRange(staticObjects);
 
             Handling.SaveObjects(savedObjects, unityWriter, savingProgress);
-            unityWriter.WriteBufferToFile();
         }
 
 
         public HandlingResult Load () {
-            using UnityReader unityReader = UnityHandlersFactory.CreateReader(localFilePath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateDirectReader(localFilePath);
 
-            if (unityReader.ReadFileDataToBuffer()) {
+            if (unityReader != null) {
                 int dynamicObjectsCount = unityReader.ReadInt();
                 List<TO> loadedObjects = SpawnObjects(dynamicObjectsCount);
                 AddObjects(loadedObjects);

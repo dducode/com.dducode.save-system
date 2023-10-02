@@ -489,6 +489,45 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+        internal async UniTask<DataBuffer> ReadDataBufferAsync () {
+            var buffer = new DataBuffer {
+                vector2 = ReadVector2(),
+                vector3 = ReadVector3(),
+                vector4 = ReadVector4(),
+                quaternion = ReadRotation(),
+                color = ReadColor(),
+                color32 = ReadColor32(),
+                matrix = ReadMatrix(),
+                boolean = ReadBool()
+            };
+
+            if (!ReadBool()) // has any writable ReadOnlyMemory buffer?
+                return buffer;
+
+            await UniTask.RunOnThreadPool(() => {
+                buffer.vector2Buffer = ReadVector2Array();
+                buffer.vector3Buffer = ReadVector3Array();
+                buffer.vector4Buffer = ReadVector4Array();
+                buffer.colors = ReadColors();
+                buffer.colors32 = ReadColors32();
+                buffer.matrices = ReadMatrices();
+                buffer.bytes = ReadBytes();
+                buffer.shorts = ReadShorts();
+                buffer.intBuffer = ReadIntArray();
+                buffer.longBuffer = ReadLongArray();
+                buffer.charBuffer = ReadChars();
+                buffer.stringBuffer = ReadStringArray();
+                buffer.floatBuffer = ReadFloats();
+                buffer.doubleBuffer = ReadDoubles();
+                if (!ReadBool()) // has writable mesh data?
+                    return;
+                buffer.meshData = ReadMesh();
+            });
+
+            return buffer;
+        }
+
+
         internal bool ReadFileDataToBuffer () {
             if (File.Exists(m_fullPath)) {
                 var memoryStream = (MemoryStream)m_reader.BaseStream;
