@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using JetBrains.Annotations;
 using SaveSystem.Handlers;
 using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
@@ -15,7 +16,7 @@ namespace SaveSystem {
     public static partial class DataManager {
 
         private const string ObsoleteMessage =
-            "It's the obsolete method and it may be removed later. Use methods of the HandlersProvider class instead this";
+            "It's the obsolete method and it may be removed later. Use methods of the HandlersProvider class instead this.";
 
 
 
@@ -26,7 +27,9 @@ namespace SaveSystem {
         /// </summary>
         /// <param name="filePath"> the file where the object data will be saved </param>
         /// <param name="obj"> the object which will be saved </param>
-        public static void SaveObject<T> (string filePath, T obj) where T : IPersistentObject {
+        public static void SaveObject<T> ([NotNull] string filePath, [NotNull] T obj) where T : IPersistentObject {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
             SaveObjects(filePath, new[] {obj});
         }
 
@@ -36,14 +39,16 @@ namespace SaveSystem {
         /// </summary>
         /// <param name="filePath"> the file where the object data will be saved </param>
         /// <param name="objects"> the objects which will be saved </param>
-        public static void SaveObjects<T> (string filePath, IEnumerable<T> objects)
+        public static void SaveObjects<T> ([NotNull] string filePath, [NotNull] ICollection<T> objects)
             where T : IPersistentObject {
-            using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(filePath);
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
+            if (objects.Count == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
+            using UnityWriter unityWriter = UnityHandlersFactory.CreateDirectWriter(filePath);
 
             foreach (T obj in objects)
                 obj.Save(unityWriter);
-
-            unityWriter.WriteBufferToFile();
         }
 
         #endregion
@@ -58,7 +63,9 @@ namespace SaveSystem {
         /// <param name="filePath"> the file whereof the object data will be load </param>
         /// <param name="obj"> the object which will be load </param>
         /// <returns> Returns true if there is saved data, otherwise false </returns>
-        public static bool LoadObject<T> (string filePath, T obj) where T : IPersistentObject {
+        public static bool LoadObject<T> ([NotNull] string filePath, [NotNull] T obj) where T : IPersistentObject {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
             return LoadObjects(filePath, new[] {obj});
         }
 
@@ -69,11 +76,15 @@ namespace SaveSystem {
         /// <param name="filePath"> the file whereof the object data will be load </param>
         /// <param name="objects"> the objects which will be load </param>
         /// <returns> Returns true if there is saved data, otherwise false </returns>
-        public static bool LoadObjects<T> (string filePath, IEnumerable<T> objects)
+        public static bool LoadObjects<T> ([NotNull] string filePath, [NotNull] ICollection<T> objects)
             where T : IPersistentObject {
-            using UnityReader unityReader = UnityHandlersFactory.CreateReader(filePath);
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
+            if (objects.Count == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
+            using UnityReader unityReader = UnityHandlersFactory.CreateDirectReader(filePath);
 
-            if (unityReader.ReadFileDataToBuffer()) {
+            if (unityReader != null) {
                 foreach (T obj in objects)
                     obj.Load(unityReader);
 
@@ -96,12 +107,14 @@ namespace SaveSystem {
         /// <inheritdoc cref="SaveObject{T}"/>
         [Obsolete(ObsoleteMessage)]
         public static async UniTask SaveObjectAsync (
-            string filePath,
-            IPersistentObject obj,
+            [NotNull] string filePath,
+            [NotNull] IPersistentObject obj,
             AsyncMode asyncMode,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
             await SaveObjectsAsync(filePath, new[] {obj}, asyncMode, null, source, onComplete);
         }
 
@@ -113,18 +126,22 @@ namespace SaveSystem {
         /// <inheritdoc cref="SaveObjects{T}"/>
         [Obsolete(ObsoleteMessage)]
         public static async UniTask SaveObjectsAsync (
-            string filePath,
-            IPersistentObject[] objects,
+            [NotNull] string filePath,
+            [NotNull] IPersistentObject[] objects,
             AsyncMode asyncMode,
             IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
+            if (objects.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
             source ??= new CancellationTokenSource();
             if (source.IsCancellationRequested)
                 return;
 
-            await using UnityWriter unityWriter = UnityHandlersFactory.CreateWriter(filePath);
+            await using UnityWriter unityWriter = UnityHandlersFactory.CreateBufferingWriter(filePath);
 
             HandlingResult result;
 
@@ -171,12 +188,14 @@ namespace SaveSystem {
         /// <inheritdoc cref="LoadObject{T}"/>
         [Obsolete(ObsoleteMessage)]
         public static async UniTask<bool> LoadObjectAsync (
-            string filePath,
-            IPersistentObject obj,
+            [NotNull] string filePath,
+            [NotNull] IPersistentObject obj,
             AsyncMode asyncMode,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
             return await LoadObjectsAsync(filePath, new[] {obj}, asyncMode, null, source, onComplete);
         }
 
@@ -188,18 +207,22 @@ namespace SaveSystem {
         /// <inheritdoc cref="LoadObjects{T}"/>
         [Obsolete(ObsoleteMessage)]
         public static async UniTask<bool> LoadObjectsAsync (
-            string filePath,
-            IPersistentObject[] objects,
+            [NotNull] string filePath,
+            [NotNull] IPersistentObject[] objects,
             AsyncMode asyncMode,
             IProgress<float> progress = null,
             CancellationTokenSource source = null,
             Action onComplete = null
         ) {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
+            if (objects.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
             source ??= new CancellationTokenSource();
             if (source.IsCancellationRequested)
                 return false;
 
-            using UnityReader unityReader = UnityHandlersFactory.CreateReader(filePath);
+            using UnityReader unityReader = UnityHandlersFactory.CreateBufferingReader(filePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
                 HandlingResult result;

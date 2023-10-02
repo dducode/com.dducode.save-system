@@ -88,7 +88,8 @@ namespace SaveSystem.Tests {
         public IEnumerator CheckpointSave () => UniTask.ToCoroutine(async () => {
             const string sphereTag = "Player";
 
-            var sphere = CreateSphere<TestRigidbody>();
+            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere).AddComponent<TestRigidbody>();
+            sphere.transform.position = Vector3.up * 10;
             sphere.tag = sphereTag;
 
             SaveSystemCore.DebugEnabled = true;

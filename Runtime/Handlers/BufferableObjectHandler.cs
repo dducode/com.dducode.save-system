@@ -26,7 +26,7 @@ namespace SaveSystem.Handlers {
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             var savedObjects = new List<TO>(dynamicObjects);
 
-            await using UnityWriter writer = UnityHandlersFactory.CreateWriter(localFilePath);
+            await using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(localFilePath);
             writer.Write(dynamicObjects.Count);
             savedObjects.AddRange(staticObjects);
 
@@ -38,8 +38,6 @@ namespace SaveSystem.Handlers {
             foreach (DataBuffer buffer in buffers)
                 await writer.WriteAsync(buffer);
 
-            await writer.WriteBufferToFileAsync();
-
             return HandlingResult.Success;
         }
 
@@ -48,9 +46,9 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            using UnityReader reader = UnityHandlersFactory.CreateReader(localFilePath);
+            using UnityReader reader = UnityHandlersFactory.CreateDirectReader(localFilePath);
 
-            if (await reader.ReadFileDataToBufferAsync()) {
+            if (reader != null) {
                 int dynamicObjectsCount = reader.ReadInt();
                 if (dynamicObjectsCount > 0 && factoryFunc == null)
                     throw new ArgumentNullException(nameof(factoryFunc));

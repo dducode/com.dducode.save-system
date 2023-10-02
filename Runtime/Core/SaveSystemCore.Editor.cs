@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.LowLevel;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -11,9 +12,7 @@ namespace SaveSystem.Core {
             EditorApplication.playModeStateChanged += state => {
                 if (state is PlayModeStateChange.EnteredEditMode) {
                     ResetPlayerLoop(modifiedLoop, saveSystemLoop);
-                    EnabledSaveEvents = SaveEvents.None;
-                    m_autoSaveEnabled = false;
-                    SavePeriod = 0;
+                    ResetProperties();
                     OnSaveStart = null;
                     OnSaveEnd = null;
                     Handlers.Clear();
@@ -23,6 +22,17 @@ namespace SaveSystem.Core {
                     m_autoSaveLastTime = 0;
                 }
             };
+        }
+
+
+        private static void ResetProperties () {
+            var settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
+            EnabledSaveEvents = settings.enabledSaveEvents;
+            SavePeriod = settings.savePeriod;
+            IsParallel = settings.isParallel;
+            DebugEnabled = settings.debugEnabled;
+            DestroyCheckPoints = settings.destroyCheckPoints;
+            PlayerTag = settings.playerTag;
         }
 
 
