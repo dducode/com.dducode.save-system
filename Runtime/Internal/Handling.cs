@@ -9,98 +9,104 @@ namespace SaveSystem.Internal {
 
     internal static class Handling {
 
-        internal static void SaveObjects<TO> (
-            ICollection<TO> objects, UnityWriter writer, IProgress<float> progress
-        ) where TO : IPersistentObject {
+        internal static void SaveObjects<THandler, TObject> (
+            AbstractHandler<THandler, TObject> handler, UnityWriter writer, IProgress<float> progress
+        ) where TObject : IPersistentObject where THandler : AbstractHandler<THandler, TObject> {
             var completedTasks = 0f;
 
-            foreach (TO obj in objects) {
+            foreach (TObject obj in handler) {
                 obj.Save(writer);
-                completedTasks++;
-                progress?.Report(completedTasks / objects.Count);
+                progress?.Report(++completedTasks / handler.ObjectsCount);
             }
         }
 
 
-        internal static void LoadObjects<TO> (
-            ICollection<TO> objects, UnityReader reader, IProgress<float> progress
-        ) where TO : IPersistentObject {
+        internal static void LoadObjects<THandler, TObject> (
+            AbstractHandler<THandler, TObject> handler, UnityReader reader, IProgress<float> progress
+        ) where TObject : IPersistentObject where THandler : AbstractHandler<THandler, TObject> {
             var completedTasks = 0f;
 
-            foreach (TO obj in objects) {
+            foreach (TObject obj in handler) {
                 obj.Load(reader);
-                completedTasks++;
-                progress?.Report(completedTasks / objects.Count);
+                progress?.Report(++completedTasks / handler.ObjectsCount);
             }
         }
 
 
-        internal static async UniTask<HandlingResult> SaveObjectsAsync<TO> (
-            ICollection<TO> objects,
+        internal static async UniTask<HandlingResult> SaveObjectsAsync<TObject, THandler> (
+            AbstractHandler<THandler, TObject> handler,
             UnityWriter writer,
             IProgress<float> progress,
             CancellationToken token
-        ) where TO : IPersistentObjectAsync {
-            return await Catcher.TryHandle(SaveObjectsFunc, "Saving was cancelled while data was being written");
-
-            async UniTask SaveObjectsFunc () {
+        ) where TObject : IPersistentObjectAsync where THandler : AbstractHandler<THandler, TObject> {
+            try {
                 var completedTasks = 0f;
 
-                foreach (TO obj in objects) {
-                    if (token.IsCancellationRequested) 
-                        throw new OperationCanceledException();
+                foreach (TObject obj in handler) {
+                    token.ThrowIfCancellationRequested();
                     await obj.Save(writer);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Count);
+                    progress?.Report(++completedTasks / handler.ObjectsCount);
                 }
+
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning("Saving was cancelled while data was being written");
+                return HandlingResult.CanceledOperation;
             }
         }
 
 
-        internal static async UniTask<HandlingResult> LoadStaticObjectsAsync<TO> (
-            ICollection<TO> objects,
+        internal static async UniTask<HandlingResult> LoadStaticObjectsAsync<TObject> (
+            ICollection<TObject> objects,
             UnityReader reader,
             IProgress<float> progress,
             CancellationToken token
-        ) where TO : IPersistentObjectAsync {
-            return await Catcher.TryHandle(LoadObjectsFunc, "Loading was cancelled while reading data");
-
-            async UniTask LoadObjectsFunc () {
+        ) where TObject : IPersistentObjectAsync {
+            try {
                 var completedTasks = 0f;
 
-                foreach (TO obj in objects) {
-                    if (token.IsCancellationRequested) 
-                        throw new OperationCanceledException();
+                foreach (TObject obj in objects) {
+                    token.ThrowIfCancellationRequested();
                     await obj.Load(reader);
-                    completedTasks++;
-                    progress?.Report(completedTasks / objects.Count);
+                    progress?.Report(++completedTasks / objects.Count);
                 }
+
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning("Loading was cancelled while reading data");
+                return HandlingResult.CanceledOperation;
             }
         }
 
 
-        internal static async UniTask<HandlingResult> LoadDynamicObjectsAsync<T, TO> (
-            Func<TO> factoryFunc,
-            AbstractHandler<T, TO> handler,
+        internal static async UniTask<HandlingResult> LoadDynamicObjectsAsync<THandler, TObject> (
+            Func<TObject> factoryFunc,
+            AbstractHandler<THandler, TObject> handler,
             int dynamicObjectsCount,
             UnityReader reader,
             IProgress<float> progress,
             CancellationToken token
-        ) where TO : IPersistentObjectAsync where T : AbstractHandler<T, TO> {
-            return await Catcher.TryHandle(LoadObjectsFunc, "Loading was cancelled while reading data");
-
-            async UniTask LoadObjectsFunc () {
+        ) where TObject : IPersistentObjectAsync where THandler : AbstractHandler<THandler, TObject> {
+            try {
                 var completedTasks = 0f;
+                var cachedObjects = new TObject[dynamicObjectsCount];
 
                 for (var i = 0; i < dynamicObjectsCount; i++) {
-                    if (token.IsCancellationRequested) 
-                        throw new OperationCanceledException();
-                    TO obj = factoryFunc();
-                    handler.AddObject(obj);
+                    token.ThrowIfCancellationRequested();
+                    TObject obj = factoryFunc();
+                    cachedObjects[i] = obj;
                     await obj.Load(reader);
-                    completedTasks++;
-                    progress?.Report(completedTasks / dynamicObjectsCount);
+                    progress?.Report(++completedTasks / dynamicObjectsCount);
                 }
+
+                handler.AddObjects(cachedObjects);
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning("Loading was cancelled while reading data");
+                return HandlingResult.CanceledOperation;
             }
         }
 

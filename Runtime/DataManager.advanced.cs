@@ -52,15 +52,31 @@ namespace SaveSystem {
                 if (objects == null) throw new ArgumentNullException(nameof(objects));
                 if (objects.Length == 0)
                     throw new ArgumentException("Value cannot be an empty collection.", nameof(objects));
+
                 await using UnityWriter unityWriter = UnityHandlersFactory.CreateBufferingWriter(filePath);
                 source ??= new CancellationTokenSource();
 
                 if (source.IsCancellationRequested)
                     return;
 
-                HandlingResult result = await Handling.SaveObjectsAsync(
-                    objects, unityWriter, progress, source.Token
-                );
+                HandlingResult result;
+
+                try {
+                    var completedTasks = 0f;
+
+                    foreach (IPersistentObjectAsync obj in objects) {
+                        source.Token.ThrowIfCancellationRequested();
+                        await obj.Save(unityWriter);
+                        completedTasks++;
+                        progress?.Report(completedTasks / objects.Length);
+                    }
+
+                    result = HandlingResult.Success;
+                }
+                catch (OperationCanceledException) {
+                    Logger.LogWarning("Saving was cancelled while data was being written");
+                    result = HandlingResult.CanceledOperation;
+                }
 
                 if (result == HandlingResult.Success) {
                     await unityWriter.WriteBufferToFileAsync();

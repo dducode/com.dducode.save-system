@@ -23,12 +23,12 @@
         /// <summary>
         /// An error occured while retrieving data from a remote storage
         /// </summary>
-        NetworkError,
+        NetworkError, // TODO: remove
 
         /// <summary>
         /// Defines other errors
         /// </summary>
-        UnknownError
+        UnknownError // TODO: remove
 
     }
 

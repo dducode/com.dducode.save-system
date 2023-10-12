@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
@@ -11,10 +10,10 @@ namespace SaveSystem.Handlers {
     /// <summary>
     /// It's same as <see cref="ObjectHandler{TO}">Object Handler</see> but works with objects that are saved and loaded asynchronously
     /// </summary>
-    public sealed class AsyncObjectHandler<TO> : AbstractHandler<AsyncObjectHandler<TO>, TO>,
-        IAsyncObjectHandler where TO : IPersistentObjectAsync {
+    public sealed class AsyncObjectHandler<TObject> : AbstractHandler<AsyncObjectHandler<TObject>, TObject>,
+        IAsyncObjectHandler where TObject : IPersistentObjectAsync {
 
-        internal AsyncObjectHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc
+        internal AsyncObjectHandler (string localFilePath, TObject[] staticObjects, Func<TObject> factoryFunc
         ) : base(localFilePath, staticObjects, factoryFunc) { }
 
 
@@ -24,13 +23,11 @@ namespace SaveSystem.Handlers {
 
             dynamicObjects.RemoveAll(obj => obj == null);
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
-            var savedObjects = new List<TO>(dynamicObjects);
 
             await using UnityWriter unityWriter = UnityHandlersFactory.CreateBufferingWriter(localFilePath);
             unityWriter.Write(dynamicObjects.Count);
-            savedObjects.AddRange(staticObjects);
 
-            HandlingResult result = await Handling.SaveObjectsAsync(savedObjects, unityWriter, savingProgress, token);
+            HandlingResult result = await Handling.SaveObjectsAsync(this, unityWriter, savingProgress, token);
 
             if (result == HandlingResult.Success)
                 await unityWriter.WriteBufferToFileAsync();

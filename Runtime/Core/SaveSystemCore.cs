@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using SaveSystem.CheckPoints;
+using SaveSystem.Exceptions;
 using SaveSystem.Handlers;
 using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
@@ -16,6 +18,7 @@ using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using Logger = SaveSystem.Internal.Logger;
+using MethodInfo = System.Reflection.MethodInfo;
 using Object = UnityEngine.Object;
 
 
@@ -41,32 +44,13 @@ namespace SaveSystem.Core {
             get => m_enabledSaveEvents;
             set {
                 m_enabledSaveEvents = value;
-                m_autoSaveEnabled = false;
-                Application.quitting -= SaveBeforeExit;
-                Application.focusChanged -= OnFocusLost;
-                Application.lowMemory -= OnLowMemory;
-
-                switch (m_enabledSaveEvents) {
-                    case SaveEvents.None:
-                        return;
-                    case not SaveEvents.All:
-                        m_autoSaveEnabled = m_enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
-                        if (m_enabledSaveEvents.HasFlag(SaveEvents.OnExit))
-                            Application.quitting += SaveBeforeExit;
-                        if (m_enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
-                            Application.focusChanged += OnFocusLost;
-                        if (m_enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
-                            Application.lowMemory += OnLowMemory;
-                        break;
-                    case SaveEvents.All:
-                        m_autoSaveEnabled = true;
-                        Application.quitting += SaveBeforeExit;
-                        Application.focusChanged += OnFocusLost;
-                        Application.lowMemory += OnLowMemory;
-                        break;
-                }
+                SetupEvents(m_enabledSaveEvents);
+                if (DebugEnabled)
+                    Logger.Log($"Set save events: {m_enabledSaveEvents}");
             }
         }
+
+        private static SaveEvents m_enabledSaveEvents;
 
         /// <summary>
         /// It's used into autosave loop to determine saving frequency
@@ -76,18 +60,35 @@ namespace SaveSystem.Core {
         public static float SavePeriod {
             get => m_savePeriod;
             set {
-                if (value < 0)
+                if (value < 0) {
                     throw new ArgumentException(
                         Logger.FormattedMessage("Save period cannot be less than 0."), nameof(SavePeriod)
                     );
+                }
+
                 m_savePeriod = value;
+
+                if (DebugEnabled)
+                    Logger.Log($"Set save period: {m_savePeriod}");
             }
         }
+
+        private static float m_savePeriod;
 
         /// <summary>
         /// Configure it to set parallel saving handlers
         /// </summary>
-        public static bool IsParallel { get; set; }
+        public static bool IsParallel {
+            get => m_isParallel;
+            set {
+                m_isParallel = value;
+
+                if (DebugEnabled)
+                    Logger.Log(m_isParallel ? "Enable" : "Disable" + " parallel saving");
+            }
+        }
+
+        private static bool m_isParallel;
 
         /// <summary>
         /// Enables logs
@@ -95,13 +96,33 @@ namespace SaveSystem.Core {
         /// <remarks>
         /// It configures only simple logs, other logs (warnings and errors) will be written to console anyway.
         /// </remarks>
-        public static bool DebugEnabled { get; set; }
+        public static bool DebugEnabled {
+            get => m_debugEnabled;
+            set {
+                m_debugEnabled = value;
+
+                if (DebugEnabled)
+                    Logger.Log("Enable debug logs");
+            }
+        }
+
+        private static bool m_debugEnabled;
 
         /// <summary>
         /// Determines whether checkpoints will be destroyed after saving
         /// </summary>
         /// <value> If true, triggered checkpoint will be deleted from scene after saving </value>
-        public static bool DestroyCheckPoints { get; set; }
+        public static bool DestroyCheckPoints {
+            get => m_destroyCheckPoints;
+            set {
+                m_destroyCheckPoints = value;
+
+                if (DebugEnabled)
+                    Logger.Log(m_destroyCheckPoints ? "Enable" : "Disable" + " destroying checkpoints");
+            }
+        }
+
+        private static bool m_destroyCheckPoints;
 
         /// <summary>
         /// Player tag is used to filtering messages from triggered checkpoints
@@ -110,13 +131,20 @@ namespace SaveSystem.Core {
         public static string PlayerTag {
             get => m_playerTag;
             set {
-                if (string.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value)) {
                     throw new ArgumentNullException(
                         Logger.FormattedMessage("Player tag cannot be null or empty."), nameof(PlayerTag)
                     );
+                }
+
                 m_playerTag = value;
+
+                if (DebugEnabled)
+                    Logger.Log($"Set player tag: {m_playerTag}");
             }
         }
+
+        private static string m_playerTag;
 
         /// <summary>
         /// Event that is called before saving. It can be useful when you use async saving
@@ -125,7 +153,23 @@ namespace SaveSystem.Core {
         /// Listeners that will be called when core will start saving.
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
-        public static event Action<SaveType> OnSaveStart;
+        public static event Action<SaveType> OnSaveStart {
+            add {
+                m_onSaveStart += value;
+
+                if (DebugEnabled)
+                    Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event");
+            }
+            remove {
+                m_onSaveStart -= value;
+
+                if (DebugEnabled)
+                    Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event");
+            }
+        }
+
+
+        private static Action<SaveType> m_onSaveStart;
 
         /// <summary>
         /// Event that is called after saving
@@ -134,11 +178,23 @@ namespace SaveSystem.Core {
         /// Listeners that will be called when core will finish saving.
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
-        public static event Action<SaveType> OnSaveEnd;
+        public static event Action<SaveType> OnSaveEnd {
+            add {
+                m_onSaveEnd += value;
 
-        private static SaveEvents m_enabledSaveEvents;
-        private static float m_savePeriod;
-        private static string m_playerTag;
+                if (DebugEnabled)
+                    Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event");
+            }
+            remove {
+                m_onSaveEnd -= value;
+
+                if (DebugEnabled)
+                    Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event");
+            }
+        }
+
+
+        private static Action<SaveType> m_onSaveEnd;
 
         /// It's used for delayed async saving
         private static readonly Queue<Func<UniTask>> SavingRequests = new();
@@ -177,12 +233,37 @@ namespace SaveSystem.Core {
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void LoadInternalData () {
+        private static async void LoadData () {
             using UnityReader reader = UnityHandlersFactory.CreateDirectReader(InternalDataPath);
 
             if (reader != null) {
-                m_destroyedCheckpoints = reader.ReadVector3Array().ToList();
+                m_destroyedCheckpoints = (await reader.ReadVector3ArrayAsync()).ToList();
                 DestroyTriggeredCheckpoints();
+            }
+
+            foreach (MonoBehaviour monoBehaviour in Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)) {
+                MethodInfo loadMethod = monoBehaviour.GetType()
+                   .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                   .FirstOrDefault(method =>
+                        method.GetParameters().Length == 0
+                        && method.ReturnParameter?.ParameterType == typeof(bool)
+                        && method.IsDefined(typeof(BootstrapAttribute), false)
+                    );
+
+                if (loadMethod == null)
+                    continue;
+
+                var result = (bool)loadMethod.Invoke(monoBehaviour, null);
+
+                if (result) {
+                    LoadHandlers();
+                    await LoadAsyncHandlers();
+
+                    if (DebugEnabled)
+                        Logger.Log("Handlers was loaded");
+                }
+
+                break;
             }
         }
 
@@ -197,7 +278,7 @@ namespace SaveSystem.Core {
             Handlers.Add(handler);
 
             if (DebugEnabled)
-                Logger.Log($"{handler.GetType().Name} was register");
+                Logger.Log($"Register handler: {handler}");
         }
 
 
@@ -211,7 +292,7 @@ namespace SaveSystem.Core {
             AsyncHandlers.Add(handler);
 
             if (DebugEnabled)
-                Logger.Log($"{handler.GetType().Name} was register");
+                Logger.Log($"Register handler: {handler}");
         }
 
 
@@ -233,21 +314,23 @@ namespace SaveSystem.Core {
             string playerTag,
             float savePeriod = 0
         ) {
-            EnabledSaveEvents = enabledSaveEvents;
-            IsParallel = isParallel;
-            DebugEnabled = debugEnabled;
-            DestroyCheckPoints = destroyCheckPoints;
-            PlayerTag = playerTag;
-            SavePeriod = savePeriod;
+            m_enabledSaveEvents = enabledSaveEvents;
+            SetupEvents(m_enabledSaveEvents);
+            m_isParallel = isParallel;
+            m_debugEnabled = debugEnabled;
+            m_destroyCheckPoints = destroyCheckPoints;
+            m_playerTag = playerTag;
+            m_savePeriod = savePeriod;
 
             if (DebugEnabled) {
-                Logger.Log("Parameters was configured:" +
-                           $"\nEnabled Save Events: {EnabledSaveEvents}" +
-                           $"\nIs Parallel: {IsParallel}" +
-                           $"\nDebug Enabled: {DebugEnabled}" +
-                           $"\nDestroy Check Points: {DestroyCheckPoints}" +
-                           $"\nPlayer Tag: {PlayerTag}" +
-                           $"\nSave Period: {SavePeriod}"
+                Logger.Log(
+                    "Parameters was configured:" +
+                    $"\nEnabled Save Events: {EnabledSaveEvents}" +
+                    $"\nIs Parallel: {IsParallel}" +
+                    $"\nDebug Enabled: {DebugEnabled}" +
+                    $"\nDestroy Check Points: {DestroyCheckPoints}" +
+                    $"\nPlayer Tag: {PlayerTag}" +
+                    $"\nSave Period: {SavePeriod}"
                 );
             }
         }
@@ -273,7 +356,7 @@ namespace SaveSystem.Core {
             m_quickSaveKey = keyCode;
 
             if (DebugEnabled)
-                Logger.Log($"Key {m_quickSaveKey} was bind with quick save");
+                Logger.Log($"Key '{m_quickSaveKey}' was bind with quick save");
         }
 
 
@@ -289,10 +372,10 @@ namespace SaveSystem.Core {
             m_autoSaveEnabled = false;
             m_quickSaveKey = default;
 
-            OnSaveStart?.Invoke(SaveType.OnExit);
+            m_onSaveStart?.Invoke(SaveType.OnExit);
             SaveHandlers();
             await SaveAsyncHandlers();
-            OnSaveEnd?.Invoke(SaveType.OnExit);
+            m_onSaveEnd?.Invoke(SaveType.OnExit);
 
             if (DebugEnabled)
                 Logger.Log("Successful async saving before the quitting");
@@ -395,12 +478,12 @@ namespace SaveSystem.Core {
 
         private static void SaveBeforeExit () {
             const string message = "Successful saving during the quitting";
-            OnSaveStart?.Invoke(SaveType.OnExit);
+            m_onSaveStart?.Invoke(SaveType.OnExit);
 
             SaveHandlers();
             Task.WaitAll(Task.Run(SaveAsyncHandlers));
 
-            OnSaveEnd?.Invoke(SaveType.OnExit);
+            m_onSaveEnd?.Invoke(SaveType.OnExit);
 
             if (DebugEnabled)
                 Logger.Log(message);
@@ -409,14 +492,14 @@ namespace SaveSystem.Core {
 
         private static void ProcessSave (SaveType saveType, string debugMessage, CancellationToken token) {
             SavingRequests.Enqueue(async () => {
-                OnSaveStart?.Invoke(saveType);
+                m_onSaveStart?.Invoke(saveType);
 
                 SaveHandlers();
                 await SaveAsyncHandlers(token);
                 if (token.IsCancellationRequested)
                     return;
 
-                OnSaveEnd?.Invoke(saveType);
+                m_onSaveEnd?.Invoke(saveType);
 
                 if (DebugEnabled)
                     Logger.Log(debugMessage);
@@ -425,12 +508,20 @@ namespace SaveSystem.Core {
 
 
         private static void SaveHandlers () {
-            if (IsParallel) {
-                Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
+            try {
+                if (IsParallel) {
+                    Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
+                }
+                else {
+                    foreach (IObjectHandler objectHandler in Handlers)
+                        objectHandler.Save();
+                }
             }
-            else {
-                foreach (IObjectHandler objectHandler in Handlers)
-                    objectHandler.Save();
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
+                    ex
+                );
             }
         }
 
@@ -446,25 +537,69 @@ namespace SaveSystem.Core {
 
             float completedTasks = 0;
 
-            if (IsParallel) {
-                await ParallelLoop.ForEachAsync(AsyncHandlers, async asyncHandler => {
-                    await asyncHandler.SaveAsync(token);
-                    if (token.IsCancellationRequested)
-                        return;
-
-                    completedTasks++;
-                    m_progress?.Report(completedTasks / AsyncHandlers.Count);
-                });
-            }
-            else {
-                foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers) {
-                    await asyncHandler.SaveAsync(token);
-                    if (token.IsCancellationRequested)
-                        return;
-
-                    completedTasks++;
-                    m_progress?.Report(completedTasks / AsyncHandlers.Count);
+            try {
+                if (IsParallel) {
+                    await ParallelLoop.ForEachAsync(AsyncHandlers, async asyncHandler => {
+                        await asyncHandler.SaveAsync(token);
+                        if (token.IsCancellationRequested)
+                            return;
+                        m_progress?.Report(++completedTasks / AsyncHandlers.Count);
+                    });
                 }
+                else {
+                    foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers) {
+                        await asyncHandler.SaveAsync(token);
+                        if (token.IsCancellationRequested)
+                            return;
+                        m_progress?.Report(++completedTasks / AsyncHandlers.Count);
+                    }
+                }
+            }
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
+                    ex
+                );
+            }
+        }
+
+
+        private static void LoadHandlers () {
+            try {
+                if (IsParallel) {
+                    Parallel.ForEach(Handlers, objectHandler => objectHandler.Load());
+                }
+                else {
+                    foreach (IObjectHandler objectHandler in Handlers)
+                        objectHandler.Load();
+                }
+            }
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
+                    ex
+                );
+            }
+        }
+
+
+        private static async UniTask LoadAsyncHandlers () {
+            try {
+                if (IsParallel) {
+                    await ParallelLoop.ForEachAsync(
+                        AsyncHandlers, async asyncHandler => await asyncHandler.LoadAsync()
+                    );
+                }
+                else {
+                    foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers)
+                        await asyncHandler.LoadAsync();
+                }
+            }
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
+                    ex
+                );
             }
         }
 
@@ -485,14 +620,43 @@ namespace SaveSystem.Core {
             }
 
             // Core settings
-            EnabledSaveEvents = settings.enabledSaveEvents;
-            SavePeriod = settings.savePeriod;
-            IsParallel = settings.isParallel;
-            DebugEnabled = settings.debugEnabled;
+            m_enabledSaveEvents = settings.enabledSaveEvents;
+            SetupEvents(m_enabledSaveEvents);
+            m_savePeriod = settings.savePeriod;
+            m_isParallel = settings.isParallel;
+            m_debugEnabled = settings.debugEnabled;
 
             // Checkpoints settings
-            DestroyCheckPoints = settings.destroyCheckPoints;
-            PlayerTag = settings.playerTag;
+            m_destroyCheckPoints = settings.destroyCheckPoints;
+            m_playerTag = settings.playerTag;
+        }
+
+
+        private static void SetupEvents (SaveEvents enabledSaveEvents) {
+            m_autoSaveEnabled = false;
+            Application.quitting -= SaveBeforeExit;
+            Application.focusChanged -= OnFocusLost;
+            Application.lowMemory -= OnLowMemory;
+
+            switch (enabledSaveEvents) {
+                case SaveEvents.None:
+                    break;
+                case not SaveEvents.All:
+                    m_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
+                    if (enabledSaveEvents.HasFlag(SaveEvents.OnExit))
+                        Application.quitting += SaveBeforeExit;
+                    if (enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
+                        Application.focusChanged += OnFocusLost;
+                    if (enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
+                        Application.lowMemory += OnLowMemory;
+                    break;
+                case SaveEvents.All:
+                    m_autoSaveEnabled = true;
+                    Application.quitting += SaveBeforeExit;
+                    Application.focusChanged += OnFocusLost;
+                    Application.lowMemory += OnLowMemory;
+                    break;
+            }
         }
 
 

@@ -11,10 +11,10 @@ namespace SaveSystem.Handlers {
     /// <summary>
     /// You can handle <see cref="IStorable">storable objects</see> using this
     /// </summary>
-    public class SmartHandler<TO> : AbstractHandler<SmartHandler<TO>, TO>, IAsyncObjectHandler
-        where TO : IStorable {
+    public class SmartHandler<TObject> : AbstractHandler<SmartHandler<TObject>, TObject>, IAsyncObjectHandler
+        where TObject : IStorable {
 
-        internal SmartHandler (string localFilePath, TO[] staticObjects, Func<TO> factoryFunc) :
+        internal SmartHandler (string localFilePath, TObject[] staticObjects, Func<TObject> factoryFunc) :
             base(localFilePath, staticObjects, factoryFunc) { }
 
 
@@ -24,19 +24,21 @@ namespace SaveSystem.Handlers {
 
             dynamicObjects.RemoveAll(obj => obj == null);
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
-            var savedObjects = new List<TO>(dynamicObjects);
 
             await using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(localFilePath);
             writer.Write(dynamicObjects.Count);
-            savedObjects.AddRange(staticObjects);
 
-            var buffers = new List<DataBuffer>(savedObjects.Count);
+            var buffers = new List<DataBuffer>(staticObjects.Length + dynamicObjects.Count);
             writer.Write(buffers.Capacity);
-            foreach (TO obj in savedObjects)
+            foreach (TObject obj in this)
                 buffers.Add(obj.Save());
 
-            foreach (DataBuffer buffer in buffers)
+            var index = 0;
+
+            foreach (DataBuffer buffer in buffers) {
                 await writer.WriteAsync(buffer);
+                savingProgress?.Report((float)++index / ObjectsCount);
+            }
 
             return HandlingResult.Success;
         }
@@ -48,32 +50,39 @@ namespace SaveSystem.Handlers {
 
             using UnityReader reader = UnityHandlersFactory.CreateDirectReader(localFilePath);
 
-            if (reader != null) {
-                int dynamicObjectsCount = reader.ReadInt();
-                if (dynamicObjectsCount > 0 && factoryFunc == null)
-                    throw new ArgumentNullException(nameof(factoryFunc));
+            if (reader == null)
+                return HandlingResult.FileNotExists;
 
-                int buffersCount = reader.ReadInt();
-                var buffers = new List<DataBuffer>(buffersCount);
+            int dynamicObjectsCount = reader.ReadInt();
 
-                for (var i = 0; i < buffersCount; i++)
-                    buffers.Add(await reader.ReadDataBufferAsync());
+            int buffersCount = reader.ReadInt();
+            var buffers = new List<DataBuffer>(buffersCount);
 
-                for (var i = 0; i < dynamicObjectsCount; i++) {
-                    TO obj = factoryFunc();
-                    obj.Load(buffers[i]);
-                    AddObject(obj);
-                }
-
-                int bufferIndex = dynamicObjectsCount;
-
-                foreach (TO obj in staticObjects)
-                    obj.Load(buffers[bufferIndex++]);
-
-                return HandlingResult.Success;
+            for (var i = 0; i < buffersCount; i++) {
+                buffers.Add(await reader.ReadDataBufferAsync());
+                loadingProgress?.Report((float)i / ObjectsCount);
             }
 
-            return HandlingResult.FileNotExists;
+            AddObjects(SpawnObjects(dynamicObjectsCount));
+
+            int count = Math.Min(buffersCount, ObjectsCount);
+            for (var i = 0; i < count; i++)
+                this[i].Load(buffers[i]);
+
+            return HandlingResult.Success;
+        }
+
+
+        private TObject[] SpawnObjects (int count) {
+            if (count > 0 && factoryFunc == null)
+                throw new ArgumentNullException(nameof(factoryFunc));
+
+            var objects = new TObject[count];
+
+            for (var i = 0; i < count; i++)
+                objects[i] = factoryFunc();
+
+            return objects;
         }
 
     }
