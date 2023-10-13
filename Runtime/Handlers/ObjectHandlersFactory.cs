@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using SaveSystem.Core;
 using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
@@ -103,15 +104,18 @@ namespace SaveSystem.Handlers {
             if (objects == null)
                 throw new ArgumentNullException(nameof(objects));
 
-            var objectHandler = new ObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
+            var handler = new ObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(ObjectHandler<TO>), typeof(TO), objects.Count)
+                new HandlerMetadata(
+                    filePath, caller, typeof(ObjectHandler<TO>),
+                    typeof(TO), GCHandle.Alloc(handler, GCHandleType.Weak), objects.Count
+                )
             );
             if (RegisterImmediately)
-                SaveSystemCore.RegisterObjectHandler(objectHandler);
-            return objectHandler;
+                SaveSystemCore.RegisterObjectHandler(handler);
+            return handler;
         }
 
 
@@ -183,7 +187,10 @@ namespace SaveSystem.Handlers {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(AsyncObjectHandler<TO>), typeof(TO), objects.Count)
+                new HandlerMetadata(
+                    filePath, caller, typeof(AsyncObjectHandler<TO>),
+                    typeof(TO), GCHandle.Alloc(handler, GCHandleType.Weak), objects.Count
+                )
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);
@@ -257,7 +264,10 @@ namespace SaveSystem.Handlers {
                 diagnosticIndex = DiagnosticService.HandlersData.Count
             };
             DiagnosticService.AddMetadata(
-                new HandlerMetadata(filePath, caller, typeof(SmartHandler<TO>), typeof(TO), objects.Count)
+                new HandlerMetadata(
+                    filePath, caller, typeof(SmartHandler<TO>),
+                    typeof(TO), GCHandle.Alloc(handler, GCHandleType.Weak), objects.Count
+                )
             );
             if (RegisterImmediately)
                 SaveSystemCore.RegisterAsyncObjectHandler(handler);

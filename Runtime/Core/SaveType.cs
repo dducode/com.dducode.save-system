@@ -24,16 +24,21 @@
         /// This is sent when the player exit the game
         /// </summary>
         OnExit,
-        
+
         /// <summary>
         /// This is sent when the application loses focus
         /// </summary>
         OnFocusLost,
-        
+
         /// <summary>
         /// This is sent when the application receives a low-memory notification
         /// </summary>
-        OnLowMemory
+        OnLowMemory,
+
+        /// <summary>
+        /// This is sent when the player switches a scene
+        /// </summary>
+        OnSwitchScene
 
     }
 

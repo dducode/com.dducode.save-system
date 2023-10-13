@@ -1,10 +1,10 @@
 ﻿using System;
 using JetBrains.Annotations;
 
-namespace SaveSystem.Core {
+namespace SaveSystem {
 
     [AttributeUsage(AttributeTargets.Method)]
     [MeansImplicitUse]
-    public class BootstrapAttribute : Attribute { }
+    public sealed class SceneBootstrapAttribute : Attribute { }
 
 }

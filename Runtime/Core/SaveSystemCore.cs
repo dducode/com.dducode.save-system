@@ -13,10 +13,10 @@ using SaveSystem.Exceptions;
 using SaveSystem.Handlers;
 using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using UnityEngine.SceneManagement;
 using Logger = SaveSystem.Internal.Logger;
 using MethodInfo = System.Reflection.MethodInfo;
 using Object = UnityEngine.Object;
@@ -32,168 +32,20 @@ namespace SaveSystem.Core {
     /// </summary>
     public static partial class SaveSystemCore {
 
-        private static readonly string InternalDataPath =
+        private static readonly string DestroyedCheckpointsPath =
             Path.Combine("save_system", "internal", "destroyed_checkpoints.bytes");
 
-
-        /// <summary>
-        /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
-        /// </summary>
-        /// <seealso cref="SaveEvents"/>
-        public static SaveEvents EnabledSaveEvents {
-            get => m_enabledSaveEvents;
-            set {
-                m_enabledSaveEvents = value;
-                SetupEvents(m_enabledSaveEvents);
-                if (DebugEnabled)
-                    Logger.Log($"Set save events: {m_enabledSaveEvents}");
-            }
-        }
+        private static readonly string LastSceneIndexPath =
+            Path.Combine("save_system", "internal", "last_scene_index.bytes");
 
         private static SaveEvents m_enabledSaveEvents;
-
-        /// <summary>
-        /// It's used into autosave loop to determine saving frequency
-        /// </summary>
-        /// <value> Saving period in seconds </value>
-        /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
-        public static float SavePeriod {
-            get => m_savePeriod;
-            set {
-                if (value < 0) {
-                    throw new ArgumentException(
-                        Logger.FormattedMessage("Save period cannot be less than 0."), nameof(SavePeriod)
-                    );
-                }
-
-                m_savePeriod = value;
-
-                if (DebugEnabled)
-                    Logger.Log($"Set save period: {m_savePeriod}");
-            }
-        }
-
         private static float m_savePeriod;
-
-        /// <summary>
-        /// Configure it to set parallel saving handlers
-        /// </summary>
-        public static bool IsParallel {
-            get => m_isParallel;
-            set {
-                m_isParallel = value;
-
-                if (DebugEnabled)
-                    Logger.Log(m_isParallel ? "Enable" : "Disable" + " parallel saving");
-            }
-        }
-
         private static bool m_isParallel;
-
-        /// <summary>
-        /// Enables logs
-        /// </summary>
-        /// <remarks>
-        /// It configures only simple logs, other logs (warnings and errors) will be written to console anyway.
-        /// </remarks>
-        public static bool DebugEnabled {
-            get => m_debugEnabled;
-            set {
-                m_debugEnabled = value;
-
-                if (DebugEnabled)
-                    Logger.Log("Enable debug logs");
-            }
-        }
-
         private static bool m_debugEnabled;
-
-        /// <summary>
-        /// Determines whether checkpoints will be destroyed after saving
-        /// </summary>
-        /// <value> If true, triggered checkpoint will be deleted from scene after saving </value>
-        public static bool DestroyCheckPoints {
-            get => m_destroyCheckPoints;
-            set {
-                m_destroyCheckPoints = value;
-
-                if (DebugEnabled)
-                    Logger.Log(m_destroyCheckPoints ? "Enable" : "Disable" + " destroying checkpoints");
-            }
-        }
-
         private static bool m_destroyCheckPoints;
-
-        /// <summary>
-        /// Player tag is used to filtering messages from triggered checkpoints
-        /// </summary>
-        /// <value> Tag of the player object </value>
-        public static string PlayerTag {
-            get => m_playerTag;
-            set {
-                if (string.IsNullOrEmpty(value)) {
-                    throw new ArgumentNullException(
-                        Logger.FormattedMessage("Player tag cannot be null or empty."), nameof(PlayerTag)
-                    );
-                }
-
-                m_playerTag = value;
-
-                if (DebugEnabled)
-                    Logger.Log($"Set player tag: {m_playerTag}");
-            }
-        }
-
         private static string m_playerTag;
 
-        /// <summary>
-        /// Event that is called before saving. It can be useful when you use async saving
-        /// </summary>
-        /// <value>
-        /// Listeners that will be called when core will start saving.
-        /// Listeners must accept <see cref="SaveType"/> enumeration
-        /// </value>
-        public static event Action<SaveType> OnSaveStart {
-            add {
-                m_onSaveStart += value;
-
-                if (DebugEnabled)
-                    Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event");
-            }
-            remove {
-                m_onSaveStart -= value;
-
-                if (DebugEnabled)
-                    Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event");
-            }
-        }
-
-
         private static Action<SaveType> m_onSaveStart;
-
-        /// <summary>
-        /// Event that is called after saving
-        /// </summary>
-        /// <value>
-        /// Listeners that will be called when core will finish saving.
-        /// Listeners must accept <see cref="SaveType"/> enumeration
-        /// </value>
-        public static event Action<SaveType> OnSaveEnd {
-            add {
-                m_onSaveEnd += value;
-
-                if (DebugEnabled)
-                    Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event");
-            }
-            remove {
-                m_onSaveEnd -= value;
-
-                if (DebugEnabled)
-                    Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event");
-            }
-        }
-
-
         private static Action<SaveType> m_onSaveEnd;
 
         /// It's used for delayed async saving
@@ -206,7 +58,9 @@ namespace SaveSystem.Core {
         private static readonly ConcurrentBag<IAsyncObjectHandler> AsyncHandlers = new();
         private static KeyCode m_quickSaveKey;
 
-        private static List<Vector3> m_destroyedCheckpoints = new();
+        private static List<Vector3> m_destroyedCheckpoints;
+        private static int m_lastSceneIndex;
+
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
         private static bool m_requestsQueueIsFree = true;
@@ -215,15 +69,16 @@ namespace SaveSystem.Core {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize () {
-            PlayerLoopSystem modifiedLoop = PlayerLoop.GetCurrentPlayerLoop();
             var saveSystemLoop = new PlayerLoopSystem {
                 type = typeof(SaveSystemCore),
                 updateDelegate = UpdateSystem
             };
 
-            SetPlayerLoop(modifiedLoop, saveSystemLoop);
+            SetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop(), saveSystemLoop);
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
-            ResetOnExitPlayMode(modifiedLoop, saveSystemLoop);
+            LoadInternalData();
+            ResetOnExitPlayMode();
+
             m_cancellationSource = new CancellationTokenSource();
             Application.quitting += () => m_cancellationSource.Cancel();
 
@@ -232,170 +87,78 @@ namespace SaveSystem.Core {
         }
 
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static async void LoadData () {
-            using UnityReader reader = UnityHandlersFactory.CreateDirectReader(InternalDataPath);
-
-            if (reader != null) {
-                m_destroyedCheckpoints = (await reader.ReadVector3ArrayAsync()).ToList();
-                DestroyTriggeredCheckpoints();
-            }
-
-            foreach (MonoBehaviour monoBehaviour in Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)) {
-                MethodInfo loadMethod = monoBehaviour.GetType()
-                   .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                   .FirstOrDefault(method =>
-                        method.GetParameters().Length == 0
-                        && method.ReturnParameter?.ParameterType == typeof(bool)
-                        && method.IsDefined(typeof(BootstrapAttribute), false)
-                    );
-
-                if (loadMethod == null)
-                    continue;
-
-                var result = (bool)loadMethod.Invoke(monoBehaviour, null);
-
-                if (result) {
-                    LoadHandlers();
-                    await LoadAsyncHandlers();
-
-                    if (DebugEnabled)
-                        Logger.Log("Handlers was loaded");
-                }
-
-                break;
-            }
+        private static void SetPlayerLoop (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
+            if (PlayerLoopManager.TryInsertSubSystem(ref modifiedLoop, saveSystemLoop, typeof(PreLateUpdate)))
+                PlayerLoop.SetPlayerLoop(modifiedLoop);
+            else
+                Logger.LogError($"Failed insert system: {saveSystemLoop}");
         }
 
 
-        /// <summary>
-        /// Registers a handler to automatic save, quick-save, save at checkpoit and at save on exit
-        /// </summary>
-        public static void RegisterObjectHandler ([NotNull] IObjectHandler handler) {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            Handlers.Add(handler);
-
-            if (DebugEnabled)
-                Logger.Log($"Register handler: {handler}");
-        }
-
-
-        /// <summary>
-        /// Registers an async handler to automatic save, quick-save, save at checkpoit and at save on exit
-        /// </summary>
-        public static void RegisterAsyncObjectHandler ([NotNull] IAsyncObjectHandler handler) {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-
-            AsyncHandlers.Add(handler);
-
-            if (DebugEnabled)
-                Logger.Log($"Register handler: {handler}");
-        }
-
-
-        /// <summary>
-        /// Configures all the Core parameters
-        /// </summary>
-        /// <param name="enabledSaveEvents"></param>
-        /// <param name="isParallel"></param>
-        /// <param name="debugEnabled"> <see cref="DebugEnabled"/> </param>
-        /// <param name="destroyCheckPoints"> <see cref="DestroyCheckPoints"/> </param>
-        /// <param name="playerTag"> <see cref="PlayerTag"/> </param>
-        /// <param name="savePeriod"> <see cref="SavePeriod"/> </param>
-        /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
-        public static void ConfigureParameters (
-            SaveEvents enabledSaveEvents,
-            bool isParallel,
-            bool debugEnabled,
-            bool destroyCheckPoints,
-            string playerTag,
-            float savePeriod = 0
-        ) {
-            m_enabledSaveEvents = enabledSaveEvents;
-            SetupEvents(m_enabledSaveEvents);
-            m_isParallel = isParallel;
-            m_debugEnabled = debugEnabled;
-            m_destroyCheckPoints = destroyCheckPoints;
-            m_playerTag = playerTag;
-            m_savePeriod = savePeriod;
-
-            if (DebugEnabled) {
-                Logger.Log(
-                    "Parameters was configured:" +
-                    $"\nEnabled Save Events: {EnabledSaveEvents}" +
-                    $"\nIs Parallel: {IsParallel}" +
-                    $"\nDebug Enabled: {DebugEnabled}" +
-                    $"\nDestroy Check Points: {DestroyCheckPoints}" +
-                    $"\nPlayer Tag: {PlayerTag}" +
-                    $"\nSave Period: {SavePeriod}"
+        private static void SetSettings ([NotNull] SaveSystemSettings settings) {
+            if (settings == null) {
+                throw new ArgumentNullException(
+                    nameof(settings), "Save system settings not found. Did you delete, rename or transfer them?"
                 );
             }
+
+            // Core settings
+            m_enabledSaveEvents = settings.enabledSaveEvents;
+            SetupEvents(m_enabledSaveEvents);
+            m_savePeriod = settings.savePeriod;
+            m_isParallel = settings.isParallel;
+            m_debugEnabled = settings.debugEnabled;
+
+            // Checkpoints settings
+            m_destroyCheckPoints = settings.destroyCheckPoints;
+            m_playerTag = settings.playerTag;
         }
 
 
-        /// <summary>
-        /// Pass <see cref="IProgress{T}"> IProgress object </see> to observe async saving progress
-        /// when it'll be started
-        /// </summary>
-        /// <remarks> The Core will report progress only during async save </remarks>
-        public static void ObserveProgress ([NotNull] IProgress<float> progress) {
-            m_progress = progress ?? throw new ArgumentNullException(nameof(progress));
+        private static void LoadInternalData () {
+            using (UnityReader reader = UnityHandlersFactory.CreateDirectReader(DestroyedCheckpointsPath)) {
+                m_destroyedCheckpoints = reader?.ReadVector3Array().ToList() ?? new List<Vector3>();
+            }
 
-            if (DebugEnabled)
-                Logger.Log($"Progress observer {m_progress} was register");
+            using (UnityReader reader = UnityHandlersFactory.CreateDirectReader(LastSceneIndexPath)) {
+                m_lastSceneIndex = reader?.ReadInt() ?? -1;
+            }
         }
 
 
-        /// <summary>
-        /// Binds any key with quick save
-        /// </summary>
-        public static void BindKey (KeyCode keyCode) {
-            m_quickSaveKey = keyCode;
+        static partial void ResetOnExitPlayMode ();
 
-            if (DebugEnabled)
-                Logger.Log($"Key '{m_quickSaveKey}' was bind with quick save");
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Start () {
+            FindAndInvokeProjectBootstrap();
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
 
-        /// <summary>
-        /// Call this to manually save handlers before quitting the application
-        /// </summary>
-        /// <remarks>
-        /// This will immediately exit the game after saving.
-        /// You should make sure that you don't need to do anything else before calling it
-        /// </remarks>
-        public static async UniTask SaveAndQuit () {
-            m_cancellationSource.Cancel();
-            m_autoSaveEnabled = false;
-            m_quickSaveKey = default;
+        private static void FindAndInvokeProjectBootstrap () {
+            MonoBehaviour[] behaviours = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
 
-            m_onSaveStart?.Invoke(SaveType.OnExit);
-            SaveHandlers();
-            await SaveAsyncHandlers();
-            m_onSaveEnd?.Invoke(SaveType.OnExit);
+            foreach (MonoBehaviour behaviour in behaviours) {
+                MethodInfo[] methods = behaviour.GetType()
+                   .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                   .Where(method =>
+                        method.GetParameters().Length == 0
+                        && method.IsDefined(typeof(ProjectBootstrapAttribute), false)
+                    ).ToArray();
 
-            if (DebugEnabled)
-                Logger.Log("Successful async saving before the quitting");
+                switch (methods.Length) {
+                    case 0:
+                        continue;
+                    case > 1:
+                        throw new SaveSystemException(
+                            $"Using more than one {nameof(ProjectBootstrapAttribute)} is not supported"
+                        );
+                }
 
-            Application.quitting -= SaveBeforeExit;
-
-        #if UNITY_EDITOR
-            EditorApplication.ExitPlaymode();
-        #else
-            Application.Quit();
-        #endif
-        }
-
-
-        /// <summary>
-        /// You can call it when any event was happened
-        /// </summary>
-        public static void QuickSave () {
-            const string message = "Successful quick-save";
-            ProcessSave(SaveType.QuickSave, message, m_cancellationSource.Token);
+                methods[0].Invoke(behaviour, null);
+                return;
+            }
         }
 
 
@@ -406,7 +169,7 @@ namespace SaveSystem.Core {
             checkPoint.Disable();
 
             const string message = "Successful save at checkpoint";
-            ProcessSave(SaveType.SaveAtCheckpoint, message, m_cancellationSource.Token);
+            ScheduleSave(SaveType.SaveAtCheckpoint, message, m_cancellationSource.Token);
 
             if (checkPoint == null)
                 return;
@@ -414,10 +177,16 @@ namespace SaveSystem.Core {
             if (DestroyCheckPoints) {
                 m_destroyedCheckpoints.Add(checkPoint.transform.position);
                 checkPoint.Destroy();
-                SaveInternalData();
+                SaveDestroyedCheckpoints();
             }
             else
                 checkPoint.Enable();
+        }
+
+
+        private static void SaveDestroyedCheckpoints () {
+            using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(DestroyedCheckpointsPath);
+            writer.Write(m_destroyedCheckpoints);
         }
 
 
@@ -456,179 +225,9 @@ namespace SaveSystem.Core {
         private static void AutoSave () {
             if (m_autoSaveLastTime + SavePeriod < Time.time) {
                 const string message = "Successful auto save";
-                ProcessSave(SaveType.AutoSave, message, m_cancellationSource.Token);
+                ScheduleSave(SaveType.AutoSave, message, m_cancellationSource.Token);
                 m_autoSaveLastTime = Time.time;
             }
-        }
-
-
-        private static void OnFocusLost (bool hasFocus) {
-            if (!hasFocus) {
-                const string message = "Successful saving on focus lost";
-                ProcessSave(SaveType.OnFocusLost, message, m_cancellationSource.Token);
-            }
-        }
-
-
-        private static void OnLowMemory () {
-            const string message = "Successful saving on low memory";
-            ProcessSave(SaveType.OnLowMemory, message, m_cancellationSource.Token);
-        }
-
-
-        private static void SaveBeforeExit () {
-            const string message = "Successful saving during the quitting";
-            m_onSaveStart?.Invoke(SaveType.OnExit);
-
-            SaveHandlers();
-            Task.WaitAll(Task.Run(SaveAsyncHandlers));
-
-            m_onSaveEnd?.Invoke(SaveType.OnExit);
-
-            if (DebugEnabled)
-                Logger.Log(message);
-        }
-
-
-        private static void ProcessSave (SaveType saveType, string debugMessage, CancellationToken token) {
-            SavingRequests.Enqueue(async () => {
-                m_onSaveStart?.Invoke(saveType);
-
-                SaveHandlers();
-                await SaveAsyncHandlers(token);
-                if (token.IsCancellationRequested)
-                    return;
-
-                m_onSaveEnd?.Invoke(saveType);
-
-                if (DebugEnabled)
-                    Logger.Log(debugMessage);
-            });
-        }
-
-
-        private static void SaveHandlers () {
-            try {
-                if (IsParallel) {
-                    Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
-                }
-                else {
-                    foreach (IObjectHandler objectHandler in Handlers)
-                        objectHandler.Save();
-                }
-            }
-            catch (Exception ex) {
-                throw new SaveSystemException(
-                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
-                    ex
-                );
-            }
-        }
-
-
-        private static async UniTask SaveAsyncHandlers () {
-            await SaveAsyncHandlers(default);
-        }
-
-
-        private static async UniTask SaveAsyncHandlers (CancellationToken token) {
-            if (token.IsCancellationRequested)
-                return;
-
-            float completedTasks = 0;
-
-            try {
-                if (IsParallel) {
-                    await ParallelLoop.ForEachAsync(AsyncHandlers, async asyncHandler => {
-                        await asyncHandler.SaveAsync(token);
-                        if (token.IsCancellationRequested)
-                            return;
-                        m_progress?.Report(++completedTasks / AsyncHandlers.Count);
-                    });
-                }
-                else {
-                    foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers) {
-                        await asyncHandler.SaveAsync(token);
-                        if (token.IsCancellationRequested)
-                            return;
-                        m_progress?.Report(++completedTasks / AsyncHandlers.Count);
-                    }
-                }
-            }
-            catch (Exception ex) {
-                throw new SaveSystemException(
-                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
-                    ex
-                );
-            }
-        }
-
-
-        private static void LoadHandlers () {
-            try {
-                if (IsParallel) {
-                    Parallel.ForEach(Handlers, objectHandler => objectHandler.Load());
-                }
-                else {
-                    foreach (IObjectHandler objectHandler in Handlers)
-                        objectHandler.Load();
-                }
-            }
-            catch (Exception ex) {
-                throw new SaveSystemException(
-                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
-                    ex
-                );
-            }
-        }
-
-
-        private static async UniTask LoadAsyncHandlers () {
-            try {
-                if (IsParallel) {
-                    await ParallelLoop.ForEachAsync(
-                        AsyncHandlers, async asyncHandler => await asyncHandler.LoadAsync()
-                    );
-                }
-                else {
-                    foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers)
-                        await asyncHandler.LoadAsync();
-                }
-            }
-            catch (Exception ex) {
-                throw new SaveSystemException(
-                    Logger.FormattedMessage($"An internal exception was thrown, message: {ex.Message}"),
-                    ex
-                );
-            }
-        }
-
-
-        private static void SetPlayerLoop (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
-            if (ModifyUpdateSystem(ref modifiedLoop, saveSystemLoop, ModifyType.Insert))
-                PlayerLoop.SetPlayerLoop(modifiedLoop);
-            else
-                Logger.LogError("Insert system failed");
-        }
-
-
-        private static void SetSettings ([NotNull] SaveSystemSettings settings) {
-            if (settings == null) {
-                throw new ArgumentNullException(
-                    nameof(settings), "Save system settings not found. Did you delete, rename or transfer them?"
-                );
-            }
-
-            // Core settings
-            m_enabledSaveEvents = settings.enabledSaveEvents;
-            SetupEvents(m_enabledSaveEvents);
-            m_savePeriod = settings.savePeriod;
-            m_isParallel = settings.isParallel;
-            m_debugEnabled = settings.debugEnabled;
-
-            // Checkpoints settings
-            m_destroyCheckPoints = settings.destroyCheckPoints;
-            m_playerTag = settings.playerTag;
         }
 
 
@@ -660,68 +259,165 @@ namespace SaveSystem.Core {
         }
 
 
-        private static void SaveInternalData () {
-            using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(InternalDataPath);
-            writer.Write(m_destroyedCheckpoints);
+        private static void SaveBeforeExit () {
+            const string message = "Successful saving during the quitting";
+            ProcessSave(SaveType.OnExit, message);
         }
 
 
-        private static bool ModifyUpdateSystem (
-            ref PlayerLoopSystem currentPlayerLoop,
-            PlayerLoopSystem insertedSubSystem,
-            ModifyType modifyType
-        ) {
-            if (currentPlayerLoop.type == typeof(PreLateUpdate)) {
-                switch (modifyType) {
-                    case ModifyType.Insert:
-                        InsertSubSystemAtLast(ref currentPlayerLoop, insertedSubSystem);
-                        break;
-                    case ModifyType.Remove:
-                        RemoveSubSystem(ref currentPlayerLoop);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(modifyType), modifyType, null);
+        private static void OnFocusLost (bool hasFocus) {
+            if (!hasFocus) {
+                const string message = "Successful saving on focus lost";
+                ScheduleSave(SaveType.OnFocusLost, message, m_cancellationSource.Token);
+            }
+        }
+
+
+        private static void OnLowMemory () {
+            const string message = "Successful saving on low memory";
+            ScheduleSave(SaveType.OnLowMemory, message, m_cancellationSource.Token);
+        }
+
+
+        private static void ScheduleSave (SaveType saveType, string debugMessage, CancellationToken token) {
+            SavingRequests.Enqueue(async () => {
+                m_onSaveStart?.Invoke(saveType);
+
+                SaveHandlers();
+                await SaveAsyncHandlers(token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                m_onSaveEnd?.Invoke(saveType);
+
+                if (DebugEnabled)
+                    Logger.Log(debugMessage);
+            });
+        }
+
+
+        private static void ProcessSave (SaveType saveType, string debugMessage) {
+            m_onSaveStart?.Invoke(saveType);
+
+            SaveHandlers();
+            Task.WaitAll(Task.Run(SaveAsyncHandlers));
+
+            m_onSaveEnd?.Invoke(saveType);
+
+            if (DebugEnabled)
+                Logger.Log(debugMessage);
+        }
+
+
+        private static void SaveHandlers () {
+            try {
+                if (IsParallel) {
+                    Parallel.ForEach(Handlers, objectHandler => objectHandler.Save());
                 }
-
-                return true;
+                else {
+                    foreach (IObjectHandler objectHandler in Handlers)
+                        objectHandler.Save();
+                }
             }
-
-            if (currentPlayerLoop.subSystemList != null)
-                for (var i = 0; i < currentPlayerLoop.subSystemList.Length; i++)
-                    if (ModifyUpdateSystem(ref currentPlayerLoop.subSystemList[i], insertedSubSystem, modifyType))
-                        return true;
-
-            return false;
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    $"An internal exception was thrown, message: {ex.Message}",
+                    ex
+                );
+            }
         }
 
 
-        private static void InsertSubSystemAtLast (ref PlayerLoopSystem currentPlayerLoop,
-            PlayerLoopSystem insertedSubSystem
-        ) {
-            var newSubSystems = new PlayerLoopSystem[currentPlayerLoop.subSystemList.Length + 1];
-
-            for (var i = 0; i < currentPlayerLoop.subSystemList.Length; i++)
-                newSubSystems[i] = currentPlayerLoop.subSystemList[i];
-
-            newSubSystems[^1] = insertedSubSystem;
-            currentPlayerLoop.subSystemList = newSubSystems;
+        private static async UniTask SaveAsyncHandlers () {
+            await SaveAsyncHandlers(default);
         }
 
 
-        private static void RemoveSubSystem (ref PlayerLoopSystem currentPlayerLoop) {
-            var newSubSystems = new PlayerLoopSystem[currentPlayerLoop.subSystemList.Length - 1];
+        private static async UniTask SaveAsyncHandlers (CancellationToken token) {
+            if (token.IsCancellationRequested)
+                return;
 
-            var j = 0;
+            float completedTasks = 0;
 
-            foreach (PlayerLoopSystem subSystem in currentPlayerLoop.subSystemList) {
-                if (subSystem.type == typeof(SaveSystemCore))
-                    continue;
-
-                newSubSystems[j] = subSystem;
-                j++;
+            try {
+                if (IsParallel) {
+                    await ParallelLoop.ForEachAsync(
+                        AsyncHandlers,
+                        async asyncHandler => await asyncHandler.SaveAsync(token),
+                        m_progress, m_cancellationSource.Token
+                    );
+                }
+                else {
+                    foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers) {
+                        await asyncHandler.SaveAsync(token);
+                        if (token.IsCancellationRequested)
+                            return;
+                        m_progress?.Report(++completedTasks / AsyncHandlers.Count);
+                    }
+                }
             }
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    $"An internal exception was thrown, message: {ex.Message}",
+                    ex
+                );
+            }
+        }
 
-            currentPlayerLoop.subSystemList = newSubSystems;
+
+        private static void LoadHandlers () {
+            try {
+                if (IsParallel) {
+                    Parallel.ForEach(Handlers, objectHandler => objectHandler.Load());
+                }
+                else {
+                    foreach (IObjectHandler objectHandler in Handlers)
+                        objectHandler.Load();
+                }
+            }
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    $"An internal exception was thrown, message: {ex.Message}",
+                    ex
+                );
+            }
+        }
+
+
+        private static async UniTask LoadAsyncHandlers () {
+            try {
+                if (IsParallel) {
+                    await ParallelLoop.ForEachAsync(
+                        AsyncHandlers, async asyncHandler => await asyncHandler.LoadAsync()
+                    );
+                }
+                else {
+                    foreach (IAsyncObjectHandler asyncHandler in AsyncHandlers)
+                        await asyncHandler.LoadAsync();
+                }
+            }
+            catch (Exception ex) {
+                throw new SaveSystemException(
+                    $"An internal exception was thrown, message: {ex.Message}",
+                    ex
+                );
+            }
+        }
+
+
+        private static void OnSceneLoaded (Scene scene, LoadSceneMode loadMode) {
+            Handlers.Clear();
+            AsyncHandlers.Clear();
+            m_lastSceneIndex = scene.buildIndex;
+            SaveLastSceneIndex();
+            DestroyTriggeredCheckpoints();
+            FindAndInvokeSceneBootstrap();
+        }
+
+
+        private static void SaveLastSceneIndex () {
+            using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(LastSceneIndexPath);
+            writer.Write(m_lastSceneIndex);
         }
 
 
@@ -743,7 +439,59 @@ namespace SaveSystem.Core {
         }
 
 
-        static partial void ResetOnExitPlayMode (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop);
+        private static async void FindAndInvokeSceneBootstrap () {
+            MonoBehaviour[] behaviours = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+
+            foreach (MonoBehaviour monoBehaviour in behaviours) {
+                MethodInfo[] allMethods = monoBehaviour.GetType()
+                   .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+                MethodInfo[] loadMethods = allMethods
+                   .Where(method =>
+                        method.GetParameters().Length == 0
+                        && method.ReturnParameter?.ParameterType == typeof(bool)
+                        && method.IsDefined(typeof(SceneBootstrapAttribute), false)
+                    ).ToArray();
+
+                switch (loadMethods.Length) {
+                    case 0:
+                        continue;
+                    case > 1:
+                        throw new SaveSystemException(
+                            $"Using more than one {nameof(SceneBootstrapAttribute)} in one type is not supported"
+                        );
+                }
+
+                var result = (bool)loadMethods[0].Invoke(monoBehaviour, null);
+
+                if (result) {
+                    await LoadHandlersAndInvokeCallback();
+                    return;
+                }
+            }
+        }
+
+
+        private static async UniTask LoadHandlersAndInvokeCallback () {
+            LoadHandlers();
+            await LoadAsyncHandlers();
+
+            if (DebugEnabled)
+                Logger.Log("Handlers was loaded");
+
+            MonoBehaviour[] behaviours = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+
+            foreach (MonoBehaviour behaviour in behaviours) {
+                IEnumerable<MethodInfo> callbacks = from methodInfo in behaviour.GetType()
+                       .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                    where methodInfo.GetParameters().Length == 0
+                          && methodInfo.IsDefined(typeof(BootstrapCallbackAttribute), false)
+                    select methodInfo;
+
+                foreach (MethodInfo callback in callbacks)
+                    callback.Invoke(behaviour, null);
+            }
+        }
 
     }
 
