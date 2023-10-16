@@ -9,24 +9,25 @@ namespace SaveSystem.Internal {
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void Log (string message) {
-            Debug.Log($"{MessageHeader} {message}");
+        internal static void Log<TMessage> (TMessage message) {
+            Debug.Log(FormattedMessage(message));
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void LogWarning (string message) {
-            Debug.LogWarning($"{MessageHeader} {message}");
+        internal static void LogWarning<TMessage> (TMessage message) {
+            Debug.LogWarning(FormattedMessage(message));
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void LogError (string message) {
-            Debug.LogError($"{MessageHeader} {message}");
+        internal static void LogError<TMessage> (TMessage message) {
+            Debug.LogError(FormattedMessage(message));
         }
 
 
-        internal static string FormattedMessage (string message) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static string FormattedMessage<TMessage> (TMessage message) {
             return $"{MessageHeader} {message}";
         }
 

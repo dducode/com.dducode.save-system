@@ -16,6 +16,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             GUIStyle headerStyle = EditorStyles.wordWrappedLabel;
             GUIStyle entryStyle = EditorStyles.wordWrappedMiniLabel;
 
+            DiagnosticService.CheckHandlers();
             DrawNumberColumn(headerStyle, entryStyle);
             DrawFilePathColumn(headerStyle, entryStyle);
             DrawCreateFromColumn(headerStyle, entryStyle);
@@ -31,7 +32,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Number", headerStyle);
 
-            for (var i = 0; i < DiagnosticService.HandlersData.Count; i++)
+            for (var i = 0; i < DiagnosticService.HandlersCount; i++)
                 EditorGUILayout.LabelField($"{i + 1}", entryStyle);
 
             EditorGUILayout.EndVertical();

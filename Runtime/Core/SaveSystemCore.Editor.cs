@@ -1,20 +1,22 @@
 ﻿#if UNITY_EDITOR
+using SaveSystem.Internal;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.LowLevel;
+using UnityEngine.PlayerLoop;
 using Logger = SaveSystem.Internal.Logger;
 
 namespace SaveSystem.Core {
 
     public static partial class SaveSystemCore {
 
-        static partial void ResetOnExitPlayMode (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
+        static partial void ResetOnExitPlayMode () {
             EditorApplication.playModeStateChanged += state => {
                 if (state is PlayModeStateChange.EnteredEditMode) {
-                    ResetPlayerLoop(modifiedLoop, saveSystemLoop);
+                    ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
                     ResetProperties();
-                    OnSaveStart = null;
-                    OnSaveEnd = null;
+                    m_onSaveStart = null;
+                    m_onSaveEnd = null;
                     Handlers.Clear();
                     AsyncHandlers.Clear();
                     m_quickSaveKey = default;
@@ -27,20 +29,20 @@ namespace SaveSystem.Core {
 
         private static void ResetProperties () {
             var settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
-            EnabledSaveEvents = settings.enabledSaveEvents;
-            SavePeriod = settings.savePeriod;
-            IsParallel = settings.isParallel;
-            DebugEnabled = settings.debugEnabled;
-            DestroyCheckPoints = settings.destroyCheckPoints;
-            PlayerTag = settings.playerTag;
+            m_enabledSaveEvents = settings.enabledSaveEvents;
+            m_savePeriod = settings.savePeriod;
+            m_isParallel = settings.isParallel;
+            m_debugEnabled = settings.debugEnabled;
+            m_destroyCheckPoints = settings.destroyCheckPoints;
+            m_playerTag = settings.playerTag;
         }
 
 
-        private static void ResetPlayerLoop (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
-            if (ModifyUpdateSystem(ref modifiedLoop, saveSystemLoop, ModifyType.Remove))
+        private static void ResetPlayerLoop (PlayerLoopSystem modifiedLoop) {
+            if (PlayerLoopManager.TryRemoveSubSystem(ref modifiedLoop, typeof(SaveSystemCore), typeof(PreLateUpdate)))
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
-                Logger.LogError("Remove system failed");
+                Logger.LogError($"Failed remove system: {typeof(SaveSystemCore)}");
         }
 
     }
