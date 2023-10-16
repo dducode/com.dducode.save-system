@@ -19,9 +19,7 @@ namespace SaveSystem.Handlers {
         public void Save () {
             using UnityWriter unityWriter = UnityHandlersFactory.CreateDirectWriter(localFilePath);
 
-            dynamicObjects.RemoveAll(obj =>
-                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
-            );
+            dynamicObjects.RemoveAll(obj => obj.Equals(null));
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             unityWriter.Write(dynamicObjects.Count);
 
@@ -35,9 +33,7 @@ namespace SaveSystem.Handlers {
             if (unityReader == null)
                 return HandlingResult.FileNotExists;
 
-            dynamicObjects.RemoveAll(obj =>
-                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
-            );
+            dynamicObjects.RemoveAll(obj => obj.Equals(null));
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             AddObjects(SpawnObjects(unityReader.ReadInt()));
             Handling.LoadObjects(this, unityReader, loadingProgress);

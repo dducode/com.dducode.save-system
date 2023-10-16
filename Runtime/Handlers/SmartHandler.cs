@@ -22,9 +22,7 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            dynamicObjects.RemoveAll(obj =>
-                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
-            );
+            dynamicObjects.RemoveAll(obj => obj.Equals(null));
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
 
             await using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(localFilePath);
@@ -55,9 +53,7 @@ namespace SaveSystem.Handlers {
             if (reader == null)
                 return HandlingResult.FileNotExists;
 
-            dynamicObjects.RemoveAll(obj =>
-                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
-            );
+            dynamicObjects.RemoveAll(obj => obj.Equals(null));
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
 
             int dynamicObjectsCount = reader.ReadInt();
