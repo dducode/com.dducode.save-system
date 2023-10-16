@@ -105,7 +105,7 @@ namespace SaveSystem.Handlers {
                 throw new ArgumentNullException(nameof(objects));
 
             var handler = new ObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
+                diagnosticIndex = DiagnosticService.HandlersCount
             };
             DiagnosticService.AddMetadata(
                 new HandlerMetadata(
@@ -184,7 +184,7 @@ namespace SaveSystem.Handlers {
                 throw new ArgumentNullException(nameof(objects));
 
             var handler = new AsyncObjectHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
+                diagnosticIndex = DiagnosticService.HandlersCount
             };
             DiagnosticService.AddMetadata(
                 new HandlerMetadata(
@@ -261,7 +261,7 @@ namespace SaveSystem.Handlers {
             if (objects == null) throw new ArgumentNullException(nameof(objects));
 
             var handler = new SmartHandler<TO>(filePath, objects.ToArray(), factoryFunc) {
-                diagnosticIndex = DiagnosticService.HandlersData.Count
+                diagnosticIndex = DiagnosticService.HandlersCount
             };
             DiagnosticService.AddMetadata(
                 new HandlerMetadata(

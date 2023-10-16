@@ -18,7 +18,6 @@ using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using UnityEngine.SceneManagement;
 using Logger = SaveSystem.Internal.Logger;
-using MethodInfo = System.Reflection.MethodInfo;
 using Object = UnityEngine.Object;
 
 
@@ -137,28 +136,24 @@ namespace SaveSystem.Core {
 
 
         private static void FindAndInvokeProjectBootstrap () {
-            MonoBehaviour[] behaviours = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
-
-            foreach (MonoBehaviour behaviour in behaviours) {
-                MethodInfo[] methods = behaviour.GetType()
+            MethodInfo[] methods = (from behaviour in Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
+                from methodInfo in behaviour.GetType()
                    .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                   .Where(method =>
-                        method.GetParameters().Length == 0
-                        && method.IsDefined(typeof(ProjectBootstrapAttribute), false)
-                    ).ToArray();
+                where methodInfo.GetParameters().Length == 0
+                      && methodInfo.IsDefined(typeof(ProjectBootstrapAttribute))
+                select methodInfo).ToArray();
 
-                switch (methods.Length) {
-                    case 0:
-                        continue;
-                    case > 1:
-                        throw new SaveSystemException(
-                            $"Using more than one {nameof(ProjectBootstrapAttribute)} is not supported"
-                        );
-                }
-
-                methods[0].Invoke(behaviour, null);
-                return;
+            switch (methods.Length) {
+                case 0:
+                    return;
+                case > 1:
+                    throw new SaveSystemException(
+                        $"More than one methods or objects implement {nameof(ProjectBootstrapAttribute)}, it's not supported"
+                    );
             }
+
+            MethodInfo method = methods.First();
+            method.Invoke(Object.FindFirstObjectByType(method.DeclaringType), null);
         }
 
 
@@ -441,44 +436,43 @@ namespace SaveSystem.Core {
 
         private static async void FindAndInvokeSceneBootstrap () {
             MonoBehaviour[] behaviours = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+            MethodInfo[] methods = (from behaviour in behaviours
+                from methodInfo in behaviour.GetType()
+                   .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                where methodInfo.GetParameters().Length == 0
+                      && methodInfo.IsDefined(typeof(SceneBootstrapAttribute))
+                select methodInfo).ToArray();
 
-            foreach (MonoBehaviour monoBehaviour in behaviours) {
-                MethodInfo[] allMethods = monoBehaviour.GetType()
-                   .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-
-                MethodInfo[] loadMethods = allMethods
-                   .Where(method =>
-                        method.GetParameters().Length == 0
-                        && method.ReturnParameter?.ParameterType == typeof(bool)
-                        && method.IsDefined(typeof(SceneBootstrapAttribute), false)
-                    ).ToArray();
-
-                switch (loadMethods.Length) {
-                    case 0:
-                        continue;
-                    case > 1:
-                        throw new SaveSystemException(
-                            $"Using more than one {nameof(SceneBootstrapAttribute)} in one type is not supported"
-                        );
-                }
-
-                var result = (bool)loadMethods[0].Invoke(monoBehaviour, null);
-
-                if (result) {
-                    await LoadHandlersAndInvokeCallback();
+            switch (methods.Length) {
+                case 0:
                     return;
-                }
+                case > 1:
+                    throw new SaveSystemException(
+                        $"More than one methods or objects implement {nameof(SceneBootstrapAttribute)}, it's not supported"
+                    );
             }
+
+            MethodInfo method = methods.First();
+            var sceneBootstrap = method.GetCustomAttribute<SceneBootstrapAttribute>();
+            method.Invoke(Object.FindFirstObjectByType(method.DeclaringType), null);
+
+            if (sceneBootstrap.loadHandlers)
+                await LoadAllHandlers();
+            if (sceneBootstrap.invokeCallbacks)
+                InvokeCallbacks();
         }
 
 
-        private static async UniTask LoadHandlersAndInvokeCallback () {
+        private static async UniTask LoadAllHandlers () {
             LoadHandlers();
             await LoadAsyncHandlers();
 
             if (DebugEnabled)
-                Logger.Log("Handlers was loaded");
+                Logger.Log("All registered handlers was loaded");
+        }
 
+
+        private static void InvokeCallbacks () {
             MonoBehaviour[] behaviours = Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
 
             foreach (MonoBehaviour behaviour in behaviours) {

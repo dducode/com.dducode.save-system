@@ -11,7 +11,7 @@ namespace SaveSystem.Handlers {
     /// <summary>
     /// You can handle <see cref="IStorable">storable objects</see> using this
     /// </summary>
-    public class SmartHandler<TObject> : AbstractHandler<SmartHandler<TObject>, TObject>, IAsyncObjectHandler
+    public sealed class SmartHandler<TObject> : AbstractHandler<SmartHandler<TObject>, TObject>, IAsyncObjectHandler
         where TObject : IStorable {
 
         internal SmartHandler (string localFilePath, TObject[] staticObjects, Func<TObject> factoryFunc) :
@@ -22,7 +22,9 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            dynamicObjects.RemoveAll(obj => obj == null);
+            dynamicObjects.RemoveAll(obj =>
+                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
+            );
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
 
             await using UnityWriter writer = UnityHandlersFactory.CreateDirectWriter(localFilePath);
@@ -52,6 +54,11 @@ namespace SaveSystem.Handlers {
 
             if (reader == null)
                 return HandlingResult.FileNotExists;
+
+            dynamicObjects.RemoveAll(obj =>
+                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
+            );
+            DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
 
             int dynamicObjectsCount = reader.ReadInt();
 

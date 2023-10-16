@@ -21,7 +21,9 @@ namespace SaveSystem.Handlers {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
-            dynamicObjects.RemoveAll(obj => obj == null);
+            dynamicObjects.RemoveAll(obj =>
+                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
+            );
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
 
             await using UnityWriter unityWriter = UnityHandlersFactory.CreateBufferingWriter(localFilePath);
@@ -43,6 +45,11 @@ namespace SaveSystem.Handlers {
             using UnityReader unityReader = UnityHandlersFactory.CreateBufferingReader(localFilePath);
 
             if (await unityReader.ReadFileDataToBufferAsync()) {
+                dynamicObjects.RemoveAll(obj =>
+                    obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
+                );
+                DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
+
                 int dynamicObjectsCount = unityReader.ReadInt();
                 if (dynamicObjectsCount > 0 && factoryFunc == null)
                     throw new ArgumentNullException(nameof(factoryFunc));

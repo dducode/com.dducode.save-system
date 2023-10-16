@@ -19,7 +19,9 @@ namespace SaveSystem.Handlers {
         public void Save () {
             using UnityWriter unityWriter = UnityHandlersFactory.CreateDirectWriter(localFilePath);
 
-            dynamicObjects.RemoveAll(obj => obj == null);
+            dynamicObjects.RemoveAll(obj =>
+                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
+            );
             DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             unityWriter.Write(dynamicObjects.Count);
 
@@ -33,6 +35,10 @@ namespace SaveSystem.Handlers {
             if (unityReader == null)
                 return HandlingResult.FileNotExists;
 
+            dynamicObjects.RemoveAll(obj =>
+                obj is UnityEngine.Object unityObject ? unityObject == null : obj == null
+            );
+            DiagnosticService.UpdateObjectsCount(diagnosticIndex, staticObjects.Length + dynamicObjects.Count);
             AddObjects(SpawnObjects(unityReader.ReadInt()));
             Handling.LoadObjects(this, unityReader, loadingProgress);
             return HandlingResult.Success;
@@ -41,7 +47,7 @@ namespace SaveSystem.Handlers {
 
         private TObject[] SpawnObjects (int count) {
             if (count > 0 && factoryFunc == null)
-                throw new ArgumentException(nameof(factoryFunc));
+                throw new ArgumentNullException(nameof(factoryFunc));
 
             var objects = new TObject[count];
 

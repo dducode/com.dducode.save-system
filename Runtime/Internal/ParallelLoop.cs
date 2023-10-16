@@ -47,8 +47,10 @@ namespace SaveSystem.Internal {
             foreach (T obj in source)
                 tasks.Add(body(obj));
 
+            UniTask<int> whenAny = UniTask.WhenAny(tasks);
+
             for (var i = 0; i < tasks.Count; i++) {
-                await UniTask.WhenAny(tasks);
+                await whenAny;
                 if (token.IsCancellationRequested)
                     return;
                 progress?.Report((float)i / tasks.Count);

@@ -12,6 +12,7 @@ using UnityEditor;
 
 namespace SaveSystem.Core {
 
+    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public static partial class SaveSystemCore {
 
         /// <summary>
@@ -38,7 +39,7 @@ namespace SaveSystem.Core {
             set {
                 if (value < 0) {
                     throw new ArgumentException(
-                        Logger.FormattedMessage("Save period cannot be less than 0."), nameof(SavePeriod)
+                        "Save period cannot be less than 0.", nameof(SavePeriod)
                     );
                 }
 
@@ -58,7 +59,7 @@ namespace SaveSystem.Core {
                 m_isParallel = value;
 
                 if (DebugEnabled)
-                    Logger.Log(m_isParallel ? "Enable" : "Disable" + " parallel saving");
+                    Logger.Log((m_isParallel ? "Enable" : "Disable") + " parallel saving");
             }
         }
 
@@ -88,7 +89,7 @@ namespace SaveSystem.Core {
                 m_destroyCheckPoints = value;
 
                 if (DebugEnabled)
-                    Logger.Log(m_destroyCheckPoints ? "Enable" : "Disable" + " destroying checkpoints");
+                    Logger.Log((m_destroyCheckPoints ? "Enable" : "Disable") + " destroying checkpoints");
             }
         }
 
@@ -101,7 +102,7 @@ namespace SaveSystem.Core {
             set {
                 if (string.IsNullOrEmpty(value)) {
                     throw new ArgumentNullException(
-                        Logger.FormattedMessage("Player tag cannot be null or empty."), nameof(PlayerTag)
+                        nameof(PlayerTag), "Player tag cannot be null or empty."
                     );
                 }
 
