@@ -1,6 +1,6 @@
 {
   "name": "com.dducode.save-system",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "displayName": "Save System",
   "unity": "2021.3",
   "description": "Use this save system to save and load your game objects",
@@ -10,5 +10,8 @@
   "author": {
     "name": "Denis",
     "email": "denisdmitriev7851@gmail.com"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/dducode"
   }
 }
