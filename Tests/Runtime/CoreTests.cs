@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
 using SaveSystem.Core;
@@ -32,7 +31,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator AutoSave () => UniTask.ToCoroutine(async () => {
+        public IEnumerator AutoSave () {
             var simpleObject = new BinaryObject {
                 name = "Binary Object",
                 position = new Vector3(10, 0, 15),
@@ -53,13 +52,13 @@ namespace SaveSystem.Tests {
                     autoSaveCompleted = true;
             };
 
-            await UniTask.WaitWhile(() => !autoSaveCompleted);
+            yield return new WaitWhile(() => !autoSaveCompleted);
             Assert.Greater(Storage.GetDataSize(), 0);
-        });
+        }
 
 
         [UnityTest]
-        public IEnumerator QuickSave () => UniTask.ToCoroutine(async () => {
+        public IEnumerator QuickSave () {
             var simpleObject = new BinaryObject {
                 name = "Binary Object",
                 position = new Vector3(10, 0, 15),
@@ -79,13 +78,13 @@ namespace SaveSystem.Tests {
                     quickSaveCompleted = true;
             };
 
-            await UniTask.WaitWhile(() => !quickSaveCompleted);
+            yield return new WaitWhile(() => !quickSaveCompleted);
             Assert.Greater(Storage.GetDataSize(), 0);
-        });
+        }
 
 
         [UnityTest]
-        public IEnumerator CheckpointSave () => UniTask.ToCoroutine(async () => {
+        public IEnumerator CheckpointSave () {
             const string sphereTag = "Player";
 
             var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere).AddComponent<TestRigidbody>();
@@ -107,13 +106,13 @@ namespace SaveSystem.Tests {
                     saveAtCheckpointCompleted = true;
             };
 
-            await UniTask.WaitWhile(() => !saveAtCheckpointCompleted);
+            yield return new WaitWhile(() => !saveAtCheckpointCompleted);
             Assert.Greater(Storage.GetDataSize(), 0);
-        });
+        }
 
 
         [UnityTest]
-        public IEnumerator ManySpheres () => UniTask.ToCoroutine(async () => {
+        public IEnumerator ManySpheres () {
             const string sphereTag = "Player";
             var spheres = new List<TestRigidbody>();
             var asyncSpheres = new List<TestRigidbodyAsync>();
@@ -129,10 +128,6 @@ namespace SaveSystem.Tests {
                 if (i == 0)
                     sphere.tag = sphereTag;
             }
-
-            // Create checkpoints
-            // for (var i = 0; i < 1000; i++)
-            // CheckPointsFactory.CreateCheckPoint(Random.insideUnitSphere * 10);
 
             ObjectHandlersFactory.RegisterImmediately = true;
             ObjectHandlersFactory.CreateHandler("spheres.bytes", spheres);
@@ -151,54 +146,53 @@ namespace SaveSystem.Tests {
                     testStopped = true;
             };
 
-            await UniTask.WaitWhile(() => !testStopped);
+            yield return new WaitWhile(() => !testStopped);
             Assert.Greater(Storage.GetDataSize(), 0);
-        });
+        }
 
 
         [UnityTest]
-        public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) =>
-            UniTask.ToCoroutine(async () => {
-                ObjectHandlersFactory.RegisterImmediately = true;
-                SaveSystemCore.DebugEnabled = true;
+        public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
+            ObjectHandlersFactory.RegisterImmediately = true;
+            SaveSystemCore.DebugEnabled = true;
 
-                for (var i = 0; i < 5; i++) {
-                    var meshes = new List<TestMesh>();
-                    var asyncMeshes = new List<TestMeshAsyncThreadPool>();
+            for (var i = 0; i < 5; i++) {
+                var meshes = new List<TestMesh>();
+                var asyncMeshes = new List<TestMeshAsyncThreadPool>();
 
-                    for (var j = 0; j < 50; j++) {
-                        var testMesh = CreateSphere<TestMesh>();
-                        meshes.Add(testMesh);
+                for (var j = 0; j < 50; j++) {
+                    var testMesh = CreateSphere<TestMesh>();
+                    meshes.Add(testMesh);
 
-                        var asyncMesh = CreateSphere<TestMeshAsyncThreadPool>();
-                        asyncMeshes.Add(asyncMesh);
-                    }
-
-                    ObjectHandlersFactory.CreateHandler($"test_mesh_{i}.bytes", meshes);
-                    ObjectHandlersFactory.CreateAsyncHandler($"test_async_mesh_{i}.bytes", asyncMeshes);
-                    await UniTask.NextFrame();
+                    var asyncMesh = CreateSphere<TestMeshAsyncThreadPool>();
+                    asyncMeshes.Add(asyncMesh);
                 }
 
-                var saveIsCompleted = false;
+                ObjectHandlersFactory.CreateHandler($"test_mesh_{i}.bytes", meshes);
+                ObjectHandlersFactory.CreateAsyncHandler($"test_async_mesh_{i}.bytes", asyncMeshes);
+                yield return new WaitForEndOfFrame();
+            }
 
-                SaveSystemCore.IsParallel = isParallel;
-                SaveSystemCore.OnSaveEnd += saveType => {
-                    if (saveType == SaveType.QuickSave)
-                        saveIsCompleted = true;
-                };
+            var saveIsCompleted = false;
 
-                var stopwatch = new Stopwatch();
-                stopwatch.Start();
-                SaveSystemCore.QuickSave();
-                await UniTask.WaitWhile(() => !saveIsCompleted);
-                stopwatch.Stop();
-                Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
-                Assert.Greater(Storage.GetDataSize(), 0);
-            });
+            SaveSystemCore.IsParallel = isParallel;
+            SaveSystemCore.OnSaveEnd += saveType => {
+                if (saveType == SaveType.QuickSave)
+                    saveIsCompleted = true;
+            };
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            SaveSystemCore.QuickSave();
+            yield return new WaitWhile(() => !saveIsCompleted);
+            stopwatch.Stop();
+            Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
+            Assert.Greater(Storage.GetDataSize(), 0);
+        }
 
 
         [UnityTest]
-        public IEnumerator Quitting () => UniTask.ToCoroutine(async () => {
+        public IEnumerator Quitting () {
             var spheres = new List<TestMesh>();
             var asyncSpheres = new List<TestMeshAsyncThreadPool>();
 
@@ -216,9 +210,9 @@ namespace SaveSystem.Tests {
             ObjectHandlersFactory.RegisterImmediately = true;
             ObjectHandlersFactory.CreateHandler("spheres.bytes", spheres);
             ObjectHandlersFactory.CreateAsyncHandler("async_spheres.bytes", asyncSpheres);
-            await UniTask.NextFrame();
+            yield return new WaitForEndOfFrame();
             Application.Quit();
-        });
+        }
 
 
         [TearDown]

@@ -1,11 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using Cysharp.Threading.Tasks;
-using JetBrains.Annotations;
 using SaveSystem.Handlers;
 using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+using TaskBool = Cysharp.Threading.Tasks.UniTask<bool>;
+#else
+using System.Threading.Tasks;
+using TaskAlias = System.Threading.Tasks.Task;
+using TaskBool = System.Threading.Tasks.Task<bool>;
+#endif
 
 
 namespace SaveSystem {
@@ -13,6 +22,9 @@ namespace SaveSystem {
     /// <summary>
     /// Main class for handling data
     /// </summary>
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
+    [SuppressMessage("ReSharper", "UnusedMethodReturnValue.Global")]
+    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public static partial class DataManager {
 
         private const string ObsoleteMessage =
@@ -106,7 +118,7 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when saving is canceled </exception>
         /// <inheritdoc cref="SaveObject{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask SaveObjectAsync (
+        public static async TaskAlias SaveObjectAsync (
             [NotNull] string filePath,
             [NotNull] IPersistentObject obj,
             AsyncMode asyncMode,
@@ -125,7 +137,7 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when saving is canceled </exception>
         /// <inheritdoc cref="SaveObjects{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask SaveObjectsAsync (
+        public static async TaskAlias SaveObjectsAsync (
             [NotNull] string filePath,
             [NotNull] IPersistentObject[] objects,
             AsyncMode asyncMode,
@@ -153,15 +165,24 @@ namespace SaveSystem {
                         obj.Save(unityWriter);
                         completedTasks++;
                         progress?.Report(completedTasks / objects.Length);
+                    #if SAVE_SYSTEM_UNITASK_SUPPORT
                         await UniTask.NextFrame(source.Token);
+                    #else
+                        await Task.Delay(1, source.Token);
+                    #endif
                     }
 
                     result = source.IsCancellationRequested ? HandlingResult.CanceledOperation : HandlingResult.Success;
 
                     break;
                 case AsyncMode.OnThreadPool:
-                    await UniTask.RunOnThreadPool(() => { SaveObjects(filePath, objects); },
+                #if SAVE_SYSTEM_UNITASK_SUPPORT
+                    await UniTask.RunOnThreadPool(() => SaveObjects(filePath, objects),
                         cancellationToken: source.Token);
+                #else
+                    await Task.Run(() => SaveObjects(filePath, objects),
+                        cancellationToken: source.Token);
+                #endif
 
                     result = source.IsCancellationRequested ? HandlingResult.CanceledOperation : HandlingResult.Success;
                     break;
@@ -187,7 +208,7 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when loading is canceled </exception>
         /// <inheritdoc cref="LoadObject{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask<bool> LoadObjectAsync (
+        public static async TaskBool LoadObjectAsync (
             [NotNull] string filePath,
             [NotNull] IPersistentObject obj,
             AsyncMode asyncMode,
@@ -206,7 +227,7 @@ namespace SaveSystem {
         /// <exception cref="OperationCanceledException"> throws when loading is canceled </exception>
         /// <inheritdoc cref="LoadObjects{T}"/>
         [Obsolete(ObsoleteMessage)]
-        public static async UniTask<bool> LoadObjectsAsync (
+        public static async TaskBool LoadObjectsAsync (
             [NotNull] string filePath,
             [NotNull] IPersistentObject[] objects,
             AsyncMode asyncMode,
@@ -235,7 +256,11 @@ namespace SaveSystem {
                             obj.Load(unityReader);
                             completedTasks++;
                             progress?.Report(completedTasks / objects.Length);
+                        #if SAVE_SYSTEM_UNITASK_SUPPORT
                             await UniTask.NextFrame(source.Token);
+                        #else
+                            await Task.Delay(1, source.Token);
+                        #endif
                         }
 
                         result = source.IsCancellationRequested
@@ -244,8 +269,13 @@ namespace SaveSystem {
 
                         break;
                     case AsyncMode.OnThreadPool:
-                        await UniTask.RunOnThreadPool(() => { LoadObjects(filePath, objects); },
+                    #if SAVE_SYSTEM_UNITASK_SUPPORT
+                        await UniTask.RunOnThreadPool(() => LoadObjects(filePath, objects),
                             cancellationToken: source.Token);
+                    #else
+                        await Task.Run(() => LoadObjects(filePath, objects),
+                            cancellationToken: source.Token);
+                    #endif
 
                         result = source.IsCancellationRequested
                             ? HandlingResult.CanceledOperation

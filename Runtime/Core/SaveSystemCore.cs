@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using SaveSystem.CheckPoints;
 using SaveSystem.Exceptions;
 using SaveSystem.Handlers;
@@ -19,6 +18,13 @@ using UnityEngine.PlayerLoop;
 using UnityEngine.SceneManagement;
 using Logger = SaveSystem.Internal.Logger;
 using Object = UnityEngine.Object;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+
+#else
+using TaskAlias = System.Threading.Tasks.Task;
+#endif
 
 
 namespace SaveSystem.Core {
@@ -48,7 +54,7 @@ namespace SaveSystem.Core {
         private static Action<SaveType> m_onSaveEnd;
 
         /// It's used for delayed async saving
-        private static readonly Queue<Func<UniTask>> SavingRequests = new();
+        private static readonly Queue<Func<TaskAlias>> SavingRequests = new();
 
         /// It will be canceled before exit game
         private static CancellationTokenSource m_cancellationSource;
@@ -323,12 +329,12 @@ namespace SaveSystem.Core {
         }
 
 
-        private static async UniTask SaveAsyncHandlers () {
+        private static async TaskAlias SaveAsyncHandlers () {
             await SaveAsyncHandlers(default);
         }
 
 
-        private static async UniTask SaveAsyncHandlers (CancellationToken token) {
+        private static async TaskAlias SaveAsyncHandlers (CancellationToken token) {
             if (token.IsCancellationRequested)
                 return;
 
@@ -338,8 +344,7 @@ namespace SaveSystem.Core {
                 if (IsParallel) {
                     await ParallelLoop.ForEachAsync(
                         AsyncHandlers,
-                        async asyncHandler => await asyncHandler.SaveAsync(token),
-                        m_progress, m_cancellationSource.Token
+                        async asyncHandler => await asyncHandler.SaveAsync(token)
                     );
                 }
                 else {
@@ -379,7 +384,7 @@ namespace SaveSystem.Core {
         }
 
 
-        private static async UniTask LoadAsyncHandlers () {
+        private static async TaskAlias LoadAsyncHandlers () {
             try {
                 if (IsParallel) {
                     await ParallelLoop.ForEachAsync(
@@ -463,7 +468,7 @@ namespace SaveSystem.Core {
         }
 
 
-        private static async UniTask LoadAllHandlers () {
+        private static async TaskAlias LoadAllHandlers () {
             LoadHandlers();
             await LoadAsyncHandlers();
 

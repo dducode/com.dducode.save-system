@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using Cysharp.Threading.Tasks;
 using SaveSystem.Handlers;
 using SaveSystem.UnityHandlers;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskResult = Cysharp.Threading.Tasks.UniTask<SaveSystem.Handlers.HandlingResult>;
+#else
+using TaskResult = System.Threading.Tasks.Task<SaveSystem.Handlers.HandlingResult>;
+#endif
 
 namespace SaveSystem.Internal {
 
@@ -33,7 +38,7 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal static async UniTask<HandlingResult> SaveObjectsAsync<TObject, THandler> (
+        internal static async TaskResult SaveObjectsAsync<TObject, THandler> (
             AbstractHandler<THandler, TObject> handler,
             UnityWriter writer,
             IProgress<float> progress,
@@ -57,7 +62,7 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal static async UniTask<HandlingResult> LoadStaticObjectsAsync<TObject> (
+        internal static async TaskResult LoadStaticObjectsAsync<TObject> (
             ICollection<TObject> objects,
             UnityReader reader,
             IProgress<float> progress,
@@ -81,7 +86,7 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal static async UniTask<HandlingResult> LoadDynamicObjectsAsync<THandler, TObject> (
+        internal static async TaskResult LoadDynamicObjectsAsync<THandler, TObject> (
             Func<TObject> factoryFunc,
             AbstractHandler<THandler, TObject> handler,
             int dynamicObjectsCount,

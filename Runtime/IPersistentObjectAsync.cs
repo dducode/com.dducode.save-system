@@ -1,5 +1,10 @@
-﻿using Cysharp.Threading.Tasks;
-using SaveSystem.UnityHandlers;
+﻿using SaveSystem.UnityHandlers;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+#else
+using TaskAlias = System.Threading.Tasks.Task;
+#endif
 
 namespace SaveSystem {
 
@@ -11,13 +16,13 @@ namespace SaveSystem {
         /// <summary>
         /// It will be called when system will save data
         /// </summary>
-        public UniTask Save (UnityWriter writer);
+        public TaskAlias Save (UnityWriter writer);
 
 
         /// <summary>
         /// It will be called when system will load data
         /// </summary>
-        public UniTask Load (UnityReader reader);
+        public TaskAlias Load (UnityReader reader);
 
     }
 

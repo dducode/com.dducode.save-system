@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.Handlers;
 using SaveSystem.Tests.TestObjects;
@@ -26,7 +25,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator SaveLoad () => UniTask.ToCoroutine(async () => {
+        public IEnumerator SaveLoad () {
             ObjectHandler<TestRigidbody> handler = ObjectHandlersFactory.CreateHandler(FilePath, FuncFactory);
 
             var testObjects = new List<TestRigidbody>();
@@ -37,31 +36,31 @@ namespace SaveSystem.Tests {
                 TestRigidbody testObject = FuncFactory();
                 testObject.transform.position = Random.insideUnitSphere * 10;
                 testObjects.Add(testObject);
-                await UniTask.NextFrame();
+                yield return new WaitForEndOfFrame();
             }
 
             handler.AddObjects(testObjects);
             Debug.Log("Start objects saving");
             handler.Save();
 
-            await UniTask.Delay(500);
+            yield return new WaitForSeconds(0.5f);
             Debug.Log("Start objects destroying");
 
             foreach (TestRigidbody testObject in testObjects) {
                 Object.Destroy(testObject.gameObject);
-                await UniTask.NextFrame();
+                yield return new WaitForEndOfFrame();
             }
 
             Debug.Log("Start objects loading");
             handler.Load();
 
-            await UniTask.Delay(500);
+            yield return new WaitForSeconds(0.5f);
             Assert.IsTrue(Object.FindAnyObjectByType<TestRigidbody>());
 
             TestRigidbody FuncFactory () {
                 return GameObject.CreatePrimitive(PrimitiveType.Sphere).AddComponent<TestRigidbody>();
             }
-        });
+        }
 
 
         [TearDown]

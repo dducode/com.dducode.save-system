@@ -1,10 +1,19 @@
 ﻿using System;
 using System.Threading;
-using Cysharp.Threading.Tasks;
 using JetBrains.Annotations;
 using SaveSystem.Handlers;
 using SaveSystem.Internal;
 using SaveSystem.UnityHandlers;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+using TaskBool = Cysharp.Threading.Tasks.UniTask<bool>;
+#else
+using TaskAlias = System.Threading.Tasks.Task;
+using TaskBool = System.Threading.Tasks.Task<bool>;
+#endif
+
 
 namespace SaveSystem {
 
@@ -27,7 +36,7 @@ namespace SaveSystem {
 
             /// <inheritdoc cref="DataManager.SaveObjectAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask SaveObjectAsync (
+            public static async TaskAlias SaveObjectAsync (
                 [NotNull] string filePath,
                 [NotNull] IPersistentObjectAsync obj,
                 CancellationTokenSource source = null,
@@ -41,7 +50,7 @@ namespace SaveSystem {
 
             /// <inheritdoc cref="DataManager.SaveObjectsAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask SaveObjectsAsync (
+            public static async TaskAlias SaveObjectsAsync (
                 [NotNull] string filePath,
                 [NotNull] IPersistentObjectAsync[] objects,
                 IProgress<float> progress = null,
@@ -92,7 +101,7 @@ namespace SaveSystem {
 
             /// <inheritdoc cref="DataManager.LoadObjectAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask<bool> LoadObjectAsync (
+            public static async TaskBool LoadObjectAsync (
                 [NotNull] string filePath,
                 [NotNull] IPersistentObjectAsync obj,
                 CancellationTokenSource source = null,
@@ -106,7 +115,7 @@ namespace SaveSystem {
 
             /// <inheritdoc cref="DataManager.LoadObjectsAsync"/>
             [Obsolete(ObsoleteMessageAdvanced)]
-            public static async UniTask<bool> LoadObjectsAsync (
+            public static async TaskBool LoadObjectsAsync (
                 [NotNull] string filePath,
                 [NotNull] IPersistentObjectAsync[] objects,
                 IProgress<float> progress = null,

@@ -1,10 +1,15 @@
 ﻿using System.Collections;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.Handlers;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskAwaiter = Cysharp.Threading.Tasks.UniTask<SaveSystem.Handlers.HandlingResult>.Awaiter;
+#else
+using TaskAwaiter = System.Runtime.CompilerServices.TaskAwaiter<SaveSystem.Handlers.HandlingResult>;
+#endif
 
 namespace SaveSystem.Tests {
 
@@ -20,7 +25,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator SimpleTest () => UniTask.ToCoroutine(async () => {
+        public IEnumerator SimpleTest () {
             var bufferableObjects = new Storable[100];
 
             for (var i = 0; i < bufferableObjects.Length; i++)
@@ -29,15 +34,19 @@ namespace SaveSystem.Tests {
             SmartHandler<Storable> handler =
                 ObjectHandlersFactory.CreateSmartHandler(".bytes", bufferableObjects);
 
-            await handler.SaveAsync();
-            await UniTask.Delay(2000);
+            TaskAwaiter saveAsync = handler.SaveAsync().GetAwaiter();
+            var awaiter = new WaitWhile(() => !saveAsync.IsCompleted);
+            yield return awaiter;
+            yield return new WaitForSeconds(2);
 
             foreach (Storable obj in bufferableObjects)
                 obj.Reset();
 
-            await handler.LoadAsync();
-            await UniTask.Delay(2000);
-        });
+            TaskAwaiter loadAsync = handler.LoadAsync().GetAwaiter();
+            awaiter = new WaitWhile(() => !loadAsync.IsCompleted);
+            yield return awaiter;
+            yield return new WaitForSeconds(2);
+        }
 
 
         [TearDown]

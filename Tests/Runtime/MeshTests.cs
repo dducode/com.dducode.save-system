@@ -1,11 +1,15 @@
 ﻿using System.Collections;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.Handlers;
-using SaveSystem.Internal;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskAwaiter = Cysharp.Threading.Tasks.UniTask<SaveSystem.Handlers.HandlingResult>.Awaiter;
+#else
+using TaskAwaiter = System.Runtime.CompilerServices.TaskAwaiter<SaveSystem.Handlers.HandlingResult>;
+#endif
 
 namespace SaveSystem.Tests {
 
@@ -44,7 +48,7 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator MeshesSaveLoadAsyncOnPlayerLoop () => UniTask.ToCoroutine(async () => {
+        public IEnumerator MeshesSaveLoadAsyncOnPlayerLoop () {
             var objects = new TestMeshAsyncPlayerLoop[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -57,8 +61,10 @@ namespace SaveSystem.Tests {
             Debug.Log("Start saving");
             AsyncObjectHandler<TestMeshAsyncPlayerLoop> objectHandler =
                 ObjectHandlersFactory.CreateAsyncHandler(FilePath, objects);
-
-            HandlingResult result = await objectHandler.SaveAsync();
+            
+            TaskAwaiter saveAsync = objectHandler.SaveAsync().GetAwaiter();
+            yield return new WaitWhile(() => !saveAsync.IsCompleted);
+            HandlingResult result = saveAsync.GetResult();
 
             if (result == HandlingResult.Success) {
                 foreach (TestMeshAsyncPlayerLoop obj in objects)
@@ -67,15 +73,17 @@ namespace SaveSystem.Tests {
             }
 
             Debug.Log("Start loading");
-            result = await objectHandler.LoadAsync();
+            TaskAwaiter loadAsync = objectHandler.LoadAsync().GetAwaiter();
+            yield return new WaitWhile(() => !loadAsync.IsCompleted);
+            result = loadAsync.GetResult();
 
             if (result == HandlingResult.Success)
                 Debug.Log("Meshes loaded");
-        });
+        }
 
 
         [UnityTest]
-        public IEnumerator MeshesSaveLoadAsyncOnThreadPool () => UniTask.ToCoroutine(async () => {
+        public IEnumerator MeshesSaveLoadAsyncOnThreadPool () {
             var objects = new TestMeshAsyncThreadPool[200];
 
             for (var i = 0; i < objects.Length; i++) {
@@ -89,7 +97,9 @@ namespace SaveSystem.Tests {
                 ObjectHandlersFactory.CreateAsyncHandler(FilePath, objects);
             Debug.Log("Start saving");
 
-            HandlingResult result = await objectHandler.SaveAsync();
+            TaskAwaiter saveAsync = objectHandler.SaveAsync().GetAwaiter();
+            yield return new WaitWhile(() => !saveAsync.IsCompleted);
+            HandlingResult result = saveAsync.GetResult();
 
             if (result == HandlingResult.Success) {
                 foreach (TestMeshAsyncThreadPool obj in objects)
@@ -99,11 +109,13 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Start loading");
 
-            result = await objectHandler.LoadAsync();
+            TaskAwaiter loadAsync = objectHandler.LoadAsync().GetAwaiter();
+            yield return new WaitWhile(() => !loadAsync.IsCompleted);
+            result = loadAsync.GetResult();
 
             if (result == HandlingResult.Success)
                 Debug.Log("Meshes loaded");
-        });
+        }
 
 
         [TearDown]

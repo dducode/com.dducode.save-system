@@ -1,5 +1,10 @@
 ﻿using System.Threading;
-using Cysharp.Threading.Tasks;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskResult = Cysharp.Threading.Tasks.UniTask<SaveSystem.Handlers.HandlingResult>;
+#else
+using TaskResult = System.Threading.Tasks.Task<SaveSystem.Handlers.HandlingResult>;
+#endif
 
 namespace SaveSystem.Handlers {
 
@@ -11,13 +16,13 @@ namespace SaveSystem.Handlers {
         /// <summary>
         /// Call it to start async objects saving
         /// </summary>
-        public UniTask<HandlingResult> SaveAsync (CancellationToken token = default);
+        public TaskResult SaveAsync (CancellationToken token = default);
 
 
         /// <summary>
         /// Call it to start async objects loading
         /// </summary>
-        public UniTask<HandlingResult> LoadAsync (CancellationToken token = default);
+        public TaskResult LoadAsync (CancellationToken token = default);
 
     }
 

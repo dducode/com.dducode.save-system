@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1] - 2023-10-23
+
+### Changed
+
+* Removed UniTask requirement. Write SAVE_SYSTEM_UNITASK_SUPPORT
+  in scripting define symbols to enable UniTask support
+
 ## [1.7.0] - 2023-10-16
 
 ### Added

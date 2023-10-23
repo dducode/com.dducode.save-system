@@ -1,6 +1,11 @@
-﻿using Cysharp.Threading.Tasks;
-using SaveSystem.UnityHandlers;
+﻿using SaveSystem.UnityHandlers;
 using UnityEngine;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+#else
+using TaskAlias = System.Threading.Tasks.Task;
+#endif
 
 namespace SaveSystem.Tests.TestObjects {
 
@@ -15,12 +20,12 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public async UniTask Save (UnityWriter writer) {
+        public async TaskAlias Save (UnityWriter writer) {
             await writer.WriteAsync(new[] {m_position});
         }
 
 
-        public async UniTask Load (UnityReader reader) {
+        public async TaskAlias Load (UnityReader reader) {
             transform.position = (await reader.ReadVector3ArrayAsync())[0];
         }
 

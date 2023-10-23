@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using SaveSystem.UnityHandlers;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskResult = Cysharp.Threading.Tasks.UniTask<SaveSystem.Handlers.HandlingResult>;
+#else
+using TaskResult = System.Threading.Tasks.Task<SaveSystem.Handlers.HandlingResult>;
+#endif
 
 namespace SaveSystem.Handlers {
 
@@ -18,7 +23,7 @@ namespace SaveSystem.Handlers {
             base(localFilePath, staticObjects, factoryFunc) { }
 
 
-        public async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
+        public async TaskResult SaveAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 
@@ -44,7 +49,7 @@ namespace SaveSystem.Handlers {
         }
 
 
-        public async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
+        public async TaskResult LoadAsync (CancellationToken token = default) {
             if (token.IsCancellationRequested)
                 return HandlingResult.CanceledOperation;
 

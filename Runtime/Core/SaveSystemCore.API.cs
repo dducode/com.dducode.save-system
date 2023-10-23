@@ -1,10 +1,17 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using Cysharp.Threading.Tasks;
 using SaveSystem.Handlers;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Logger = SaveSystem.Internal.Logger;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+#else
+using System.Collections;
+using TaskAlias = System.Threading.Tasks.Task;
+#endif
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -272,17 +279,23 @@ namespace SaveSystem.Core {
         /// Loads a scene which was saved at last session (async version)
         /// </summary>
         /// <param name="defaultSceneIndex"> If there is no saved scene, load a scene by the index </param>
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public static async UniTask LoadSavedSceneAsync (int defaultSceneIndex = 0) {
             await SceneManager.LoadSceneAsync(m_lastSceneIndex != -1 ? m_lastSceneIndex : defaultSceneIndex);
         }
+    #else
+        public static IEnumerator LoadSavedSceneAsync (int defaultSceneIndex = 0) {
+            yield return SceneManager.LoadSceneAsync(m_lastSceneIndex != -1 ? m_lastSceneIndex : defaultSceneIndex);
+        }
+    #endif
 
 
         /// <summary>
         /// Call this to manually save handlers before loading another scene
         /// </summary>
         /// <param name="sceneIndex"> Loading scene index </param>
-        /// <param name="asyncLoad"> Load scene asynchronously? </param>
-        public static async UniTask SaveAndLoadScene (int sceneIndex, bool asyncLoad = false) {
+        /// <param name="asyncLoad"> Load scene asynchronously (only for UniTask)? </param>
+        public static async TaskAlias SaveAndLoadScene (int sceneIndex, bool asyncLoad = false) {
             m_autoSaveEnabled = false;
 
             m_onSaveStart?.Invoke(SaveType.OnSwitchScene);
@@ -293,10 +306,12 @@ namespace SaveSystem.Core {
             if (DebugEnabled)
                 Logger.Log("Successful async saving before switch scene");
 
+        #if SAVE_SYSTEM_UNITASK_SUPPORT
             if (asyncLoad)
                 await SceneManager.LoadSceneAsync(sceneIndex);
             else
-                SceneManager.LoadScene(sceneIndex);
+        #endif
+            SceneManager.LoadScene(sceneIndex);
 
             m_autoSaveEnabled = m_enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
             m_autoSaveLastTime = Time.time;
@@ -310,7 +325,7 @@ namespace SaveSystem.Core {
         /// This will immediately exit the game after saving.
         /// You should make sure that you don't need to do anything else before calling it
         /// </remarks>
-        public static async UniTask SaveAndQuit () {
+        public static async TaskAlias SaveAndQuit () {
             m_cancellationSource.Cancel();
             m_autoSaveEnabled = false;
             m_quickSaveKey = default;

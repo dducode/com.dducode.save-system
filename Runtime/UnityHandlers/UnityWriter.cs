@@ -1,18 +1,27 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using Cysharp.Threading.Tasks;
+using TaskAlias = Cysharp.Threading.Tasks.UniTask;
+#else
+using TaskAlias = System.Threading.Tasks.Task;
+#endif
 
 namespace SaveSystem.UnityHandlers {
 
     /// <summary>
     /// Adapter to class <see cref="BinaryWriter"></see> for simplify writing data
     /// </summary>
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
+    [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public sealed class UnityWriter : IDisposable, IAsyncDisposable {
 
         private readonly BinaryWriter m_writer;
@@ -52,9 +61,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<Vector2> vector2Collection) {
             await UniTask.RunOnThreadPool(() => Write(vector2Collection.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<Vector2> vector2Collection) {
+            await Task.Run(() => Write(vector2Collection.ToArray()));
+        }
+    #endif
 
 
         public void Write (Vector3 vector3) {
@@ -77,9 +92,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<Vector3> vector3Collection) {
             await UniTask.RunOnThreadPool(() => Write(vector3Collection.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<Vector3> vector3Collection) {
+            await Task.Run(() => Write(vector3Collection.ToArray()));
+        }
+    #endif
 
 
         public void Write (Vector4 vector4) {
@@ -103,9 +124,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<Vector4> vector4Collection) {
             await UniTask.RunOnThreadPool(() => Write(vector4Collection.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<Vector4> vector4Collection) {
+            await Task.Run(() => Write(vector4Collection.ToArray()));
+        }
+    #endif
 
 
         public void Write (Quaternion rotation) {
@@ -137,9 +164,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<Color> colors) {
             await UniTask.RunOnThreadPool(() => Write(colors.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<Color> colors) {
+            await Task.Run(() => Write(colors.ToArray()));
+        }
+    #endif
 
 
         public void Write (Color32 color32) {
@@ -163,9 +196,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<Color32> colors32) {
             await UniTask.RunOnThreadPool(() => Write(colors32.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<Color32> colors32) {
+            await Task.Run(() => Write(colors32.ToArray()));
+        }
+    #endif
 
 
         public void Write (Matrix4x4 matrix) {
@@ -187,9 +226,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<Matrix4x4> matrices) {
             await UniTask.RunOnThreadPool(() => Write(matrices.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<Matrix4x4> matrices) {
+            await Task.Run(() => Write(matrices.ToArray()));
+        }
+    #endif
 
 
         public void Write (MeshData mesh) {
@@ -236,9 +281,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (MeshData mesh) {
             await UniTask.RunOnThreadPool(() => Write(mesh));
         }
+    #else
+        public async Task WriteAsync (MeshData mesh) {
+            await Task.Run(() => Write(mesh));
+        }
+    #endif
 
 
         public void WriteObject<T> (T obj) {
@@ -252,9 +303,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteObjectsAsync<T> (IEnumerable<T> objects) {
             await UniTask.RunOnThreadPool(() => WriteObjectsArray(objects.ToArray()));
         }
+    #else
+        public async Task WriteObjectsAsync<T> (IEnumerable<T> objects) {
+            await Task.Run(() => WriteObjectsArray(objects.ToArray()));
+        }
+    #endif
 
 
         public void WriteObjectsArray<T> (T[] arrayObjects) {
@@ -282,9 +339,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<byte> bytes) {
             await UniTask.RunOnThreadPool(() => Write(bytes.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<byte> bytes) {
+            await Task.Run(() => Write(bytes.ToArray()));
+        }
+    #endif
 
 
         public void Write (short shortValue) {
@@ -305,9 +368,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<short> shorts) {
             await UniTask.RunOnThreadPool(() => Write(shorts.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<short> shorts) {
+            await Task.Run(() => Write(shorts.ToArray()));
+        }
+    #endif
 
 
         public void Write (int intValue) {
@@ -328,9 +397,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<int> ints) {
             await UniTask.RunOnThreadPool(() => Write(ints.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<int> ints) {
+            await Task.Run(() => Write(ints.ToArray()));
+        }
+    #endif
 
 
         public void Write (long longValue) {
@@ -351,9 +426,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<long> longs) {
             await UniTask.RunOnThreadPool(() => Write(longs.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<long> longs) {
+            await Task.Run(() => Write(longs.ToArray()));
+        }
+    #endif
 
 
         public void Write (char charValue) {
@@ -374,9 +455,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<char> chars) {
             await UniTask.RunOnThreadPool(() => Write(chars.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<char> chars) {
+            await Task.Run(() => Write(chars.ToArray()));
+        }
+    #endif
 
 
         public void Write (string stringValue) {
@@ -397,9 +484,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<string> strings) {
             await UniTask.RunOnThreadPool(() => Write(strings.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<string> strings) {
+            await Task.Run(() => Write(strings.ToArray()));
+        }
+    #endif
 
 
         public void Write (float floatValue) {
@@ -420,9 +513,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<float> floats) {
             await UniTask.RunOnThreadPool(() => Write(floats.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<float> floats) {
+            await Task.Run(() => Write(floats.ToArray()));
+        }
+    #endif
 
 
         public void Write (double doubleValue) {
@@ -443,9 +542,15 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
+    #if SAVE_SYSTEM_UNITASK_SUPPORT
         public async UniTask WriteAsync (IEnumerable<double> doubles) {
             await UniTask.RunOnThreadPool(() => Write(doubles.ToArray()));
         }
+    #else
+        public async Task WriteAsync (IEnumerable<double> doubles) {
+            await Task.Run(() => Write(doubles.ToArray()));
+        }
+    #endif
 
 
         public void Write (bool boolValue) {
@@ -463,7 +568,7 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
-        internal async UniTask WriteAsync (DataBuffer buffer) {
+        internal async TaskAlias WriteAsync (DataBuffer buffer) {
             Write(buffer.vector2);
             Write(buffer.vector3);
             Write(buffer.vector4);
@@ -481,7 +586,13 @@ namespace SaveSystem.UnityHandlers {
                 Write(true);
             }
 
-            await UniTask.RunOnThreadPool(() => {
+        #if SAVE_SYSTEM_UNITASK_SUPPORT
+            await UniTask.RunOnThreadPool(() => WriteBufferAsync());
+        #else
+            await Task.Run(WriteBufferAsync);
+        #endif
+
+            void WriteBufferAsync () {
                 Write(buffer.vector2Buffer.ToArray());
                 Write(buffer.vector3Buffer.ToArray());
                 Write(buffer.vector4Buffer.ToArray());
@@ -506,7 +617,7 @@ namespace SaveSystem.UnityHandlers {
                 }
 
                 Write(buffer.meshData);
-            });
+            }
         }
 
 
@@ -515,7 +626,7 @@ namespace SaveSystem.UnityHandlers {
         }
 
 
-        internal async UniTask WriteBufferToFileAsync () {
+        internal async TaskAlias WriteBufferToFileAsync () {
             await File.WriteAllBytesAsync(m_fullPath, ((MemoryStream)m_writer.BaseStream).GetBuffer());
         }
 
