@@ -6,11 +6,12 @@
         "UnityEditor.TestRunner",
         "SaveSystem",
         "UniTask",
-        "SaveSystem.Editor"
+        "SaveSystem.Editor",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": true,
     "precompiledReferences": [
         "nunit.framework.dll"

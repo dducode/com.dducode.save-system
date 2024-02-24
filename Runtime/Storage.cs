@@ -1,7 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
+
+#if SAVE_SYSTEM_UNITASK_SUPPORT
+using TaskBytes = Cysharp.Threading.Tasks.UniTask<byte[]>;
+
+#else
+using TaskBytes = System.Threading.Tasks.Task<byte[]>;
+#endif
 
 namespace SaveSystem {
 
@@ -31,6 +39,11 @@ namespace SaveSystem {
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
             return GetDataSize(PersistentDataPath) > 0;
+        }
+
+
+        public static async TaskBytes GetRawData (string localPath, CancellationToken token = default) {
+            return await File.ReadAllBytesAsync(GetFullPath(localPath), token);
         }
 
 

@@ -16,11 +16,9 @@ namespace SaveSystem.Editor.ConsoleTabs {
             GUIStyle headerStyle = EditorStyles.wordWrappedLabel;
             GUIStyle entryStyle = EditorStyles.wordWrappedMiniLabel;
 
-            DiagnosticService.CheckHandlers();
+            DiagnosticService.ClearNullGroups();
             DrawNumberColumn(headerStyle, entryStyle);
-            DrawFilePathColumn(headerStyle, entryStyle);
             DrawCreateFromColumn(headerStyle, entryStyle);
-            DrawHandlerTypeColumn(headerStyle, entryStyle);
             DrawObjectsTypeColumn(headerStyle, entryStyle);
             DrawObjectsCountColumn(headerStyle, entryStyle);
 
@@ -39,35 +37,13 @@ namespace SaveSystem.Editor.ConsoleTabs {
         }
 
 
-        private void DrawFilePathColumn (GUIStyle headerStyle, GUIStyle entryStyle) {
-            EditorGUILayout.BeginVertical();
-            EditorGUILayout.LabelField("Destination Path", headerStyle);
-
-            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
-                EditorGUILayout.LabelField($"{metadata.destinationPath}", entryStyle);
-
-            EditorGUILayout.EndVertical();
-        }
-
-
         private void DrawCreateFromColumn (GUIStyle headerStyle, GUIStyle entryStyle) {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Create From", headerStyle);
 
-            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
+            foreach (DynamicObjectGroupMetadata metadata in DiagnosticService.GroupsData)
                 EditorGUILayout.LabelField($"{metadata.caller}", entryStyle);
 
-            EditorGUILayout.EndVertical();
-        }
-
-
-        private void DrawHandlerTypeColumn (GUIStyle headerStyle, GUIStyle entryStyle) {
-            EditorGUILayout.BeginVertical();
-            EditorGUILayout.LabelField("Handler Type", headerStyle);
-
-            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
-                EditorGUILayout.LabelField($"{metadata.handlerType.Name}", entryStyle);
-            
             EditorGUILayout.EndVertical();
         }
 
@@ -76,7 +52,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Type", headerStyle);
 
-            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
+            foreach (DynamicObjectGroupMetadata metadata in DiagnosticService.GroupsData)
                 EditorGUILayout.LabelField($"{metadata.objectsType.Name}", entryStyle);
 
             EditorGUILayout.EndVertical();
@@ -87,7 +63,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Count", headerStyle);
 
-            foreach (HandlerMetadata metadata in DiagnosticService.HandlersData)
+            foreach (DynamicObjectGroupMetadata metadata in DiagnosticService.GroupsData)
                 EditorGUILayout.LabelField($"{metadata.objectsCount}", entryStyle);
 
             EditorGUILayout.EndVertical();

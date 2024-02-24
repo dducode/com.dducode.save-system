@@ -1,10 +1,11 @@
-﻿using SaveSystem.UnityHandlers;
+﻿using SaveSystem.BinaryHandlers;
+using UnityEngine;
 
 namespace SaveSystem.Tests.TestObjects {
 
     internal sealed class BinaryObject : TestObject {
 
-        public override void Save (UnityWriter writer) {
+        public override void Serialize (BinaryWriter writer) {
             writer.Write(name);
             writer.Write(position);
             writer.Write(rotation);
@@ -12,11 +13,11 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public override void Load (UnityReader reader) {
+        public override void Deserialize (BinaryReader reader) {
             name = reader.ReadString();
-            position = reader.ReadVector3();
-            rotation = reader.ReadRotation();
-            color = reader.ReadColor();
+            position = reader.Read<Vector3>();
+            rotation = reader.Read<Quaternion>();
+            color = reader.Read<Color>();
         }
 
     }

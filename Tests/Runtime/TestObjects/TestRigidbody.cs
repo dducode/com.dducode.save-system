@@ -1,26 +1,17 @@
-﻿using SaveSystem.UnityHandlers;
+﻿using System;
 using UnityEngine;
 
 namespace SaveSystem.Tests.TestObjects {
 
     [RequireComponent(typeof(Rigidbody))]
-    public class TestRigidbody : MonoBehaviour, IPersistentObject {
+    public class TestRigidbody : MonoBehaviour {
 
-        private Vector3 m_position;
+        [NonSerialized]
+        public Vector3 position;
 
 
         private void Update () {
-            m_position = transform.position;
-        }
-
-
-        public void Save (UnityWriter writer) {
-            writer.Write(m_position);
-        }
-
-
-        public void Load (UnityReader reader) {
-            transform.position = reader.ReadVector3();
+            position = transform.position;
         }
 
     }

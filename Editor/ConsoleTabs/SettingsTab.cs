@@ -1,5 +1,4 @@
-﻿using SaveSystem.Core;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -12,7 +11,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_isParallelProperty;
-        private SerializedProperty m_debugEnabledProperty;
+        private SerializedProperty m_enabledLogsProperty;
 
         private SerializedProperty m_destroyCheckPointsProperty;
         private SerializedProperty m_playerTagProperty;
@@ -21,7 +20,14 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private readonly GUIContent m_saveEventsContent = new() {
             text = "Enabled Save Events",
-            tooltip = "It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game"
+            tooltip =
+                "It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game\n\n" +
+                "<b>Note:</b> save on quitting is not supported in the editor"
+        };
+
+        private readonly GUIContent m_enabledLogsContent = new() {
+            text = "Enabled Logs",
+            tooltip = "Choose which logs should be enabled - none, debug, warning, error or all"
         };
 
         private readonly GUIContent m_playerTagContent = new() {
@@ -30,6 +36,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         };
 
         private SaveEvents m_enabledSaveEvents;
+        private LogLevel m_enabledLogs;
 
 
         public SettingsTab () {
@@ -75,10 +82,11 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
             m_enabledSaveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
-            
+            m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
+            m_enabledLogs = (LogLevel)m_enabledLogsProperty.enumValueFlag;
+
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
-            m_debugEnabledProperty = m_serializedSettings.FindProperty("debugEnabled");
 
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
             m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
@@ -102,7 +110,14 @@ namespace SaveSystem.Editor.ConsoleTabs {
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
             EditorGUILayout.PropertyField(m_isParallelProperty);
-            EditorGUILayout.PropertyField(m_debugEnabledProperty);
+
+            m_enabledLogs = (LogLevel)EditorGUILayout.EnumFlagsField(
+                m_enabledLogsContent,
+                m_enabledLogs,
+                GUILayout.MaxWidth(300)
+            );
+
+            m_enabledLogsProperty.enumValueFlag = (int)m_enabledLogs;
         }
 
 

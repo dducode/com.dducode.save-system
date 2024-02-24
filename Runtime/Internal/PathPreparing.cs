@@ -5,7 +5,7 @@
         /// <summary>
         /// Creates new directories if they're not exists and returns full path
         /// </summary>
-        internal static string PrepareBeforeWriting (string path) {
+        internal static string PrepareBeforeUsing (string path) {
             Storage.CreateFoldersIfNotExists(path);
             return Storage.GetFullPath(path);
         }

@@ -1,5 +1,4 @@
-﻿using SaveSystem.Core;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace SaveSystem.CheckPoints {
 

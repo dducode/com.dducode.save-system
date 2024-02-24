@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 
 #if SAVE_SYSTEM_UNITASK_SUPPORT
@@ -26,10 +27,7 @@ namespace SaveSystem.Internal {
                 throw new ArgumentNullException(nameof(body));
 
             var tasks = new List<TaskAlias>();
-
-            foreach (TBody obj in source)
-                tasks.Add(body(obj));
-
+            Parallel.ForEach(source, obj => tasks.Add(body(obj)));
             await TaskAlias.WhenAll(tasks);
         }
 

@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
-using SaveSystem.Core;
-using SaveSystem.Handlers;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
-using SaveType = SaveSystem.Core.SaveType;
+
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+using UnityEngine.InputSystem;
+#endif
 
 namespace SaveSystem.Tests {
 
@@ -39,12 +40,11 @@ namespace SaveSystem.Tests {
                 color = Color.cyan
             };
 
-            SaveSystemCore.DebugEnabled = true;
+            SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.SavePeriod = 1.5f;
             SaveSystemCore.EnabledSaveEvents = SaveEvents.AutoSave;
 
-            ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler(FilePath, simpleObject);
+            SaveSystemCore.RegisterSerializable(simpleObject);
 
             var autoSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -66,11 +66,17 @@ namespace SaveSystem.Tests {
                 color = Color.cyan
             };
 
-            SaveSystemCore.DebugEnabled = true;
-            SaveSystemCore.BindKey(KeyCode.S);
+            SaveSystemCore.EnabledLogs = LogLevel.All;
 
-            ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler(FilePath, simpleObject);
+        #if ENABLE_LEGACY_INPUT_MANAGER
+            SaveSystemCore.BindKey(KeyCode.S);
+        #elif ENABLE_INPUT_SYSTEM
+            SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
+        #else
+            #error Compile error: no unity inputs enabled
+        #endif
+
+            SaveSystemCore.RegisterSerializable(simpleObject);
 
             var quickSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -91,13 +97,11 @@ namespace SaveSystem.Tests {
             sphere.transform.position = Vector3.up * 10;
             sphere.tag = sphereTag;
 
-            SaveSystemCore.DebugEnabled = true;
+            SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
 
-            ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler(FilePath, sphere);
-
+            SaveSystemCore.RegisterSerializable(new TestRigidbodyAdapter(sphere));
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -114,33 +118,33 @@ namespace SaveSystem.Tests {
         [UnityTest]
         public IEnumerator ManySpheres () {
             const string sphereTag = "Player";
-            var spheres = new List<TestRigidbody>();
-            var asyncSpheres = new List<TestRigidbodyAsync>();
+            var spheres = new List<TestRigidbodyAdapter>();
 
             // Spawn spheres
-            for (var i = 0; i < 500; i++) {
+            for (var i = 0; i < 1000; i++) {
                 var sphere = CreateSphere<TestRigidbody>();
-                spheres.Add(sphere);
-
-                var asyncSphere = CreateSphere<TestRigidbodyAsync>();
-                asyncSpheres.Add(asyncSphere);
+                spheres.Add(new TestRigidbodyAdapter(sphere));
 
                 if (i == 0)
                     sphere.tag = sphereTag;
             }
 
-            ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler("spheres.bytes", spheres);
-            ObjectHandlersFactory.CreateAsyncHandler("async_spheres.bytes", asyncSpheres);
-
+            SaveSystemCore.RegisterSerializables(spheres);
             SaveSystemCore.ConfigureParameters(
-                SaveEvents.AutoSave | SaveEvents.OnFocusLost, false, true,
+                SaveEvents.AutoSave | SaveEvents.OnFocusLost, false, LogLevel.All,
                 true, sphereTag, 3
             );
 
             var testStopped = false;
 
+        #if ENABLE_LEGACY_INPUT_MANAGER
             SaveSystemCore.BindKey(KeyCode.S);
+        #elif ENABLE_INPUT_SYSTEM
+            SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
+        #else
+            #error Compile error: no unity inputs enabled
+        #endif
+
             SaveSystemCore.OnSaveEnd += saveType => {
                 if (saveType == SaveType.QuickSave)
                     testStopped = true;
@@ -153,37 +157,25 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
-            ObjectHandlersFactory.RegisterImmediately = true;
-            SaveSystemCore.DebugEnabled = true;
+            SaveSystemCore.EnabledLogs = LogLevel.All;
 
             for (var i = 0; i < 5; i++) {
-                var meshes = new List<TestMesh>();
-                var asyncMeshes = new List<TestMeshAsyncThreadPool>();
+                var meshes = new List<TestMeshAdapter>();
 
-                for (var j = 0; j < 50; j++) {
-                    var testMesh = CreateSphere<TestMesh>();
-                    meshes.Add(testMesh);
+                for (var j = 0; j < 50; j++)
+                    meshes.Add(new TestMeshAdapter(CreateSphere<TestMesh>()));
 
-                    var asyncMesh = CreateSphere<TestMeshAsyncThreadPool>();
-                    asyncMeshes.Add(asyncMesh);
-                }
-
-                ObjectHandlersFactory.CreateHandler($"test_mesh_{i}.bytes", meshes);
-                ObjectHandlersFactory.CreateAsyncHandler($"test_async_mesh_{i}.bytes", asyncMeshes);
+                SaveSystemCore.RegisterSerializables(meshes);
                 yield return new WaitForEndOfFrame();
             }
 
             var saveIsCompleted = false;
 
             SaveSystemCore.IsParallel = isParallel;
-            SaveSystemCore.OnSaveEnd += saveType => {
-                if (saveType == SaveType.QuickSave)
-                    saveIsCompleted = true;
-            };
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            SaveSystemCore.QuickSave();
+            SaveSystemCore.SaveAsync(() => saveIsCompleted = true);
             yield return new WaitWhile(() => !saveIsCompleted);
             stopwatch.Stop();
             Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
@@ -193,23 +185,15 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator Quitting () {
-            var spheres = new List<TestMesh>();
-            var asyncSpheres = new List<TestMeshAsyncThreadPool>();
+            var spheres = new List<TestMeshAdapter>();
 
             // Spawn spheres
-            for (var i = 0; i < 250; i++) {
-                var sphere = CreateSphere<TestMesh>();
-                spheres.Add(sphere);
+            for (var i = 0; i < 250; i++)
+                spheres.Add(new TestMeshAdapter(CreateSphere<TestMesh>()));
 
-                var asyncSphere = CreateSphere<TestMeshAsyncThreadPool>();
-                asyncSpheres.Add(asyncSphere);
-            }
-
-            SaveSystemCore.DebugEnabled = true;
+            SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
-            ObjectHandlersFactory.RegisterImmediately = true;
-            ObjectHandlersFactory.CreateHandler("spheres.bytes", spheres);
-            ObjectHandlersFactory.CreateAsyncHandler("async_spheres.bytes", asyncSpheres);
+            SaveSystemCore.RegisterSerializables(spheres);
             yield return new WaitForEndOfFrame();
             Application.Quit();
         }

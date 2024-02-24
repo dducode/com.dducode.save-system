@@ -5,34 +5,30 @@ namespace SaveSystem.Internal.Diagnostic {
 
     internal static class DiagnosticService {
 
-        internal static readonly List<HandlerMetadata> HandlersData = new();
-        internal static int HandlersCount => HandlersData.Count;
+        internal static readonly List<DynamicObjectGroupMetadata> GroupsData = new();
+        internal static int HandlersCount => GroupsData.Count;
 
 
         [Conditional("UNITY_EDITOR")]
-        internal static void AddMetadata (HandlerMetadata metadata) {
-            HandlersData.Add(metadata);
+        internal static void AddMetadata (DynamicObjectGroupMetadata metadata) {
+            GroupsData.Add(metadata);
         }
 
 
         [Conditional("UNITY_EDITOR")]
         internal static void UpdateObjectsCount (int index, int count) {
-            if (index >= HandlersData.Count)
+            if (index >= GroupsData.Count)
                 return;
 
-            HandlerMetadata oldData = HandlersData[index];
-            HandlersData[index] = new HandlerMetadata(
-                oldData.destinationPath, oldData.caller, oldData.handlerType,
-                oldData.objectsType, oldData.handle, count
-            );
+            GroupsData[index].objectsCount = count;
         }
 
 
         [Conditional("UNITY_EDITOR")]
-        internal static void CheckHandlers () {
-            for (var i = 0; i < HandlersData.Count; i++)
-                if (HandlersData[i].handle.Target == null)
-                    HandlersData.RemoveAt(i--);
+        internal static void ClearNullGroups () {
+            for (var i = 0; i < GroupsData.Count; i++)
+                if (GroupsData[i].handle.Target == null)
+                    GroupsData.RemoveAt(i--);
         }
 
     }
