@@ -33,26 +33,18 @@ namespace SaveSystem.BinaryHandlers {
         }
 
 
-        public T Read<T> () where T : unmanaged {
-            var value = default(T);
-            Span<T> tSpan = MemoryMarshal.CreateSpan(ref value, 1);
-            m_streamPosition += m_output.Read(MemoryMarshal.AsBytes(tSpan));
+        public TValue Read<TValue> () where TValue : unmanaged {
+            var value = default(TValue);
+            Span<TValue> span = MemoryMarshal.CreateSpan(ref value, 1);
+            m_streamPosition += m_output.Read(MemoryMarshal.AsBytes(span));
             return value;
         }
 
 
-        public T[] ReadArray<T> () where T : unmanaged {
-            var length = Read<int>();
-
-            if (length > 0) {
-                var array = new T[length];
-                Span<T> tSpan = MemoryMarshal.CreateSpan(ref array[0], array.Length);
-                m_streamPosition += m_output.Read(MemoryMarshal.AsBytes(tSpan));
-                return array;
-            }
-            else {
-                return Array.Empty<T>();
-            }
+        public TArray[] ReadArray<TArray> () where TArray : unmanaged {
+            var array = new TArray[Read<int>()];
+            m_streamPosition += m_output.Read(MemoryMarshal.AsBytes((Span<TArray>)array));
+            return array;
         }
 
 

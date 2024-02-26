@@ -36,35 +36,6 @@ namespace SaveSystem {
         }
 
 
-        public static bool operator == (MeshData meshData1, MeshData meshData2) {
-            return meshData1.bounds == meshData2.bounds &&
-                   meshData1.colors32 == meshData2.colors32 &&
-                   meshData1.name == meshData2.name &&
-                   meshData1.normals == meshData2.normals &&
-                   meshData1.tangents == meshData2.tangents &&
-                   meshData1.triangles == meshData2.triangles &&
-                   meshData1.uv == meshData2.uv &&
-                   meshData1.uv2 == meshData2.uv2 &&
-                   meshData1.uv3 == meshData2.uv3 &&
-                   meshData1.uv4 == meshData2.uv4 &&
-                   meshData1.uv5 == meshData2.uv5 &&
-                   meshData1.uv6 == meshData2.uv6 &&
-                   meshData1.uv7 == meshData2.uv7 &&
-                   meshData1.uv8 == meshData2.uv8 &&
-                   meshData1.vertices == meshData2.vertices &&
-                   meshData1.indexFormat == meshData2.indexFormat &&
-                   meshData1.subMeshes == meshData2.subMeshes &&
-                   meshData1.indexBufferTarget == meshData2.indexBufferTarget &&
-                   meshData1.subMeshIndices == meshData2.subMeshIndices &&
-                   meshData1.vertexBufferTarget == meshData2.vertexBufferTarget;
-        }
-
-
-        public static bool operator != (MeshData meshData1, MeshData meshData2) {
-            return !(meshData1 == meshData2);
-        }
-
-
         public static implicit operator Mesh (MeshData meshData) {
             var mesh = new Mesh {
                 name = meshData.name,
@@ -92,6 +63,35 @@ namespace SaveSystem {
 
             mesh.SetSubMeshes(meshData.subMeshes);
             return mesh;
+        }
+
+
+        public static bool operator == (MeshData meshData1, MeshData meshData2) {
+            return meshData1.bounds == meshData2.bounds &&
+                   meshData1.colors32 == meshData2.colors32 &&
+                   meshData1.name == meshData2.name &&
+                   meshData1.normals == meshData2.normals &&
+                   meshData1.tangents == meshData2.tangents &&
+                   meshData1.triangles == meshData2.triangles &&
+                   meshData1.uv == meshData2.uv &&
+                   meshData1.uv2 == meshData2.uv2 &&
+                   meshData1.uv3 == meshData2.uv3 &&
+                   meshData1.uv4 == meshData2.uv4 &&
+                   meshData1.uv5 == meshData2.uv5 &&
+                   meshData1.uv6 == meshData2.uv6 &&
+                   meshData1.uv7 == meshData2.uv7 &&
+                   meshData1.uv8 == meshData2.uv8 &&
+                   meshData1.vertices == meshData2.vertices &&
+                   meshData1.indexFormat == meshData2.indexFormat &&
+                   meshData1.subMeshes == meshData2.subMeshes &&
+                   meshData1.indexBufferTarget == meshData2.indexBufferTarget &&
+                   meshData1.subMeshIndices == meshData2.subMeshIndices &&
+                   meshData1.vertexBufferTarget == meshData2.vertexBufferTarget;
+        }
+
+
+        public static bool operator != (MeshData meshData1, MeshData meshData2) {
+            return !(meshData1 == meshData2);
         }
 
 

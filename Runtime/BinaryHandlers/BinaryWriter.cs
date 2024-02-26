@@ -27,24 +27,21 @@ namespace SaveSystem.BinaryHandlers {
         }
 
 
-        public void Write<T> (T value) where T : unmanaged {
-            ReadOnlySpan<T> tSpan = MemoryMarshal.CreateReadOnlySpan(ref value, 1);
-            m_input.Write(MemoryMarshal.AsBytes(tSpan));
+        public void Write<TValue> (TValue value) where TValue : unmanaged {
+            ReadOnlySpan<TValue> span = MemoryMarshal.CreateReadOnlySpan(ref value, 1);
+            m_input.Write(MemoryMarshal.AsBytes(span));
         }
 
 
-        public void Write<T> ([NotNull] T[] array) where T : unmanaged {
+        public void Write<TArray> ([NotNull] TArray[] array) where TArray : unmanaged {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
 
-            if (array.Length > 0)
-                Write(MemoryMarshal.CreateReadOnlySpan(ref array[0], array.Length));
-            else
-                Write(0);
+            Write((ReadOnlySpan<TArray>)array);
         }
 
 
-        public void Write<T> (ReadOnlySpan<T> span) where T : unmanaged {
+        public void Write<TSpan> (ReadOnlySpan<TSpan> span) where TSpan : unmanaged {
             Write(span.Length);
             m_input.Write(MemoryMarshal.AsBytes(span));
         }
