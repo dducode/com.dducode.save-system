@@ -1,7 +1,9 @@
-﻿using UnityEngine;
+﻿using SaveSystem.Attributes;
+using UnityEngine;
 
 namespace SaveSystem.Tests.TestObjects {
 
+    [DynamicObject]
     public sealed class TestMesh : MonoBehaviour {
 
         public MeshData meshData;

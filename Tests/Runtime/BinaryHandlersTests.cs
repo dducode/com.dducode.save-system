@@ -56,7 +56,7 @@ namespace SaveSystem.Tests {
 
         [Test]
         public async Task WriteReadMesh () {
-            const int duration = 1500;
+            const float duration = 1.5f;
 
             var gameObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             Debug.Log("Create object");

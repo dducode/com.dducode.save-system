@@ -181,16 +181,18 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator Quitting () {
-            var spheres = new List<TestMeshAdapter>();
-
-            // Spawn spheres
-            for (var i = 0; i < 250; i++)
-                spheres.Add(new TestMeshAdapter(CreateSphere<TestMesh>()));
+            var sphereFactory = new DynamicObjectFactory<TestMesh>(CreateSphere<TestMesh>, CreateAdapter);
+            sphereFactory.CreateObjects(250);
 
             SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
-            SaveSystemCore.RegisterSerializables(spheres);
+            SaveSystemCore.RegisterSerializable(sphereFactory);
             yield return new WaitForEndOfFrame();
             Application.Quit();
+        }
+
+
+        private ISerializationAdapter<TestMesh> CreateAdapter (TestMesh obj) {
+            return new TestMeshAdapter(obj);
         }
 
 

@@ -37,7 +37,7 @@ namespace SaveSystem {
         /// <param name="getAdapter"> A function to get object adapter (optional) </param>
         public DynamicObjectFactory (
             [NotNull] Func<TDynamic> factoryFunc,
-            Func<TDynamic, IRuntimeSerializable> getAdapter = null
+            Func<TDynamic, ISerializationAdapter<TDynamic>> getAdapter = null
         ) {
             Type objectsType = typeof(TDynamic);
 
@@ -81,7 +81,7 @@ namespace SaveSystem {
 
 
         public override string ToString () {
-            return $"{nameof(DynamicObjectFactory<TDynamic>)} [objects: {Count}]";
+            return $"{nameof(DynamicObjectFactory<TDynamic>)}<{typeof(TDynamic).Name}> [objects: {Count}]";
         }
 
 
