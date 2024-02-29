@@ -11,8 +11,7 @@ namespace SaveSystem.Tests {
 
         private const string PositionsKey = "positions";
 
-        private readonly string m_filePath =
-            Path.Combine(Application.persistentDataPath, nameof(DataBufferTests) + ".test");
+        private readonly string m_filePath = Storage.GetFullPath(nameof(DataBufferTests) + ".test");
 
 
         [Test]

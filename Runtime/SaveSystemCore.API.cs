@@ -2,42 +2,69 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Internal.Diagnostic;
+using SaveSystem.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAlias = Cysharp.Threading.Tasks.UniTask;
-using TaskBool = Cysharp.Threading.Tasks.UniTask<bool>;
-using TaskResult = Cysharp.Threading.Tasks.UniTask<SaveSystem.HandlingResult>;
-
-#else
-using TaskAlias = System.Threading.Tasks.Task;
-using TaskBool = System.Threading.Tasks.Task<bool>;
-using TaskResult = System.Threading.Tasks.Task<SaveSystem.HandlingResult>;
-#endif
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace SaveSystem {
 
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public static partial class SaveSystemCore {
 
+        public static SaveProfile SelectedSaveProfile {
+            get => m_selectedSaveProfile;
+            set {
+                RegisterSaveProfile(m_selectedSaveProfile = value);
+                Logger.Log($"Set save profile: {{{value}}}");
+            }
+        }
+
         /// <summary>
         /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
         /// </summary>
+        /// <example> EnabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusChanged </example>
         /// <seealso cref="SaveEvents"/>
         public static SaveEvents EnabledSaveEvents {
             get => m_enabledSaveEvents;
             set {
-                m_enabledSaveEvents = value;
-                SetupEvents(m_enabledSaveEvents);
-                Logger.Log($"Set save events: {m_enabledSaveEvents}");
+                SetupEvents(m_enabledSaveEvents = value);
+                Logger.Log($"Set save events: {value}");
+            }
+        }
+
+        /// <summary>
+        /// It's used to enable logs
+        /// </summary>
+        /// <example> EnabledLogs = LogLevel.Warning | LogLevel.Error </example>
+        /// <seealso cref="LogLevel"/>
+        public static LogLevel EnabledLogs {
+            get => Logger.EnabledLogs;
+            set {
+                Logger.EnabledLogs = value;
+                Logger.Log($"Set enabled logs: {value}");
+            }
+        }
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        public static bool AllowSceneSaving {
+            get => m_allowSceneSaving;
+            set {
+                m_allowSceneSaving = value;
+                Logger.Log((value ? "Allow" : "Disallow") + " scene saving");
             }
         }
 
@@ -56,7 +83,7 @@ namespace SaveSystem {
                 }
 
                 m_savePeriod = value;
-                Logger.Log($"Set save period: {m_savePeriod}");
+                Logger.Log($"Set save period: {value}");
             }
         }
 
@@ -67,7 +94,7 @@ namespace SaveSystem {
             get => m_isParallel;
             set {
                 m_isParallel = value;
-                Logger.Log((m_isParallel ? "Enable" : "Disable") + " parallel saving");
+                Logger.Log((value ? "Enable" : "Disable") + " parallel saving");
             }
         }
 
@@ -80,7 +107,7 @@ namespace SaveSystem {
             get => m_destroyCheckPoints;
             set {
                 m_destroyCheckPoints = value;
-                Logger.Log((m_destroyCheckPoints ? "Enable" : "Disable") + " destroying checkpoints");
+                Logger.Log((value ? "Enable" : "Disable") + " destroying checkpoints");
             }
         }
 
@@ -98,15 +125,7 @@ namespace SaveSystem {
                 }
 
                 m_playerTag = value;
-                Logger.Log($"Set player tag: {m_playerTag}");
-            }
-        }
-
-        public static LogLevel EnabledLogs {
-            get => Logger.EnabledLogs;
-            set {
-                Logger.EnabledLogs = value;
-                Logger.Log($"Set enabled logs: {Logger.EnabledLogs}");
+                Logger.Log($"Set player tag: {value}");
             }
         }
 
@@ -147,33 +166,62 @@ namespace SaveSystem {
         }
 
 
-        public static SaveProfile[] GetAllProfiles () {
-            string[] paths = Directory.GetFileSystemEntries(Application.persistentDataPath, SaveProfileExtension);
-            var profiles = new SaveProfile[paths.Length];
+        public static TProfile[] LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
+            string[] paths = Directory.GetFileSystemEntries(
+                Storage.PersistentDataPath, $"*{ProfileExtension}", SearchOption.AllDirectories
+            );
+            var profiles = new TProfile[paths.Length];
 
-            for (var i = 0; i < profiles.Length; i++) {
+            for (var i = 0; i < paths.Length; i++) {
                 using var reader = new SaveSystem.BinaryHandlers.BinaryReader(File.Open(paths[i], FileMode.Open));
-                profiles[i] = new SaveProfile();
-                profiles[i].Deserialize(reader);
+                var profile = new TProfile();
+                profile.Deserialize(reader);
+                profiles[i] = profile;
             }
 
             return profiles;
         }
 
 
-        public static void SetProfile (SaveProfile saveProfile) {
-            m_currentProfile = saveProfile;
+        public static void RegisterSaveProfile ([NotNull] SaveProfile profile) {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+
+            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileExtension}");
+            if (File.Exists(path))
+                return;
+
+            using var writer = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate));
+            profile.Serialize(writer);
+            Logger.Log($"Profile {{{profile}}} was registered");
+        }
+
+
+        public static void DeleteSaveProfile ([NotNull] SaveProfile profile) {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+
+            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileExtension}");
+            if (!File.Exists(path))
+                return;
+
+            File.Delete(path);
+            File.Delete(profile.DataPath);
+            Logger.Log($"Profile {{{profile}}} was deleted");
         }
 
 
         /// <summary>
         /// Registers an serializable object to automatic save, quick-save, save at checkpoit and others
         /// </summary>
-        public static void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
+        public static void RegisterSerializable (
+            [NotNull] IRuntimeSerializable serializable, [CallerMemberName] string caller = ""
+        ) {
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
             SerializableObjects.Add(serializable);
+            DiagnosticService.AddObject(serializable, caller);
             Logger.Log($"Serializable object: {serializable} was registered");
         }
 
@@ -181,14 +229,18 @@ namespace SaveSystem {
         /// <summary>
         /// Registers some serializable objects to automatic save, quick-save, save at checkpoit and others
         /// </summary>
-        public static void RegisterSerializables ([NotNull] IEnumerable<IRuntimeSerializable> serializables) {
+        public static void RegisterSerializables (
+            [NotNull] IEnumerable<IRuntimeSerializable> serializables, [CallerMemberName] string caller = ""
+        ) {
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
-            foreach (IRuntimeSerializable serializable in serializables)
+            IRuntimeSerializable[] array = serializables.ToArray();
+            foreach (IRuntimeSerializable serializable in array)
                 SerializableObjects.Add(serializable);
 
-            Logger.Log($"Serializable objects was registered");
+            DiagnosticService.AddObjects(array, caller);
+            Logger.Log("Serializable objects was registered");
         }
 
 
@@ -198,16 +250,15 @@ namespace SaveSystem {
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
         public static void ConfigureParameters (
             SaveEvents enabledSaveEvents,
-            bool isParallel,
             LogLevel enabledLogs,
+            bool isParallel,
             bool destroyCheckPoints,
             string playerTag,
             float savePeriod = 0
         ) {
-            m_enabledSaveEvents = enabledSaveEvents;
-            SetupEvents(m_enabledSaveEvents);
-            m_isParallel = isParallel;
+            SetupEvents(m_enabledSaveEvents = enabledSaveEvents);
             Logger.EnabledLogs = enabledLogs;
+            m_isParallel = isParallel;
             m_destroyCheckPoints = destroyCheckPoints;
             m_playerTag = playerTag;
             m_savePeriod = savePeriod;
@@ -256,7 +307,7 @@ namespace SaveSystem {
         /// </summary>
         public static void BindKey (KeyCode keyCode) {
             m_quickSaveKey = keyCode;
-            Logger.Log($"Key \"{m_quickSaveKey}\" was bind with quick save");
+            Logger.Log($"Key \"{keyCode}\" was bind with quick save");
         }
     #endif
 
@@ -267,73 +318,31 @@ namespace SaveSystem {
         /// </summary>
         public static void BindAction (InputAction action) {
             m_quickSaveAction = action;
-            Logger.Log($"Action \"{m_quickSaveAction}\" was bind with quick save");
+            Logger.Log($"Action \"{action}\" was bind with quick save");
         }
     #endif
 
 
         /// <summary>
-        /// Loads a scene which was saved at last session
+        /// Create a loading task while start game and configure it
         /// </summary>
-        /// <param name="defaultSceneIndex"> If there is no saved scene, load a scene by the index </param>
-        public static void LoadSavedScene (int defaultSceneIndex = 0) {
-            SceneManager.LoadScene(m_lastSceneIndex != -1 ? m_lastSceneIndex : defaultSceneIndex);
-        }
-
-
-        /// <summary>
-        /// Loads a scene which was saved at last session (async version)
-        /// </summary>
-        /// <param name="defaultSceneIndex"> If there is no saved scene, load a scene by the index </param>
-    #if SAVE_SYSTEM_UNITASK_SUPPORT
-        public static async UniTask LoadSavedSceneAsync (int defaultSceneIndex = 0) {
-            await SceneManager.LoadSceneAsync(m_lastSceneIndex != -1 ? m_lastSceneIndex : defaultSceneIndex);
-        }
-    #else
-        public static IEnumerator LoadSavedSceneAsync (int defaultSceneIndex = 0) {
-            yield return SceneManager.LoadSceneAsync(m_lastSceneIndex != -1 ? m_lastSceneIndex : defaultSceneIndex);
-        }
-    #endif
-
-
-        /// <summary>
-        /// Run loading immediately and pass any action to continue
-        /// </summary>
-        public static async void LoadAsync (Action<HandlingResult> continuation, CancellationToken token = default) {
-            var result = HandlingResult.InternalError;
-
-            try {
-                result = await LoadAsync(token);
-            }
-            finally {
-                continuation(result);
-            }
-        }
-
-
-        /// <summary>
-        /// Run loading immediately and wait it
-        /// </summary>
-        public static async TaskResult LoadAsync (CancellationToken token = default) {
-            token.ThrowIfCancellationRequested();
-
-            while (SynchronizationPoint.IsPerformed)
-                await TaskAlias.Yield(token);
-
-            LoadProfileMetadata();
-            return await SynchronizationPoint.ExecuteTask(LoadObjectGroups, token);
+        /// <seealso cref="LoadingTask"/>
+        public static LoadingTask CreateLoadingTask () {
+            return new LoadingTask(SerializableObjects, m_selectedSaveProfile.DataPath, m_allowSceneSaving);
         }
 
 
         /// <summary>
         /// Run saving immediately and pass any action to continue
         /// </summary>
-        public static async void SaveAsync (Action continuation, CancellationToken token = default) {
+        public static async void SaveAsync (
+            Action<HandlingResult> continuation, CancellationToken token = default
+        ) {
             try {
-                await SaveAsync(token);
+                continuation(await SaveAsync(token));
             }
-            finally {
-                continuation();
+            catch (Exception exception) {
+                Debug.LogException(exception);
             }
         }
 
@@ -341,14 +350,18 @@ namespace SaveSystem {
         /// <summary>
         /// Run saving immediately and wait it
         /// </summary>
-        public static async TaskAlias SaveAsync (CancellationToken token = default) {
-            token.ThrowIfCancellationRequested();
+        public static async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
 
-            while (SynchronizationPoint.IsPerformed)
-                await TaskAlias.Yield(token);
+                while (SynchronizationPoint.IsPerformed)
+                    await UniTask.Yield(token);
 
-            SaveProfileMetadata();
-            await SynchronizationPoint.ExecuteTask(SaveObjectGroups, token);
+                return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
+            }
+            catch (OperationCanceledException) {
+                return HandlingResult.Canceled;
+            }
         }
 
     }

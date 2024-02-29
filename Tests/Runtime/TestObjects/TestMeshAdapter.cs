@@ -5,7 +5,6 @@ namespace SaveSystem.Tests.TestObjects {
     public class TestMeshAdapter : ISerializationAdapter<TestMesh> {
 
         public TestMesh Target { get; }
-        public bool DontDestroyOnSceneUnload => false;
 
 
         public TestMeshAdapter (TestMesh provider) {

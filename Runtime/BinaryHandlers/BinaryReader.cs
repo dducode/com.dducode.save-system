@@ -2,15 +2,9 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
-
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAlias = Cysharp.Threading.Tasks.UniTask;
-
-#else
-using TaskAlias = System.Threading.Tasks.Task;
-#endif
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
@@ -19,32 +13,47 @@ namespace SaveSystem.BinaryHandlers {
 
     public class BinaryReader : IDisposable {
 
-        private readonly Stream m_output;
+        public readonly Stream output;
         private long m_streamPosition;
 
 
         public BinaryReader (Stream output) {
-            m_output = output;
+            this.output = output;
         }
 
 
         public bool IsEndOfStream () {
-            return m_streamPosition >= m_output.Length;
+            return m_streamPosition >= output.Length;
         }
 
 
         public TValue Read<TValue> () where TValue : unmanaged {
             var value = default(TValue);
             Span<TValue> span = MemoryMarshal.CreateSpan(ref value, 1);
-            m_streamPosition += m_output.Read(MemoryMarshal.AsBytes(span));
+            m_streamPosition += output.Read(MemoryMarshal.AsBytes(span));
             return value;
         }
 
 
-        public TArray[] ReadArray<TArray> () where TArray : unmanaged {
-            var array = new TArray[Read<int>()];
-            m_streamPosition += m_output.Read(MemoryMarshal.AsBytes((Span<TArray>)array));
+        public TValue[] ReadArray<TValue> () where TValue : unmanaged {
+            var array = new TValue[Read<int>()];
+            m_streamPosition += output.Read(MemoryMarshal.AsBytes((Span<TValue>)array));
             return array;
+        }
+
+
+        public async UniTask<TValue[]> ReadArrayAsync<TValue> () where TValue : unmanaged {
+            var array = new TValue[Read<int>()];
+            var memory = new Memory<byte>(new byte[array.Length * Marshal.SizeOf<TValue>()]);
+            m_streamPosition += await output.ReadAsync(memory);
+            WriteDataToArray(memory.Span, array);
+            return array;
+
+            void WriteDataToArray (Span<byte> bytes, TValue[] target) {
+                Span<byte> span = MemoryMarshal.AsBytes((Span<TValue>)target);
+                for (var i = 0; i < bytes.Length; i++)
+                    span[i] = bytes[i];
+            }
         }
 
 
@@ -155,13 +164,13 @@ namespace SaveSystem.BinaryHandlers {
 
 
         public void Dispose () {
-            m_output?.Dispose();
+            output?.Dispose();
         }
 
 
-        internal async TaskAlias ReadDataFromFileAsync (string path, CancellationToken token) {
-            await m_output.WriteAsync(await File.ReadAllBytesAsync(path, token), token);
-            m_output.Position = 0;
+        internal async UniTask ReadDataFromFileAsync (string path, CancellationToken token) {
+            await output.WriteAsync(await File.ReadAllBytesAsync(path, token), token);
+            output.Position = 0;
         }
 
     }

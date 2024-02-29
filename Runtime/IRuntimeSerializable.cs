@@ -7,9 +7,6 @@ namespace SaveSystem {
     /// </summary>
     public interface IRuntimeSerializable {
 
-        public bool DontDestroyOnSceneUnload { get; }
-
-
         /// <summary>
         /// Writes some data to <see cref="BinaryHandlers.BinaryWriter"/>
         /// </summary>

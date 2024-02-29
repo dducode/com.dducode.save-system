@@ -17,8 +17,6 @@ namespace SaveSystem.Tests {
 
     public class CoreTests {
 
-        private const string FilePath = "test.bytes";
-
         public static bool[] parallelConfig = {true, false};
 
 
@@ -27,6 +25,11 @@ namespace SaveSystem.Tests {
             var camera = new GameObject();
             camera.AddComponent<Camera>();
             camera.transform.position = new Vector3(0, 0, -10);
+
+            SaveSystemCore.EnabledLogs = LogLevel.All;
+            SaveSystemCore.SelectedSaveProfile = new SaveProfile {
+                Name = "test", DataPath = "test"
+            };
             Debug.Log("Start test");
         }
 
@@ -40,7 +43,6 @@ namespace SaveSystem.Tests {
                 color = Color.cyan
             };
 
-            SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.SavePeriod = 1.5f;
             SaveSystemCore.EnabledSaveEvents = SaveEvents.AutoSave;
 
@@ -66,7 +68,6 @@ namespace SaveSystem.Tests {
                 color = Color.cyan
             };
 
-            SaveSystemCore.EnabledLogs = LogLevel.All;
 
         #if ENABLE_LEGACY_INPUT_MANAGER
             SaveSystemCore.BindKey(KeyCode.S);
@@ -97,7 +98,6 @@ namespace SaveSystem.Tests {
             sphere.transform.position = Vector3.up * 10;
             sphere.tag = sphereTag;
 
-            SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
 
@@ -131,9 +131,8 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.RegisterSerializables(spheres);
             SaveSystemCore.ConfigureParameters(
-                SaveEvents.AutoSave | SaveEvents.OnFocusLost, false, LogLevel.All,
-                true, sphereTag, 3
-            );
+                SaveEvents.AutoSave | SaveEvents.OnFocusLost, LogLevel.All,
+                false, true, sphereTag, 3);
 
             var testStopped = false;
 
@@ -157,8 +156,6 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
-            SaveSystemCore.EnabledLogs = LogLevel.All;
-
             for (var i = 0; i < 5; i++) {
                 var meshes = new List<TestMeshAdapter>();
 
@@ -175,7 +172,7 @@ namespace SaveSystem.Tests {
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            SaveSystemCore.SaveAsync(() => saveIsCompleted = true);
+            SaveSystemCore.SaveAsync(_ => saveIsCompleted = true);
             yield return new WaitWhile(() => !saveIsCompleted);
             stopwatch.Stop();
             Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
@@ -191,7 +188,6 @@ namespace SaveSystem.Tests {
             for (var i = 0; i < 250; i++)
                 spheres.Add(new TestMeshAdapter(CreateSphere<TestMesh>()));
 
-            SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
             SaveSystemCore.RegisterSerializables(spheres);
             yield return new WaitForEndOfFrame();

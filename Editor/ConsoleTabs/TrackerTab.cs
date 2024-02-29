@@ -1,4 +1,6 @@
-﻿using SaveSystem.Internal.Diagnostic;
+﻿using System;
+using System.Collections.Generic;
+using SaveSystem.Internal.Diagnostic;
 using UnityEditor;
 using UnityEngine;
 
@@ -16,9 +18,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
             GUIStyle headerStyle = EditorStyles.wordWrappedLabel;
             GUIStyle entryStyle = EditorStyles.wordWrappedMiniLabel;
 
-            DiagnosticService.ClearNullGroups();
+            DiagnosticService.ClearNullObjects();
             DrawNumberColumn(headerStyle, entryStyle);
-            DrawCreateFromColumn(headerStyle, entryStyle);
             DrawObjectsTypeColumn(headerStyle, entryStyle);
             DrawObjectsCountColumn(headerStyle, entryStyle);
 
@@ -30,19 +31,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Number", headerStyle);
 
-            for (var i = 0; i < DiagnosticService.HandlersCount; i++)
+            for (var i = 0; i < DiagnosticService.ObjectsCount; i++)
                 EditorGUILayout.LabelField($"{i + 1}", entryStyle);
-
-            EditorGUILayout.EndVertical();
-        }
-
-
-        private void DrawCreateFromColumn (GUIStyle headerStyle, GUIStyle entryStyle) {
-            EditorGUILayout.BeginVertical();
-            EditorGUILayout.LabelField("Create From", headerStyle);
-
-            foreach (DynamicObjectGroupMetadata metadata in DiagnosticService.GroupsData)
-                EditorGUILayout.LabelField($"{metadata.caller}", entryStyle);
 
             EditorGUILayout.EndVertical();
         }
@@ -52,8 +42,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Type", headerStyle);
 
-            foreach (DynamicObjectGroupMetadata metadata in DiagnosticService.GroupsData)
-                EditorGUILayout.LabelField($"{metadata.objectsType.Name}", entryStyle);
+            foreach (KeyValuePair<Type, List<ObjectMetadata>> metadata in DiagnosticService.Dict)
+                EditorGUILayout.LabelField($"{metadata.Key.Name}", entryStyle);
 
             EditorGUILayout.EndVertical();
         }
@@ -63,8 +53,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Count", headerStyle);
 
-            foreach (DynamicObjectGroupMetadata metadata in DiagnosticService.GroupsData)
-                EditorGUILayout.LabelField($"{metadata.objectsCount}", entryStyle);
+            foreach (KeyValuePair<Type, List<ObjectMetadata>> metadata in DiagnosticService.Dict)
+                EditorGUILayout.LabelField($"{metadata.Value.Count}", entryStyle);
 
             EditorGUILayout.EndVertical();
         }

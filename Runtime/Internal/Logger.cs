@@ -11,28 +11,28 @@ namespace SaveSystem.Internal {
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void Log<TMessage> (TMessage message) {
+        internal static void Log (object message, Object context = null) {
             if (EnabledLogs.HasFlag(LogLevel.Debug))
-                Debug.Log(FormattedMessage(message));
+                Debug.Log(FormattedMessage(message), context);
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void LogWarning<TMessage> (TMessage message) {
+        internal static void LogWarning (object message, Object context = null) {
             if (EnabledLogs.HasFlag(LogLevel.Warning))
-                Debug.LogWarning(FormattedMessage(message));
+                Debug.LogWarning(FormattedMessage(message), context);
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void LogError<TMessage> (TMessage message) {
+        internal static void LogError (object message, Object context = null) {
             if (EnabledLogs.HasFlag(LogLevel.Error))
-                Debug.LogError(FormattedMessage(message));
+                Debug.LogError(FormattedMessage(message), context);
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static string FormattedMessage<TMessage> (TMessage message) {
+        internal static string FormattedMessage (object message) {
             return $"{MessageHeader} {message}";
         }
 

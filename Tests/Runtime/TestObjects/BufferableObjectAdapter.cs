@@ -6,12 +6,10 @@ namespace SaveSystem.Tests.TestObjects {
     public class BufferableObjectAdapter : ISerializationAdapter<BufferableObject> {
 
         public BufferableObject Target { get; }
-        public bool DontDestroyOnSceneUnload { get; }
 
 
         public BufferableObjectAdapter (BufferableObject target) {
             Target = target;
-            DontDestroyOnSceneUnload = false;
         }
 
 

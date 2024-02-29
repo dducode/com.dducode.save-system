@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using SaveSystem.Internal;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,7 +8,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         public void Draw () {
             DrawDataSizeLabel();
-            DrawFileSystemEntries(Application.persistentDataPath);
+            DrawFileSystemEntries(Storage.PersistentDataPath);
 
             if (Storage.HasAnyData())
                 DrawDeleteDataButton();

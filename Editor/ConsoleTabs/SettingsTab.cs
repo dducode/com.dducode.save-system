@@ -12,11 +12,10 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_isParallelProperty;
         private SerializedProperty m_enabledLogsProperty;
+        private SerializedProperty m_allowSceneSavingProperty;
 
         private SerializedProperty m_destroyCheckPointsProperty;
         private SerializedProperty m_playerTagProperty;
-
-        private SerializedProperty m_registerImmediatelyProperty;
 
         private readonly GUIContent m_saveEventsContent = new() {
             text = "Enabled Save Events",
@@ -70,9 +69,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.Space(15);
             DrawCheckpointsSettings();
 
-            EditorGUILayout.Space(15);
-            DrawFactorySettings();
-
             m_serializedSettings.ApplyModifiedProperties();
         }
 
@@ -87,11 +83,12 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
+            m_allowSceneSavingProperty = m_serializedSettings.FindProperty("allowSceneSaving");
 
             m_destroyCheckPointsProperty = m_serializedSettings.FindProperty("destroyCheckPoints");
             m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
 
-            m_registerImmediatelyProperty = m_serializedSettings.FindProperty("registerImmediately");
+            m_serializedSettings.FindProperty("registerImmediately");
         }
 
 
@@ -110,6 +107,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
             EditorGUILayout.PropertyField(m_isParallelProperty);
+            EditorGUILayout.PropertyField(m_allowSceneSavingProperty);
 
             m_enabledLogs = (LogLevel)EditorGUILayout.EnumFlagsField(
                 m_enabledLogsContent,
@@ -126,12 +124,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.PropertyField(m_destroyCheckPointsProperty);
             m_playerTagProperty.stringValue =
                 EditorGUILayout.TagField(m_playerTagContent, m_playerTagProperty.stringValue, GUILayout.MaxWidth(300));
-        }
-
-
-        private void DrawFactorySettings () {
-            EditorGUILayout.LabelField("Handlers Factory settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(m_registerImmediatelyProperty);
         }
 
     }

@@ -3,14 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine.Rendering;
-
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAlias = Cysharp.Threading.Tasks.UniTask;
-
-#else
-using TaskAlias = System.Threading.Tasks.Task;
-#endif
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
@@ -19,31 +13,45 @@ namespace SaveSystem.BinaryHandlers {
 
     public class BinaryWriter : IDisposable {
 
-        private readonly Stream m_input;
+        public readonly Stream input;
 
 
         public BinaryWriter (Stream input) {
-            m_input = input;
+            this.input = input;
         }
 
 
         public void Write<TValue> (TValue value) where TValue : unmanaged {
             ReadOnlySpan<TValue> span = MemoryMarshal.CreateReadOnlySpan(ref value, 1);
-            m_input.Write(MemoryMarshal.AsBytes(span));
+            input.Write(MemoryMarshal.AsBytes(span));
         }
 
 
-        public void Write<TArray> ([NotNull] TArray[] array) where TArray : unmanaged {
+        public void Write<TValue> ([NotNull] TValue[] array) where TValue : unmanaged {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
 
-            Write((ReadOnlySpan<TArray>)array);
+            Write((ReadOnlySpan<TValue>)array);
         }
 
 
-        public void Write<TSpan> (ReadOnlySpan<TSpan> span) where TSpan : unmanaged {
+        public void Write<TValue> (ReadOnlySpan<TValue> span) where TValue : unmanaged {
             Write(span.Length);
-            m_input.Write(MemoryMarshal.AsBytes(span));
+            input.Write(MemoryMarshal.AsBytes(span));
+        }
+
+
+        public async UniTask WriteAsync<TValue> ([NotNull] TValue[] array) where TValue : unmanaged {
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+
+            await WriteAsync((ReadOnlyMemory<TValue>)array);
+        }
+
+
+        public async UniTask WriteAsync<TValue> (ReadOnlyMemory<TValue> memory) where TValue : unmanaged {
+            Write(memory.Span.Length);
+            await input.WriteAsync(MemoryMarshal.AsBytes(memory.Span).ToArray());
         }
 
 
@@ -137,13 +145,13 @@ namespace SaveSystem.BinaryHandlers {
 
 
         public void Dispose () {
-            m_input.SetLength(m_input.Position);
-            m_input.Dispose();
+            input.SetLength(input.Position);
+            input.Dispose();
         }
 
 
-        internal async TaskAlias WriteDataToFileAsync (string path, CancellationToken token) {
-            await File.WriteAllBytesAsync(path, ((MemoryStream)m_input).ToArray(), token);
+        internal async UniTask WriteDataToFileAsync (string path, CancellationToken token) {
+            await File.WriteAllBytesAsync(path, ((MemoryStream)input).ToArray(), token);
         }
 
     }

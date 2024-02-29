@@ -1,10 +1,9 @@
-﻿using System.Collections;
-using System.IO;
+﻿using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 
@@ -12,7 +11,7 @@ namespace SaveSystem.Tests {
 
     public class BinaryHandlersTests {
 
-        private readonly string m_filePath = Path.Combine(Application.persistentDataPath, "test.bytes");
+        private readonly string m_filePath = Storage.GetFullPath("test.bytes");
 
 
         [SetUp]
@@ -27,9 +26,8 @@ namespace SaveSystem.Tests {
 
         [Test]
         public void WriteRead () {
-            using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate))) {
+            using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 writer.Write(GetData(25));
-            }
 
             using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open))) {
                 var message = new StringBuilder();
@@ -42,20 +40,23 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public void WriteReadText () {
-            const string path = "C:\\Users\\Denis\\OneDrive\\Рабочий стол\\testtext.txt";
-
+        public async Task WriteReadAsync () {
             using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
-                writer.Write(File.ReadAllText(path));
+                await writer.WriteAsync(GetData(25));
 
-            using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open)))
-                Debug.Log(reader.ReadString());
+            using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open))) {
+                var message = new StringBuilder();
+                int[] data = await reader.ReadArrayAsync<int>();
+                foreach (int i in data)
+                    message.Append($"item: {i}\n");
+                Debug.Log(message);
+            }
         }
 
 
-        [UnityTest]
-        public IEnumerator WriteReadMesh () => UniTask.ToCoroutine(async () => {
-            const float duration = 1.5f;
+        [Test]
+        public async Task WriteReadMesh () {
+            const int duration = 1500;
 
             var gameObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             Debug.Log("Create object");
@@ -76,7 +77,7 @@ namespace SaveSystem.Tests {
 
             Debug.Log("Load mesh");
             await UniTask.WaitForSeconds(duration);
-        });
+        }
 
 
         private static int[] GetData (int itemsCount) {

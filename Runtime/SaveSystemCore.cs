@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using SaveSystem.CheckPoints;
 using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using UnityEngine.SceneManagement;
@@ -19,40 +18,26 @@ using Logger = SaveSystem.Internal.Logger;
 using Object = UnityEngine.Object;
 
 #if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
 #endif
-
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAlias = Cysharp.Threading.Tasks.UniTask;
-using TaskBool = Cysharp.Threading.Tasks.UniTask<bool>;
-using TaskResult = Cysharp.Threading.Tasks.UniTask<SaveSystem.HandlingResult>;
-
-#else
-using TaskAlias = System.Threading.Tasks.Task;
-using TaskBool = System.Threading.Tasks.Task<bool>;
-using TaskResult = System.Threading.Tasks.Task<SaveSystem.HandlingResult>;
-#endif
-
 
 namespace SaveSystem {
 
     /// <summary>
-    /// The Core of the Save System. It accepts <see cref="DynamicObjectGroup{T}">object group</see>
+    /// The Core of the Save System. It accepts <see cref="DynamicObjectFactory{TDynamic}">object group</see>
     /// and starts saving in three main modes - autosave, quick-save and save at checkpoint.
     /// Also it starts the saving when the player exit the game
     /// </summary>
     public static partial class SaveSystemCore {
 
-        private const string SaveProfileExtension = ".saveprofile";
+        private const string ProfileExtension = ".saveprofile";
+        private const string DefaultProfileName = "default_profile";
+        private const string SaveSystemExtension = ".savesystem";
 
-        private static readonly string DefaultProfilePath =
-            PathPreparing.PrepareBeforeUsing(Path.Combine("save_system_internal", "default_profile.bytes"));
+        private static string m_profilesFolderPath;
+        private static string m_destroyedCheckpointsPath;
 
-        private static readonly string DestroyedCheckpointsPath =
-            PathPreparing.PrepareBeforeUsing(Path.Combine("save_system_internal", "destroyed_checkpoints.bytes"));
-
-        private static readonly string LastSceneIndexPath =
-            PathPreparing.PrepareBeforeUsing(Path.Combine("save_system_internal", "last_scene_index.bytes"));
-
+        private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
         private static bool m_isParallel;
@@ -65,8 +50,7 @@ namespace SaveSystem {
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
-        private static readonly ConcurrentBag<IRuntimeSerializable> SerializableObjects = new();
-        private static SaveProfile m_currentProfile;
+        private static readonly List<IRuntimeSerializable> SerializableObjects = new();
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -77,8 +61,8 @@ namespace SaveSystem {
     #endif
 
         private static List<Vector3> m_destroyedCheckpoints;
-        private static int m_lastSceneIndex;
 
+        private static bool m_allowSceneSaving;
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
         private static IProgress<float> m_saveProgress;
@@ -96,9 +80,13 @@ namespace SaveSystem {
 
             SetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop(), saveSystemLoop);
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            SetInternalSavedPaths();
             LoadInternalData();
             SetOnExitPlayModeCallback();
 
+            m_selectedSaveProfile = new SaveProfile {
+                Name = DefaultProfileName, DataPath = DefaultProfileName
+            };
             m_exitCancellation = new CancellationTokenSource();
             Logger.Log("Save System Core initialized");
         }
@@ -121,6 +109,7 @@ namespace SaveSystem {
 
             // Core settings
             SetupEvents(m_enabledSaveEvents = settings.enabledSaveEvents);
+            m_allowSceneSaving = settings.allowSceneSaving;
             m_savePeriod = settings.savePeriod;
             m_isParallel = settings.isParallel;
             Logger.EnabledLogs = settings.enabledLogs;
@@ -131,21 +120,23 @@ namespace SaveSystem {
         }
 
 
+        private static void SetInternalSavedPaths () {
+            m_profilesFolderPath = Storage.PrepareBeforeUsing(
+                Path.Combine("save_system_internal", "save_profiles"), true
+            );
+            m_destroyedCheckpointsPath = Storage.PrepareBeforeUsing(
+                Path.Combine("save_system_internal", $"destroyed_checkpoints{SaveSystemExtension}"), false
+            );
+        }
+
+
         private static void LoadInternalData () {
-            if (File.Exists(DestroyedCheckpointsPath)) {
-                using var reader = new BinaryReader(File.Open(DestroyedCheckpointsPath, FileMode.Open));
+            if (File.Exists(m_destroyedCheckpointsPath)) {
+                using var reader = new BinaryReader(File.Open(m_destroyedCheckpointsPath, FileMode.Open));
                 m_destroyedCheckpoints = reader.ReadArray<Vector3>().ToList();
             }
             else {
                 m_destroyedCheckpoints = new List<Vector3>();
-            }
-
-            if (File.Exists(LastSceneIndexPath)) {
-                using var reader = new BinaryReader(File.Open(LastSceneIndexPath, FileMode.Open));
-                m_lastSceneIndex = reader.Read<int>();
-            }
-            else {
-                m_lastSceneIndex = -1;
             }
         }
 
@@ -156,7 +147,6 @@ namespace SaveSystem {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Start () {
             SceneManager.sceneLoaded += OnSceneLoaded;
-            SceneManager.sceneUnloaded += OnSceneUnloaded;
         }
 
 
@@ -166,7 +156,7 @@ namespace SaveSystem {
 
             checkPoint.Disable();
 
-            ScheduleSave(SaveType.SaveAtCheckpoint, "Successful save at checkpoint");
+            ScheduleSave(SaveType.SaveAtCheckpoint);
 
             if (checkPoint == null)
                 return;
@@ -183,7 +173,7 @@ namespace SaveSystem {
 
 
         private static void SaveDestroyedCheckpoints () {
-            using var writer = new BinaryWriter(File.Open(DestroyedCheckpointsPath, FileMode.OpenOrCreate));
+            using var writer = new BinaryWriter(File.Open(m_destroyedCheckpointsPath, FileMode.OpenOrCreate));
             writer.Write(m_destroyedCheckpoints.ToArray());
         }
 
@@ -197,7 +187,7 @@ namespace SaveSystem {
              * This is necessary to prevent sharing of the same file
              */
             try {
-                await SynchronizationPoint.ExecuteTask(m_exitCancellation.Token);
+                await SynchronizationPoint.ExecuteScheduledTask(m_exitCancellation.Token);
             }
             catch (OperationCanceledException) {
                 Logger.Log("Internal operation was canceled");
@@ -225,13 +215,13 @@ namespace SaveSystem {
 
 
         private static void QuickSave () {
-            ScheduleSave(SaveType.QuickSave, "Successful quick-save");
+            ScheduleSave(SaveType.QuickSave);
         }
 
 
         private static void AutoSave () {
             if (m_autoSaveLastTime + SavePeriod < Time.time) {
-                ScheduleSave(SaveType.AutoSave, "Successful auto save");
+                ScheduleSave(SaveType.AutoSave);
                 m_autoSaveLastTime = Time.time;
             }
         }
@@ -277,96 +267,80 @@ namespace SaveSystem {
             }
             else {
                 m_onSaveStart?.Invoke(SaveType.OnExit);
-                SaveObjectGroups(OnSaveEnd);
+                SaveObjects(OnSaveEnd);
                 return false;
             }
 
-            void OnSaveEnd () {
+            void OnSaveEnd (HandlingResult result) {
                 m_onSaveEnd?.Invoke(SaveType.OnExit);
                 m_savedBeforeExit = true;
-                Logger.Log("Successful saving before the quitting");
+                if (result is HandlingResult.Success)
+                    Logger.Log("Successful saving before the quitting");
+                else if (result is HandlingResult.Canceled)
+                    Logger.LogWarning("The saving before the quitting was canceled");
+                else if (result is HandlingResult.Error)
+                    Logger.LogError("Some error was occured");
                 Application.Quit();
             }
         }
 
 
         private static void OnFocusLost (bool hasFocus) {
-            if (!hasFocus) {
-                const string message = "Successful saving on focus lost";
-                ScheduleSave(SaveType.OnFocusLost, message);
-            }
+            if (!hasFocus)
+                ScheduleSave(SaveType.OnFocusLost);
         }
 
 
         private static void OnLowMemory () {
-            const string message = "Successful saving on low memory";
-            ScheduleSave(SaveType.OnLowMemory, message);
+            ScheduleSave(SaveType.OnLowMemory);
         }
 
 
-        private static void ScheduleSave (SaveType saveType, string debugMessage) {
-            SynchronizationPoint.SetTask(async token => {
+        private static void ScheduleSave (SaveType saveType) {
+            SynchronizationPoint.ScheduleTask(async token => {
                 m_onSaveStart?.Invoke(saveType);
-                await SaveObjectGroups(token);
+                HandlingResult result = await SaveObjects(token);
                 m_onSaveEnd?.Invoke(saveType);
-                Logger.Log(debugMessage);
+
+                if (result is HandlingResult.Success)
+                    Logger.Log($"{saveType}: success");
+                else if (result is HandlingResult.Canceled)
+                    Logger.LogWarning($"{saveType}: canceled");
+                else if (result is HandlingResult.Error)
+                    Logger.LogError($"{saveType}: error");
+
+                return result;
             });
         }
 
 
-        private static async void SaveObjectGroups (Action continuation) {
-            await SaveObjectGroups(CancellationToken.None);
-            continuation();
+        private static async void SaveObjects (Action<HandlingResult> continuation) {
+            continuation(await SaveObjects(CancellationToken.None));
         }
 
 
-        private static void SaveProfileMetadata () {
-            using var writer = new BinaryWriter(
-                File.Open($"{m_currentProfile.Name}{SaveProfileExtension}", FileMode.OpenOrCreate)
-            );
-            m_currentProfile.Serialize(writer);
-        }
-
-
-        private static HandlingResult LoadProfileMetadata () {
-            var path = $"{m_currentProfile.Name}{SaveProfileExtension}";
-            if (!File.Exists(path))
-                return HandlingResult.FileNotExists;
-
-            using var reader = new BinaryReader(File.Open(path, FileMode.Open));
-            m_currentProfile ??= new SaveProfile();
-            m_currentProfile.Deserialize(reader);
-            return HandlingResult.Success;
-        }
-
-
-        private static async TaskAlias SaveObjectGroups (CancellationToken token) {
-            token.ThrowIfCancellationRequested();
-
-            using var writer = new BinaryWriter(new MemoryStream());
-
-            foreach (IRuntimeSerializable serializable in SerializableObjects)
-                serializable.Serialize(writer);
-
-            await writer.WriteDataToFileAsync(DefaultProfilePath, token);
-            Logger.Log("All registered objects was saved");
-        }
-
-
-        private static async TaskResult LoadObjectGroups (CancellationToken token) {
-            if (!File.Exists(DefaultProfilePath))
-                return HandlingResult.FileNotExists;
-
+        private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
 
-                using var reader = new BinaryReader(new MemoryStream());
-                await reader.ReadDataFromFileAsync(DefaultProfilePath, token);
+                using var writer = new BinaryWriter(new MemoryStream());
+                SerializableObjects.RemoveAll(serializable => serializable.Equals(null));
+                foreach (IRuntimeSerializable serializable in SerializableObjects)
+                    serializable.Serialize(writer);
 
-                foreach (IRuntimeSerializable objectGroup in SerializableObjects)
-                    objectGroup.Deserialize(reader);
+                if (!m_allowSceneSaving) {
+                    Logger.Log("All registered objects was saved");
+                    return HandlingResult.Success;
+                }
 
-                Logger.Log("All registered objects was loaded");
+                var sceneSerialization = Object.FindAnyObjectByType<SceneSerialization>();
+                if (sceneSerialization == null)
+                    throw new InvalidOperationException("No scene has a scene serialization object");
+                writer.Write(sceneSerialization.sceneIndex);
+                sceneSerialization.Serialize(writer);
+
+                await writer.WriteDataToFileAsync(m_selectedSaveProfile.DataPath, token);
+                Logger.Log("All registered objects was saved");
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -377,19 +351,7 @@ namespace SaveSystem {
 
 
         private static void OnSceneLoaded (Scene scene, LoadSceneMode loadMode) {
-            // SaveLastSceneIndex(m_lastSceneIndex = scene.buildIndex);
             DestroyTriggeredCheckpoints();
-        }
-
-
-        private static void OnSceneUnloaded (Scene scene) {
-            ClearObjectGroups();
-        }
-
-
-        private static void SaveLastSceneIndex (int lastSceneIndex) {
-            using var writer = new BinaryWriter(File.Open(LastSceneIndexPath, FileMode.OpenOrCreate));
-            writer.Write(lastSceneIndex);
         }
 
 
@@ -408,20 +370,6 @@ namespace SaveSystem {
                     }
                 }
             }
-        }
-
-
-        private static void ClearObjectGroups () {
-            var savedGroups = new List<IRuntimeSerializable>();
-
-            foreach (IRuntimeSerializable objectGroup in SerializableObjects) {
-                if (objectGroup.DontDestroyOnSceneUnload)
-                    savedGroups.Add(objectGroup);
-            }
-
-            SerializableObjects.Clear();
-            foreach (IRuntimeSerializable objectGroup in savedGroups)
-                SerializableObjects.Add(objectGroup);
         }
 
     }

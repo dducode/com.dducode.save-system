@@ -20,13 +20,12 @@ namespace SaveSystem {
                  "\nYou must ensure that your objects are thread safe")]
         public bool isParallel;
 
+        public bool allowSceneSaving;
+
         [Tooltip("Determines whether checkpoints will be destroyed after saving")]
         public bool destroyCheckPoints = true;
 
         public string playerTag = "Player";
-
-        [Tooltip("Configure it to automatically register handlers in the Save System Core after creation")]
-        public bool registerImmediately;
 
 
     #if UNITY_EDITOR

@@ -1,15 +1,9 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskBytes = Cysharp.Threading.Tasks.UniTask<byte[]>;
-
-#else
-using TaskBytes = System.Threading.Tasks.Task<byte[]>;
-#endif
+// ReSharper disable UnusedMember.Global
 
 namespace SaveSystem {
 
@@ -18,7 +12,7 @@ namespace SaveSystem {
     /// </summary>
     public static class Storage {
 
-        private static readonly string PersistentDataPath = Application.persistentDataPath;
+        internal static readonly string PersistentDataPath = Application.persistentDataPath;
 
 
         /// <returns> Returns the size of the data in bytes </returns>
@@ -42,7 +36,7 @@ namespace SaveSystem {
         }
 
 
-        public static async TaskBytes GetRawData (string localPath, CancellationToken token = default) {
+        public static async UniTask<byte[]> GetRawData (string localPath, CancellationToken token = default) {
             return await File.ReadAllBytesAsync(GetFullPath(localPath), token);
         }
 
@@ -52,18 +46,16 @@ namespace SaveSystem {
         }
 
 
-        internal static void CreateFoldersIfNotExists (string filePath) {
-            List<string> directoryPaths = filePath.Split(new[] {Path.DirectorySeparatorChar}).ToList();
-            directoryPaths.RemoveAt(directoryPaths.Count - 1); // last element is a file, not a folder
-
-            var path = "";
-
-            foreach (string directoryPath in directoryPaths) {
-                path = Path.Combine(path, directoryPath);
-                string fullPath = GetFullPath(path);
-                if (!Directory.Exists(fullPath))
-                    Directory.CreateDirectory(fullPath);
-            }
+        /// <summary>
+        /// Creates new directories if they're not exists and returns full path
+        /// </summary>
+        internal static string PrepareBeforeUsing (string path, bool isDirectory) {
+            string fullPath = GetFullPath(path);
+            string directoryPath = isDirectory
+                ? fullPath
+                : fullPath.Remove(fullPath.LastIndexOf(Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(directoryPath);
+            return fullPath;
         }
 
 

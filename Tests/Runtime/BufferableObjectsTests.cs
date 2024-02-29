@@ -7,18 +7,12 @@ using UnityEngine.TestTools;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAwaiter = Cysharp.Threading.Tasks.UniTask<SaveSystem.HandlingResult>.Awaiter;
-
-#else
-using TaskAwaiter = System.Runtime.CompilerServices.TaskAwaiter<SaveSystem.Handlers.HandlingResult>;
-#endif
 
 namespace SaveSystem.Tests {
 
     public class BufferableObjectsTests {
 
-        private readonly string m_filePath = Path.Combine(Application.persistentDataPath, ".bytes");
+        private readonly string m_filePath = Storage.GetFullPath(".bytes");
 
 
         [SetUp]
@@ -32,14 +26,8 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator SerializeObjects () {
-            var objectGroup = new DynamicObjectGroup<BufferableObject>(CreateObject, CreateAdapter);
-
-            var bufferableObjects = new BufferableObject[100];
-
-            for (var i = 0; i < 100; i++)
-                bufferableObjects[i] = CreateObject();
-
-            objectGroup.AddRange(bufferableObjects);
+            var objectGroup = new DynamicObjectFactory<BufferableObject>(CreateObject, CreateAdapter);
+            objectGroup.CreateObjects(100);
 
             using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 objectGroup.Serialize(writer);
@@ -50,7 +38,7 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator DeserializeObjects () {
-            var objectGroup = new DynamicObjectGroup<BufferableObject>(CreateObject, CreateAdapter);
+            var objectGroup = new DynamicObjectFactory<BufferableObject>(CreateObject, CreateAdapter);
 
             using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open)))
                 objectGroup.Deserialize(reader);

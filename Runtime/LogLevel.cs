@@ -2,6 +2,9 @@
 
 namespace SaveSystem {
 
+    /// <summary>
+    /// Defines some log levels (debug, warning, error) to control log level of save system logger from external code
+    /// </summary>
     [Flags]
     public enum LogLevel {
 

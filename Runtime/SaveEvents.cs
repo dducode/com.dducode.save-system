@@ -6,7 +6,6 @@ namespace SaveSystem {
     /// Defines save events that can be managed by external code
     /// </summary>
     /// <remarks> You can combine events with each other </remarks>
-    /// <example> EnabledEvents = SaveEvents.AutoSave | SaveEvents.OnFocusChanged </example>
     [Flags]
     public enum SaveEvents {
 

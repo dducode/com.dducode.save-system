@@ -6,8 +6,6 @@ namespace SaveSystem.Tests.TestObjects {
 
     internal abstract class TestObject : IRuntimeSerializable {
 
-        public bool DontDestroyOnSceneUnload => false;
-
         public string name;
         public Vector3 position;
         public Quaternion rotation;

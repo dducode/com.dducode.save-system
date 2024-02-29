@@ -1,14 +1,6 @@
 ﻿using System;
 using System.Threading;
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAlias = Cysharp.Threading.Tasks.UniTask;
-using TaskResult = Cysharp.Threading.Tasks.UniTask<SaveSystem.HandlingResult>;
-
-#else
-using TaskAlias = System.Threading.Tasks.Task;
-using TaskBool = System.Threading.Tasks.Task<bool>;
-using TaskResult = System.Threading.Tasks.Task<SaveSystem.HandlingResult>;
-#endif
+using Cysharp.Threading.Tasks;
 
 
 namespace SaveSystem.Internal {
@@ -17,41 +9,35 @@ namespace SaveSystem.Internal {
 
         internal bool IsPerformed { get; private set; }
 
-        private Func<CancellationToken, TaskAlias> m_task;
+        private Func<CancellationToken, UniTask<HandlingResult>> m_scheduledTask;
 
 
-        internal void SetTask (Func<CancellationToken, TaskAlias> task) {
-            m_task ??= task;
+        internal void ScheduleTask (Func<CancellationToken, UniTask<HandlingResult>> task) {
+            m_scheduledTask ??= task;
         }
 
 
-        internal async TaskAlias ExecuteTask (CancellationToken token) {
-            if (m_task == null)
-                return;
+        internal async UniTask<HandlingResult> ExecuteScheduledTask (CancellationToken token) {
+            if (m_scheduledTask == null)
+                return HandlingResult.Canceled;
 
-            await ExecuteTask(m_task, token);
-            m_task = null;
+            try {
+                return await ExecuteTask(async () => await m_scheduledTask(token));
+            }
+            finally {
+                m_scheduledTask = null;
+            }
         }
 
 
-        internal async TaskAlias ExecuteTask (Func<CancellationToken, TaskAlias> task, CancellationToken token) {
+        internal async UniTask<HandlingResult> ExecuteTask (Func<UniTask<HandlingResult>> task) {
             if (IsPerformed)
-                return;
-
-            IsPerformed = true;
-            await task(token);
-            IsPerformed = false;
-        }
-
-
-        internal async TaskResult ExecuteTask (Func<CancellationToken, TaskResult> task, CancellationToken token) {
-            if (IsPerformed)
-                return HandlingResult.InternalError;
+                return HandlingResult.Error;
 
             IsPerformed = true;
 
             try {
-                return await task(token);
+                return await task();
             }
             finally {
                 IsPerformed = false;

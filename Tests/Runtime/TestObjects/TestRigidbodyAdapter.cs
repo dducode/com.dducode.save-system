@@ -6,7 +6,6 @@ namespace SaveSystem.Tests.TestObjects {
     public class TestRigidbodyAdapter : ISerializationAdapter<TestRigidbody> {
 
         public TestRigidbody Target { get; }
-        public bool DontDestroyOnSceneUnload => false;
 
 
         public TestRigidbodyAdapter (TestRigidbody provider) {

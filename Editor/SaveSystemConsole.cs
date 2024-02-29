@@ -21,7 +21,7 @@ namespace SaveSystem.Editor {
                 tooltip = "Check your saved files in system directory"
             },
             new() {
-                text = "Handlers Tracker",
+                text = "Objects Tracker",
                 tooltip = "Track data handlers at runtime"
             },
             new() {
