@@ -2,16 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.CheckPoints;
-using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using UnityEngine.SceneManagement;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
@@ -30,18 +26,17 @@ namespace SaveSystem {
     /// </summary>
     public static partial class SaveSystemCore {
 
+        internal const string SaveSystemFolder = "save_system_internal";
+
         private const string ProfileExtension = ".saveprofile";
         private const string DefaultProfileName = "default_profile";
-        private const string SaveSystemExtension = ".savesystem";
 
         private static string m_profilesFolderPath;
-        private static string m_destroyedCheckpointsPath;
 
         private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
         private static bool m_isParallel;
-        private static bool m_destroyCheckPoints;
         private static string m_playerTag;
 
         private static Action<SaveType> m_onSaveStart;
@@ -51,6 +46,7 @@ namespace SaveSystem {
         private static CancellationTokenSource m_exitCancellation;
 
         private static readonly List<IRuntimeSerializable> SerializableObjects = new();
+        private static readonly List<IAsyncRuntimeSerializable> AsyncSerializableObjects = new();
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -60,9 +56,6 @@ namespace SaveSystem {
         private static InputAction m_quickSaveAction;
     #endif
 
-        private static List<Vector3> m_destroyedCheckpoints;
-
-        private static bool m_allowSceneSaving;
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
         private static IProgress<float> m_saveProgress;
@@ -81,7 +74,6 @@ namespace SaveSystem {
             SetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop(), saveSystemLoop);
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
             SetInternalSavedPaths();
-            LoadInternalData();
             SetOnExitPlayModeCallback();
 
             m_selectedSaveProfile = new SaveProfile {
@@ -109,76 +101,52 @@ namespace SaveSystem {
 
             // Core settings
             SetupEvents(m_enabledSaveEvents = settings.enabledSaveEvents);
-            m_allowSceneSaving = settings.allowSceneSaving;
             m_savePeriod = settings.savePeriod;
             m_isParallel = settings.isParallel;
             Logger.EnabledLogs = settings.enabledLogs;
 
             // Checkpoints settings
-            m_destroyCheckPoints = settings.destroyCheckPoints;
             m_playerTag = settings.playerTag;
         }
 
 
         private static void SetInternalSavedPaths () {
             m_profilesFolderPath = Storage.PrepareBeforeUsing(
-                Path.Combine("save_system_internal", "save_profiles"), true
+                Path.Combine(SaveSystemFolder, "save_profiles"), true
             );
-            m_destroyedCheckpointsPath = Storage.PrepareBeforeUsing(
-                Path.Combine("save_system_internal", $"destroyed_checkpoints{SaveSystemExtension}"), false
-            );
-        }
-
-
-        private static void LoadInternalData () {
-            if (File.Exists(m_destroyedCheckpointsPath)) {
-                using var reader = new BinaryReader(File.Open(m_destroyedCheckpointsPath, FileMode.Open));
-                m_destroyedCheckpoints = reader.ReadArray<Vector3>().ToList();
-            }
-            else {
-                m_destroyedCheckpoints = new List<Vector3>();
-            }
         }
 
 
         static partial void SetOnExitPlayModeCallback ();
 
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Start () {
-            SceneManager.sceneLoaded += OnSceneLoaded;
-        }
-
-
-        internal static void SaveAtCheckpoint (CheckPointBase checkPoint, Component other) {
+        internal static void SaveAtCheckpoint (Component other) {
             if (!other.CompareTag(PlayerTag))
                 return;
 
-            checkPoint.Disable();
-
             ScheduleSave(SaveType.SaveAtCheckpoint);
-
-            if (checkPoint == null)
-                return;
-
-            if (DestroyCheckPoints) {
-                m_destroyedCheckpoints.Add(checkPoint.transform.position);
-                checkPoint.Destroy();
-                SaveDestroyedCheckpoints();
-            }
-            else {
-                checkPoint.Enable();
-            }
         }
 
 
-        private static void SaveDestroyedCheckpoints () {
-            using var writer = new BinaryWriter(File.Open(m_destroyedCheckpointsPath, FileMode.OpenOrCreate));
-            writer.Write(m_destroyedCheckpoints.ToArray());
+        internal static async UniTask<HandlingResult> LoadSceneDataAsync (
+            SceneLoader sceneLoader, CancellationToken token
+        ) {
+            string dataPath = Path.Combine(
+                m_selectedSaveProfile.DataPath, $"{sceneLoader.sceneName}.scenedata"
+            );
+
+            if (!File.Exists(dataPath))
+                return HandlingResult.FileNotExists;
+
+            using var reader = new BinaryReader(new MemoryStream());
+            await reader.ReadDataFromFileAsync(dataPath, token);
+            await sceneLoader.Deserialize(reader);
+
+            return HandlingResult.Success;
         }
 
 
-        private static async void UpdateSystem () {
+        private static void UpdateSystem () {
             if (m_exitCancellation.IsCancellationRequested)
                 return;
 
@@ -186,18 +154,7 @@ namespace SaveSystem {
              * Call saving request only in the one state machine
              * This is necessary to prevent sharing of the same file
              */
-            try {
-                await SynchronizationPoint.ExecuteScheduledTask(m_exitCancellation.Token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log("Internal operation was canceled");
-            }
-            catch (Exception ex) {
-                throw new SaveSystemException(
-                    $"An internal exception was thrown, message: {ex.Message}",
-                    ex
-                );
-            }
+            SynchronizationPoint.ExecuteScheduledTask(m_exitCancellation.Token);
 
         #if ENABLE_LEGACY_INPUT_MANAGER
             if (Input.GetKeyDown(m_quickSaveKey))
@@ -322,24 +279,19 @@ namespace SaveSystem {
         private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
+                await SaveProjectScope(token);
 
-                using var writer = new BinaryWriter(new MemoryStream());
-                SerializableObjects.RemoveAll(serializable => serializable.Equals(null));
-                foreach (IRuntimeSerializable serializable in SerializableObjects)
-                    serializable.Serialize(writer);
+                SceneLoader[] sceneLoaders =
+                    Object.FindObjectsByType<SceneLoader>(FindObjectsSortMode.None);
 
-                if (!m_allowSceneSaving) {
-                    Logger.Log("All registered objects was saved");
-                    return HandlingResult.Success;
+                if (IsParallel) {
+                    await ParallelLoop.ForEachAsync(sceneLoaders, async loader => await SaveSceneScope(loader, token));
+                }
+                else {
+                    foreach (SceneLoader sceneLoader in sceneLoaders)
+                        await SaveSceneScope(sceneLoader, token);
                 }
 
-                var sceneSerialization = Object.FindAnyObjectByType<SceneSerialization>();
-                if (sceneSerialization == null)
-                    throw new InvalidOperationException("No scene has a scene serialization object");
-                writer.Write(sceneSerialization.sceneIndex);
-                sceneSerialization.Serialize(writer);
-
-                await writer.WriteDataToFileAsync(m_selectedSaveProfile.DataPath, token);
                 Logger.Log("All registered objects was saved");
                 return HandlingResult.Success;
             }
@@ -350,26 +302,83 @@ namespace SaveSystem {
         }
 
 
-        private static void OnSceneLoaded (Scene scene, LoadSceneMode loadMode) {
-            DestroyTriggeredCheckpoints();
+        private static async UniTask SaveProjectScope (CancellationToken token) {
+            using var writer = new BinaryWriter(new MemoryStream());
+            SerializableObjects.RemoveAll(serializable =>
+                serializable == null || serializable is Object unitySerializable && unitySerializable == null
+            );
+
+            AsyncSerializableObjects.RemoveAll(serializable =>
+                serializable == null || serializable is Object unitySerializable && unitySerializable == null
+            );
+
+            var completedTasks = 0;
+            int tasksCount = SerializableObjects.Count + AsyncSerializableObjects.Count;
+
+            foreach (IRuntimeSerializable obj in SerializableObjects) {
+                obj.Serialize(writer);
+                ReportProgress(ref completedTasks, tasksCount, m_saveProgress);
+            }
+
+            foreach (IAsyncRuntimeSerializable obj in AsyncSerializableObjects) {
+                await obj.Serialize(writer);
+                ReportProgress(ref completedTasks, tasksCount, m_saveProgress);
+            }
+
+            string dataPath = Path.Combine(m_selectedSaveProfile.DataPath, $"{m_selectedSaveProfile.Name}.projectdata");
+            await writer.WriteDataToFileAsync(dataPath, token);
         }
 
 
-        private static void DestroyTriggeredCheckpoints () {
-            IReadOnlyCollection<CheckPointBase> checkPoints =
-                Object.FindObjectsByType<CheckPointBase>(FindObjectsSortMode.None);
+        private static async UniTask SaveSceneScope (SceneLoader sceneLoader, CancellationToken token) {
+            using var writer = new BinaryWriter(new MemoryStream());
+            await sceneLoader.Serialize(writer);
 
-            var destroyedCheckpointsCopy = new List<Vector3>(m_destroyedCheckpoints);
+            string dataPath = Path.Combine(
+                m_selectedSaveProfile.DataPath, $"{sceneLoader.sceneName}.scenedata"
+            );
+            await writer.WriteDataToFileAsync(dataPath, token);
+        }
 
-            foreach (CheckPointBase checkPoint in checkPoints) {
-                for (var i = 0; i < destroyedCheckpointsCopy.Count; i++) {
-                    if (checkPoint.transform.position == destroyedCheckpointsCopy[i]) {
-                        checkPoint.Destroy();
-                        destroyedCheckpointsCopy.RemoveAt(i);
-                        break;
-                    }
+
+        private static async UniTask<HandlingResult> LoadObjects (CancellationToken token) {
+            string dataPath = Path.Combine(m_selectedSaveProfile.DataPath, $"{m_selectedSaveProfile.Name}.projectdata");
+
+            if (!File.Exists(dataPath))
+                return HandlingResult.FileNotExists;
+
+            try {
+                token.ThrowIfCancellationRequested();
+                await UniTask.Yield(token);
+
+                using var reader = new BinaryReader(new MemoryStream());
+                await reader.ReadDataFromFileAsync(dataPath, token);
+
+                var completedTasks = 0;
+                int tasksCount = SerializableObjects.Count + AsyncSerializableObjects.Count;
+
+                foreach (IRuntimeSerializable serializable in SerializableObjects) {
+                    serializable.Deserialize(reader);
+                    ReportProgress(ref completedTasks, tasksCount, m_loadProgress);
                 }
+
+                foreach (IAsyncRuntimeSerializable serializable in AsyncSerializableObjects) {
+                    await serializable.Deserialize(reader);
+                    ReportProgress(ref completedTasks, tasksCount, m_loadProgress);
+                }
+
+                Logger.Log("All registered objects was loaded");
+                return HandlingResult.Success;
             }
+            catch (OperationCanceledException) {
+                Logger.LogWarning("Loading operation was canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        private static void ReportProgress (ref int completedTasks, int tasksCount, IProgress<float> progress) {
+            progress?.Report((float)++completedTasks / tasksCount);
         }
 
     }

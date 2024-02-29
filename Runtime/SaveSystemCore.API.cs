@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Tasks;
 using UnityEngine;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
@@ -58,17 +57,6 @@ namespace SaveSystem {
         }
 
         /// <summary>
-        /// TODO: add description
-        /// </summary>
-        public static bool AllowSceneSaving {
-            get => m_allowSceneSaving;
-            set {
-                m_allowSceneSaving = value;
-                Logger.Log((value ? "Allow" : "Disallow") + " scene saving");
-            }
-        }
-
-        /// <summary>
         /// It's used into autosave loop to determine saving frequency
         /// </summary>
         /// <value> Saving period in seconds </value>
@@ -95,19 +83,6 @@ namespace SaveSystem {
             set {
                 m_isParallel = value;
                 Logger.Log((value ? "Enable" : "Disable") + " parallel saving");
-            }
-        }
-
-
-        /// <summary>
-        /// Determines whether checkpoints will be destroyed after saving
-        /// </summary>
-        /// <value> If true, triggered checkpoint will be deleted from scene after saving </value>
-        public static bool DestroyCheckPoints {
-            get => m_destroyCheckPoints;
-            set {
-                m_destroyCheckPoints = value;
-                Logger.Log((value ? "Enable" : "Disable") + " destroying checkpoints");
             }
         }
 
@@ -166,6 +141,9 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Get all previously created saving profiles
+        /// </summary>
         public static TProfile[] LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
             string[] paths = Directory.GetFileSystemEntries(
                 Storage.PersistentDataPath, $"*{ProfileExtension}", SearchOption.AllDirectories
@@ -183,6 +161,9 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Saves new profile into the internal persistent storage
+        /// </summary>
         public static void RegisterSaveProfile ([NotNull] SaveProfile profile) {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
@@ -197,6 +178,9 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Removes profile from the internal persistent storage
+        /// </summary>
         public static void DeleteSaveProfile ([NotNull] SaveProfile profile) {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
@@ -222,7 +206,22 @@ namespace SaveSystem {
 
             SerializableObjects.Add(serializable);
             DiagnosticService.AddObject(serializable, caller);
-            Logger.Log($"Serializable object: {serializable} was registered");
+            Logger.Log($"Serializable object {serializable} was registered");
+        }
+
+
+        /// <summary>
+        /// Registers an async serializable object to automatic save, quick-save, save at checkpoit and others
+        /// </summary>
+        public static void RegisterSerializable (
+            [NotNull] IAsyncRuntimeSerializable serializable, [CallerMemberName] string caller = ""
+        ) {
+            if (serializable == null)
+                throw new ArgumentNullException(nameof(serializable));
+
+            AsyncSerializableObjects.Add(serializable);
+            DiagnosticService.AddObject(serializable, caller);
+            Logger.Log($"Serializable object {serializable} was registered");
         }
 
 
@@ -235,11 +234,26 @@ namespace SaveSystem {
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
-            IRuntimeSerializable[] array = serializables.ToArray();
-            foreach (IRuntimeSerializable serializable in array)
-                SerializableObjects.Add(serializable);
+            IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
+            SerializableObjects.AddRange(objects);
+            DiagnosticService.AddObjects(objects, caller);
+            Logger.Log("Serializable objects was registered");
+        }
 
-            DiagnosticService.AddObjects(array, caller);
+
+        /// <summary>
+        /// Registers some async serializable objects to automatic save, quick-save, save at checkpoit and others
+        /// </summary>
+        public static void RegisterSerializables (
+            [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables, [CallerMemberName] string caller = ""
+        ) {
+            if (serializables == null)
+                throw new ArgumentNullException(nameof(serializables));
+
+            IAsyncRuntimeSerializable[] objects =
+                serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
+            AsyncSerializableObjects.AddRange(objects);
+            DiagnosticService.AddObjects(objects, caller);
             Logger.Log("Serializable objects was registered");
         }
 
@@ -252,14 +266,12 @@ namespace SaveSystem {
             SaveEvents enabledSaveEvents,
             LogLevel enabledLogs,
             bool isParallel,
-            bool destroyCheckPoints,
             string playerTag,
             float savePeriod = 0
         ) {
             SetupEvents(m_enabledSaveEvents = enabledSaveEvents);
             Logger.EnabledLogs = enabledLogs;
             m_isParallel = isParallel;
-            m_destroyCheckPoints = destroyCheckPoints;
             m_playerTag = playerTag;
             m_savePeriod = savePeriod;
 
@@ -268,7 +280,6 @@ namespace SaveSystem {
                 $"\nEnabled Save Events: {EnabledSaveEvents}" +
                 $"\nIs Parallel: {IsParallel}" +
                 $"\nEnabled Logs: {enabledLogs}" +
-                $"\nDestroy Check Points: {DestroyCheckPoints}" +
                 $"\nPlayer Tag: {PlayerTag}" +
                 $"\nSave Period: {SavePeriod}"
             );
@@ -279,7 +290,6 @@ namespace SaveSystem {
         /// Pass <see cref="IProgress{T}"> IProgress</see> object to observe progress
         /// when it'll be started
         /// </summary>
-        /// <remarks> The Core will report progress only during async save </remarks>
         public static void ObserveProgress ([NotNull] IProgress<float> progress) {
             m_saveProgress = progress ?? throw new ArgumentNullException(nameof(progress));
             m_loadProgress = progress;
@@ -291,7 +301,6 @@ namespace SaveSystem {
         /// Pass two <see cref="IProgress{T}"> IProgress </see> objects to observe saving and loading progress
         /// when it'll be started
         /// </summary>
-        /// <remarks> The Core will report progress only during async save </remarks>
         public static void ObserveProgress (
             [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
         ) {
@@ -324,20 +333,9 @@ namespace SaveSystem {
 
 
         /// <summary>
-        /// Create a loading task while start game and configure it
+        /// Start saving immediately and pass any action to continue
         /// </summary>
-        /// <seealso cref="LoadingTask"/>
-        public static LoadingTask CreateLoadingTask () {
-            return new LoadingTask(SerializableObjects, m_selectedSaveProfile.DataPath, m_allowSceneSaving);
-        }
-
-
-        /// <summary>
-        /// Run saving immediately and pass any action to continue
-        /// </summary>
-        public static async void SaveAsync (
-            Action<HandlingResult> continuation, CancellationToken token = default
-        ) {
+        public static async void SaveAsync (Action<HandlingResult> continuation, CancellationToken token = default) {
             try {
                 continuation(await SaveAsync(token));
             }
@@ -348,16 +346,39 @@ namespace SaveSystem {
 
 
         /// <summary>
-        /// Run saving immediately and wait it
+        /// Start saving immediately and wait it
         /// </summary>
         public static async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-
-                while (SynchronizationPoint.IsPerformed)
-                    await UniTask.Yield(token);
-
                 return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
+            }
+            catch (OperationCanceledException) {
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the project scope and pass any action to continue
+        /// </summary>
+        public static async void LoadAsync (Action<HandlingResult> continuation, CancellationToken token = default) {
+            try {
+                continuation(await LoadAsync(token));
+            }
+            catch (Exception exception) {
+                Debug.LogException(exception);
+            }
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the project scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                return await SynchronizationPoint.ExecuteTask(async () => await LoadObjects(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;

@@ -10,7 +10,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         public void Draw () {
             if (!EditorApplication.isPlaying) {
-                EditorGUILayout.HelpBox("You can tracking handlers only at runtime", MessageType.Info);
+                EditorGUILayout.HelpBox("You can tracking registered objects only at runtime", MessageType.Info);
                 return;
             }
 

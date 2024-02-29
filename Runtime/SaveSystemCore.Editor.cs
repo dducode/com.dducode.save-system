@@ -20,6 +20,7 @@ namespace SaveSystem {
             m_onSaveStart = null;
             m_onSaveEnd = null;
             SerializableObjects.Clear();
+            AsyncSerializableObjects.Clear();
 
         #if ENABLE_LEGACY_INPUT_MANAGER
             m_quickSaveKey = default;
@@ -29,7 +30,6 @@ namespace SaveSystem {
             m_quickSaveAction = null;
         #endif
 
-            m_destroyedCheckpoints.Clear();
             m_autoSaveLastTime = 0;
             m_savedBeforeExit = false;
 
@@ -51,7 +51,6 @@ namespace SaveSystem {
             m_savePeriod = settings.savePeriod;
             m_isParallel = settings.isParallel;
             Logger.EnabledLogs = settings.enabledLogs;
-            m_destroyCheckPoints = settings.destroyCheckPoints;
             m_playerTag = settings.playerTag;
         }
 

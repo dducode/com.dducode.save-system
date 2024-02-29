@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 
 namespace SaveSystem.Internal {
@@ -17,12 +18,18 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal async UniTask<HandlingResult> ExecuteScheduledTask (CancellationToken token) {
-            if (m_scheduledTask == null)
-                return HandlingResult.Canceled;
+        internal async void ExecuteScheduledTask (CancellationToken token) {
+            if (m_scheduledTask == null || IsPerformed)
+                return;
 
             try {
-                return await ExecuteTask(async () => await m_scheduledTask(token));
+                await ExecuteTask(async () => await m_scheduledTask(token));
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning("Scheduled task was canceled");
+            }
+            catch (Exception exception) {
+                Debug.LogException(exception);
             }
             finally {
                 m_scheduledTask = null;
@@ -31,8 +38,7 @@ namespace SaveSystem.Internal {
 
 
         internal async UniTask<HandlingResult> ExecuteTask (Func<UniTask<HandlingResult>> task) {
-            if (IsPerformed)
-                return HandlingResult.Error;
+            await WaitCurrentExecution();
 
             IsPerformed = true;
 
@@ -42,6 +48,12 @@ namespace SaveSystem.Internal {
             finally {
                 IsPerformed = false;
             }
+        }
+
+
+        private async UniTask WaitCurrentExecution (CancellationToken token = default) {
+            while (IsPerformed)
+                await UniTask.Yield(token);
         }
 
     }

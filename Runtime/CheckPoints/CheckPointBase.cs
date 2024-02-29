@@ -10,11 +10,6 @@ namespace SaveSystem.CheckPoints {
     [DisallowMultipleComponent]
     public abstract class CheckPointBase : MonoBehaviour {
 
-        internal abstract void Enable ();
-        internal abstract void Disable ();
-        internal abstract void Destroy ();
-
-
         private void OnDrawGizmos () {
             Gizmos.DrawIcon(transform.position, "checkpoint_icon.png");
         }

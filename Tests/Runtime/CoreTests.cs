@@ -98,7 +98,6 @@ namespace SaveSystem.Tests {
             sphere.transform.position = Vector3.up * 10;
             sphere.tag = sphereTag;
 
-            SaveSystemCore.DestroyCheckPoints = true;
             SaveSystemCore.PlayerTag = sphereTag;
 
             SaveSystemCore.RegisterSerializable(new TestRigidbodyAdapter(sphere));
@@ -132,7 +131,7 @@ namespace SaveSystem.Tests {
             SaveSystemCore.RegisterSerializables(spheres);
             SaveSystemCore.ConfigureParameters(
                 SaveEvents.AutoSave | SaveEvents.OnFocusLost, LogLevel.All,
-                false, true, sphereTag, 3);
+                false, sphereTag, 3);
 
             var testStopped = false;
 

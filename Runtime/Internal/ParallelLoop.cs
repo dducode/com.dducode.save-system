@@ -1,15 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
-
-#if SAVE_SYSTEM_UNITASK_SUPPORT
-using TaskAlias = Cysharp.Threading.Tasks.UniTask;
-
-#else
-using System.Threading.Tasks;
-using TaskAlias = System.Threading.Tasks.Task;
-#endif
+using Cysharp.Threading.Tasks;
 
 namespace SaveSystem.Internal {
 
@@ -18,17 +11,17 @@ namespace SaveSystem.Internal {
         /// <summary>
         /// Parallel version of foreach loop
         /// </summary>
-        internal static async TaskAlias ForEachAsync<TBody> (
-            [NotNull] IEnumerable<TBody> source, [NotNull] Func<TBody, TaskAlias> body
+        internal static async UniTask ForEachAsync<TBody> (
+            [NotNull] IEnumerable<TBody> source, [NotNull] Func<TBody, UniTask> body
         ) {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
             if (body == null)
                 throw new ArgumentNullException(nameof(body));
 
-            var tasks = new List<TaskAlias>();
+            var tasks = new List<UniTask>();
             Parallel.ForEach(source, obj => tasks.Add(body(obj)));
-            await TaskAlias.WhenAll(tasks);
+            await UniTask.WhenAll(tasks);
         }
 
     }

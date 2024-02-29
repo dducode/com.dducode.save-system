@@ -20,11 +20,6 @@ namespace SaveSystem {
                  "\nYou must ensure that your objects are thread safe")]
         public bool isParallel;
 
-        public bool allowSceneSaving;
-
-        [Tooltip("Determines whether checkpoints will be destroyed after saving")]
-        public bool destroyCheckPoints = true;
-
         public string playerTag = "Player";
 
 

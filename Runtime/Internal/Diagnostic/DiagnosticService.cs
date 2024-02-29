@@ -25,7 +25,10 @@ namespace SaveSystem.Internal.Diagnostic {
         [Conditional("UNITY_EDITOR")]
         internal static void AddObjects<TObject> (IEnumerable<TObject> objects, string caller) {
             TObject[] array = objects.ToArray();
-            Type objectsType = array[0].GetType();
+            if (array.Length == 0)
+                return;
+
+            Type objectsType = array.First().GetType();
 
             if (!Dict.ContainsKey(objectsType))
                 Dict.Add(objectsType, new List<ObjectMetadata>());
