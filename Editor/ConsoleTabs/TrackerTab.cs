@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
 using SaveSystem.Internal.Diagnostic;
 using UnityEditor;
 using UnityEngine;
@@ -42,8 +44,29 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Type", headerStyle);
 
-            foreach (KeyValuePair<Type, List<ObjectMetadata>> metadata in DiagnosticService.Dict)
-                EditorGUILayout.LabelField($"{metadata.Key.Name}", entryStyle);
+            foreach (KeyValuePair<Type, List<GCHandle>> metadata in DiagnosticService.Dict) {
+                Type type = metadata.Key;
+                string typeName;
+
+                if (!type.IsGenericType) {
+                    typeName = type.Name;
+                }
+                else {
+                    Type[] genericArgs = type.GetGenericArguments();
+                    var stringBuilder = new StringBuilder();
+
+                    for (var i = 0; i < genericArgs.Length; i++) {
+                        Type genericType = genericArgs[i];
+                        stringBuilder.Append(genericType.Name);
+                        if (i < genericArgs.Length - 1)
+                            stringBuilder.Append(", ");
+                    }
+
+                    typeName = $"{type.Name}<{stringBuilder}>";
+                }
+
+                EditorGUILayout.LabelField(typeName, entryStyle);
+            }
 
             EditorGUILayout.EndVertical();
         }
@@ -53,7 +76,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.LabelField("Objects Count", headerStyle);
 
-            foreach (KeyValuePair<Type, List<ObjectMetadata>> metadata in DiagnosticService.Dict)
+            foreach (KeyValuePair<Type, List<GCHandle>> metadata in DiagnosticService.Dict)
                 EditorGUILayout.LabelField($"{metadata.Value.Count}", entryStyle);
 
             EditorGUILayout.EndVertical();

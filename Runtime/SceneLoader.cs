@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
@@ -32,66 +31,60 @@ namespace SaveSystem {
         }
 
 
-        public SceneLoader RegisterSerializable (
-            [NotNull] IRuntimeSerializable serializable, [CallerMemberName] string caller = ""
-        ) {
+        public SceneLoader RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
             m_serializables.Add(serializable);
-            DiagnosticService.AddObject(serializable, caller);
+            DiagnosticService.AddObject(serializable);
             Logger.Log($"Serializable object {serializable} was registered in {name}", this);
             return this;
         }
 
 
-        public SceneLoader RegisterSerializable (
-            [NotNull] IAsyncRuntimeSerializable serializable, [CallerMemberName] string caller = ""
-        ) {
+        public SceneLoader RegisterSerializable ([NotNull] IAsyncRuntimeSerializable serializable) {
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
             m_asyncSerializables.Add(serializable);
-            DiagnosticService.AddObject(serializable, caller);
+            DiagnosticService.AddObject(serializable);
             Logger.Log($"Serializable object {serializable} was registered in {name}", this);
             return this;
         }
 
 
-        public SceneLoader RegisterSerializables (
-            [NotNull] IEnumerable<IRuntimeSerializable> serializables, [CallerMemberName] string caller = ""
-        ) {
+        public SceneLoader RegisterSerializables ([NotNull] IEnumerable<IRuntimeSerializable> serializables) {
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
             IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
             m_serializables.AddRange(objects);
-            DiagnosticService.AddObjects(objects, caller);
+            DiagnosticService.AddObjects(objects);
             Logger.Log($"Serializable objects was registered in {name}", this);
             return this;
         }
 
 
-        public SceneLoader RegisterSerializables (
-            [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables, [CallerMemberName] string caller = ""
-        ) {
+        public SceneLoader RegisterSerializables ([NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables) {
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
             IAsyncRuntimeSerializable[] array = serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
             m_asyncSerializables.AddRange(array);
-            DiagnosticService.AddObjects(array, caller);
+            DiagnosticService.AddObjects(array);
             Logger.Log($"Serializable objects was registered in {name}", this);
             return this;
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneDataAsync (CancellationToken token = default) {
-            return await SaveSystemCore.LoadSceneDataAsync(this, token);
+        public async UniTask<HandlingResult> LoadSceneDataAsync (
+            SaveProfile context, CancellationToken token = default
+        ) {
+            return await SaveSystemCore.LoadSceneDataAsync(this, context, token);
         }
 
 
-        internal async UniTask Serialize (BinaryWriter writer) {
+        internal async UniTask SerializeScope (BinaryWriter writer) {
             m_serializables.RemoveAll(serializable =>
                 serializable == null || serializable is Object unityObject && unityObject == null
             );
@@ -108,7 +101,7 @@ namespace SaveSystem {
         }
 
 
-        internal async UniTask Deserialize (BinaryReader reader) {
+        internal async UniTask DeserializeScope (BinaryReader reader) {
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Deserialize(reader);
 

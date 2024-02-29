@@ -22,9 +22,17 @@ namespace SaveSystem {
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public static partial class SaveSystemCore {
 
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        /// <exception cref="ArgumentNullException"></exception>
+        [NotNull]
         public static SaveProfile SelectedSaveProfile {
             get => m_selectedSaveProfile;
             set {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(SelectedSaveProfile));
+
                 RegisterSaveProfile(m_selectedSaveProfile = value);
                 Logger.Log($"Set save profile: {{{value}}}");
             }
@@ -90,6 +98,7 @@ namespace SaveSystem {
         /// Player tag is used to filtering messages from triggered checkpoints
         /// </summary>
         /// <value> Tag of the player object </value>
+        [NotNull]
         public static string PlayerTag {
             get => m_playerTag;
             set {
@@ -101,6 +110,22 @@ namespace SaveSystem {
 
                 m_playerTag = value;
                 Logger.Log($"Set player tag: {value}");
+            }
+        }
+
+
+        /// <summary>
+        /// Set the global data path
+        /// </summary>
+        [NotNull]
+        public static string DataPath {
+            get => m_dataPath;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
+
+                m_dataPath = Storage.PrepareBeforeUsing(value, false);
+                Logger.Log($"Set data path: {value}");
             }
         }
 
@@ -144,17 +169,20 @@ namespace SaveSystem {
         /// <summary>
         /// Get all previously created saving profiles
         /// </summary>
-        public static TProfile[] LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
+        public static List<TProfile> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
             string[] paths = Directory.GetFileSystemEntries(
-                Storage.PersistentDataPath, $"*{ProfileExtension}", SearchOption.AllDirectories
+                Storage.PersistentDataPath, $"*{ProfileMetadataExtension}", SearchOption.AllDirectories
             );
-            var profiles = new TProfile[paths.Length];
+            var profiles = new List<TProfile>();
 
-            for (var i = 0; i < paths.Length; i++) {
-                using var reader = new SaveSystem.BinaryHandlers.BinaryReader(File.Open(paths[i], FileMode.Open));
+            foreach (string path in paths) {
+                using var reader = new SaveSystem.BinaryHandlers.BinaryReader(File.Open(path, FileMode.Open));
+                if (typeof(TProfile).ToString() != reader.ReadString())
+                    continue;
+
                 var profile = new TProfile();
                 profile.Deserialize(reader);
-                profiles[i] = profile;
+                profiles.Add(profile);
             }
 
             return profiles;
@@ -168,11 +196,12 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileExtension}");
+            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileMetadataExtension}");
             if (File.Exists(path))
                 return;
 
             using var writer = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate));
+            writer.Write(profile.GetType().ToString());
             profile.Serialize(writer);
             Logger.Log($"Profile {{{profile}}} was registered");
         }
@@ -185,12 +214,12 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileExtension}");
+            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileMetadataExtension}");
             if (!File.Exists(path))
                 return;
 
             File.Delete(path);
-            File.Delete(profile.DataPath);
+            Directory.Delete(profile.DataPath, true);
             Logger.Log($"Profile {{{profile}}} was deleted");
         }
 
@@ -205,7 +234,7 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(serializable));
 
             SerializableObjects.Add(serializable);
-            DiagnosticService.AddObject(serializable, caller);
+            DiagnosticService.AddObject(serializable);
             Logger.Log($"Serializable object {serializable} was registered");
         }
 
@@ -220,7 +249,7 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(serializable));
 
             AsyncSerializableObjects.Add(serializable);
-            DiagnosticService.AddObject(serializable, caller);
+            DiagnosticService.AddObject(serializable);
             Logger.Log($"Serializable object {serializable} was registered");
         }
 
@@ -236,7 +265,7 @@ namespace SaveSystem {
 
             IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
             SerializableObjects.AddRange(objects);
-            DiagnosticService.AddObjects(objects, caller);
+            DiagnosticService.AddObjects(objects);
             Logger.Log("Serializable objects was registered");
         }
 
@@ -253,7 +282,7 @@ namespace SaveSystem {
             IAsyncRuntimeSerializable[] objects =
                 serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
             AsyncSerializableObjects.AddRange(objects);
-            DiagnosticService.AddObjects(objects, caller);
+            DiagnosticService.AddObjects(objects);
             Logger.Log("Serializable objects was registered");
         }
 
@@ -378,7 +407,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await LoadObjects(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await LoadGlobalData(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;

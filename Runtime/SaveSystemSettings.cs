@@ -20,6 +20,9 @@ namespace SaveSystem {
                  "\nYou must ensure that your objects are thread safe")]
         public bool isParallel;
 
+        [Tooltip("Path to save global data (registered in the Core)")]
+        public string dataPath = "default_data_file.data";
+
         public string playerTag = "Player";
 
 

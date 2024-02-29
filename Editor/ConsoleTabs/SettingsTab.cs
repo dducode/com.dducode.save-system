@@ -12,6 +12,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_isParallelProperty;
         private SerializedProperty m_enabledLogsProperty;
+        private SerializedProperty m_dataPathProperty;
 
         private SerializedProperty m_playerTagProperty;
 
@@ -81,6 +82,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
+            m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
 
             m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
 
@@ -99,11 +101,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_enabledSaveEventsProperty.enumValueFlag = (int)m_enabledSaveEvents;
 
-            if (m_enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
-                EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
-
-            EditorGUILayout.PropertyField(m_isParallelProperty);
-
             m_enabledLogs = (LogLevel)EditorGUILayout.EnumFlagsField(
                 m_enabledLogsContent,
                 m_enabledLogs,
@@ -111,6 +108,12 @@ namespace SaveSystem.Editor.ConsoleTabs {
             );
 
             m_enabledLogsProperty.enumValueFlag = (int)m_enabledLogs;
+
+            if (m_enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
+                EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
+
+            EditorGUILayout.PropertyField(m_isParallelProperty);
+            EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
         }
 
 

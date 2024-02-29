@@ -28,10 +28,11 @@ namespace SaveSystem {
 
         internal const string SaveSystemFolder = "save_system_internal";
 
-        private const string ProfileExtension = ".saveprofile";
+        private const string ProfileMetadataExtension = ".profilemetadata";
         private const string DefaultProfileName = "default_profile";
 
         private static string m_profilesFolderPath;
+        private static string m_dataPath;
 
         private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
@@ -47,6 +48,7 @@ namespace SaveSystem {
 
         private static readonly List<IRuntimeSerializable> SerializableObjects = new();
         private static readonly List<IAsyncRuntimeSerializable> AsyncSerializableObjects = new();
+        private static int ObjectsCount => SerializableObjects.Count + AsyncSerializableObjects.Count;
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -101,6 +103,7 @@ namespace SaveSystem {
 
             // Core settings
             SetupEvents(m_enabledSaveEvents = settings.enabledSaveEvents);
+            m_dataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
             m_savePeriod = settings.savePeriod;
             m_isParallel = settings.isParallel;
             Logger.EnabledLogs = settings.enabledLogs;
@@ -128,19 +131,36 @@ namespace SaveSystem {
         }
 
 
-        internal static async UniTask<HandlingResult> LoadSceneDataAsync (
-            SceneLoader sceneLoader, CancellationToken token
+        internal static async UniTask<HandlingResult> LoadProfileDataAsync (
+            SaveProfile profile, CancellationToken token
         ) {
-            string dataPath = Path.Combine(
-                m_selectedSaveProfile.DataPath, $"{sceneLoader.sceneName}.scenedata"
-            );
+            string dataPath = Path.Combine(profile.DataPath, $"{profile.Name}.profiledata");
+            if (!File.Exists(dataPath))
+                return HandlingResult.FileNotExists;
 
+            try {
+                using var reader = new BinaryReader(new MemoryStream());
+                await reader.ReadDataFromFileAsync(dataPath, token);
+                await profile.DeserializeScope(reader);
+
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        internal static async UniTask<HandlingResult> LoadSceneDataAsync (
+            SceneLoader sceneLoader, SaveProfile profile, CancellationToken token
+        ) {
+            string dataPath = Path.Combine(profile.DataPath, $"{sceneLoader.sceneName}.scenedata");
             if (!File.Exists(dataPath))
                 return HandlingResult.FileNotExists;
 
             using var reader = new BinaryReader(new MemoryStream());
             await reader.ReadDataFromFileAsync(dataPath, token);
-            await sceneLoader.Deserialize(reader);
+            await sceneLoader.DeserializeScope(reader);
 
             return HandlingResult.Success;
         }
@@ -279,17 +299,25 @@ namespace SaveSystem {
         private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SaveProjectScope(token);
+                if (ObjectsCount > 0)
+                    await SaveGlobalData(token);
+                if (m_selectedSaveProfile.ObjectsCount > 0)
+                    await SaveProfileData(m_selectedSaveProfile, token);
 
                 SceneLoader[] sceneLoaders =
                     Object.FindObjectsByType<SceneLoader>(FindObjectsSortMode.None);
 
-                if (IsParallel) {
-                    await ParallelLoop.ForEachAsync(sceneLoaders, async loader => await SaveSceneScope(loader, token));
-                }
-                else {
-                    foreach (SceneLoader sceneLoader in sceneLoaders)
-                        await SaveSceneScope(sceneLoader, token);
+                if (sceneLoaders.Length > 0) {
+                    if (IsParallel) {
+                        await ParallelLoop.ForEachAsync(
+                            sceneLoaders,
+                            async sceneLoader => await SaveSceneData(sceneLoader, m_selectedSaveProfile, token)
+                        );
+                    }
+                    else {
+                        foreach (SceneLoader sceneLoader in sceneLoaders)
+                            await SaveSceneData(sceneLoader, m_selectedSaveProfile, token);
+                    }
                 }
 
                 Logger.Log("All registered objects was saved");
@@ -302,7 +330,7 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask SaveProjectScope (CancellationToken token) {
+        private static async UniTask SaveGlobalData (CancellationToken token) {
             using var writer = new BinaryWriter(new MemoryStream());
             SerializableObjects.RemoveAll(serializable =>
                 serializable == null || serializable is Object unitySerializable && unitySerializable == null
@@ -325,26 +353,32 @@ namespace SaveSystem {
                 ReportProgress(ref completedTasks, tasksCount, m_saveProgress);
             }
 
-            string dataPath = Path.Combine(m_selectedSaveProfile.DataPath, $"{m_selectedSaveProfile.Name}.projectdata");
-            await writer.WriteDataToFileAsync(dataPath, token);
+            await writer.WriteDataToFileAsync(m_dataPath, token);
         }
 
 
-        private static async UniTask SaveSceneScope (SceneLoader sceneLoader, CancellationToken token) {
+        private static async UniTask SaveProfileData (SaveProfile profile, CancellationToken token) {
             using var writer = new BinaryWriter(new MemoryStream());
-            await sceneLoader.Serialize(writer);
+            await profile.SerializeScope(writer);
 
-            string dataPath = Path.Combine(
-                m_selectedSaveProfile.DataPath, $"{sceneLoader.sceneName}.scenedata"
-            );
+            string dataPath = Path.Combine(profile.DataPath, $"{profile.Name}.profiledata");
             await writer.WriteDataToFileAsync(dataPath, token);
         }
 
 
-        private static async UniTask<HandlingResult> LoadObjects (CancellationToken token) {
-            string dataPath = Path.Combine(m_selectedSaveProfile.DataPath, $"{m_selectedSaveProfile.Name}.projectdata");
+        private static async UniTask SaveSceneData (
+            SceneLoader sceneLoader, SaveProfile context, CancellationToken token
+        ) {
+            using var writer = new BinaryWriter(new MemoryStream());
+            await sceneLoader.SerializeScope(writer);
 
-            if (!File.Exists(dataPath))
+            string dataPath = Path.Combine(context.DataPath, $"{sceneLoader.sceneName}.scenedata");
+            await writer.WriteDataToFileAsync(dataPath, token);
+        }
+
+
+        private static async UniTask<HandlingResult> LoadGlobalData (CancellationToken token) {
+            if (!File.Exists(m_dataPath))
                 return HandlingResult.FileNotExists;
 
             try {
@@ -352,7 +386,7 @@ namespace SaveSystem {
                 await UniTask.Yield(token);
 
                 using var reader = new BinaryReader(new MemoryStream());
-                await reader.ReadDataFromFileAsync(dataPath, token);
+                await reader.ReadDataFromFileAsync(m_dataPath, token);
 
                 var completedTasks = 0;
                 int tasksCount = SerializableObjects.Count + AsyncSerializableObjects.Count;

@@ -16,7 +16,7 @@ using Object = UnityEngine.Object;
 namespace SaveSystem {
 
     /// <summary>
-    /// You can group dynamic objects into this and pass group as serializable
+    /// You can create dynamic objects from this and pass all created objects as serializable
     /// </summary>
     /// <seealso cref="DynamicObjectFactory{TDynamic}.CreateObject"/>
     /// <seealso cref="DynamicObjectFactory{TDynamic}.CreateObjects"/>
@@ -100,7 +100,7 @@ namespace SaveSystem {
 
         public void Deserialize (BinaryReader reader) {
             IEnumerable<TDynamic> objects = CreateObjects(reader.Read<int>());
-            DiagnosticService.AddObjects(objects, m_factoryFunc.Method.Name);
+            DiagnosticService.AddObjects(objects);
 
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Deserialize(reader);
@@ -113,7 +113,7 @@ namespace SaveSystem {
 
             m_objects.Add(obj);
             m_serializables.Add(GetSerializable(obj));
-            DiagnosticService.AddObject(obj, m_factoryFunc.Method.Name);
+            DiagnosticService.AddObject(obj);
         }
 
 
