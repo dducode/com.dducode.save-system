@@ -27,7 +27,7 @@ namespace SaveSystem {
         private readonly List<TDynamic> m_objects = new();
         private readonly List<IRuntimeSerializable> m_serializables = new();
         private readonly Func<TDynamic> m_factoryFunc;
-        private readonly Func<TDynamic, IRuntimeSerializable> m_getAdapter;
+        private readonly Func<TDynamic, ISerializationAdapter<TDynamic>> m_getAdapter;
 
 
         /// <summary>
