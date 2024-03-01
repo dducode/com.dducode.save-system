@@ -68,6 +68,7 @@ namespace SaveSystem {
         private static bool m_savedBeforeExit;
         private static bool m_loaded;
         private static bool m_registrationClosed;
+        private static Action<SceneHandler> m_passDataAction;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -145,7 +146,9 @@ namespace SaveSystem {
                 await SynchronizationPoint.ExecuteTask(async () =>
                     await sceneHandler.sceneContext.LoadSceneDataAsync(m_selectedSaveProfile, m_exitCancellation.Token)
                 );
+                m_passDataAction?.Invoke(sceneHandler);
                 sceneHandler.OnPostLoad();
+                m_passDataAction = null;
             }
             catch (Exception exception) {
                 Debug.LogException(exception);

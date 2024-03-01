@@ -374,6 +374,14 @@ namespace SaveSystem {
 
 
         /// <summary>
+        /// Pass any data to scene handler before scene loading
+        /// </summary>
+        public static void PassDataToHandler (Action<SceneHandler> passDataAction) {
+            m_passDataAction = passDataAction;
+        }
+
+
+        /// <summary>
         /// Start saving immediately and pass any action to continue
         /// </summary>
         public static async void SaveAsync (Action<HandlingResult> continuation, CancellationToken token = default) {
