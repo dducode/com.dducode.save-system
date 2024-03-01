@@ -45,9 +45,6 @@ namespace SaveSystem {
         private static Action<SaveType> m_onSaveStart;
         private static Action<SaveType> m_onSaveEnd;
 
-        private static Action<Scene, LoadSceneMode> m_onSceneLoadStart;
-        private static Action<Scene, LoadSceneMode> m_onSceneLoadEnd;
-
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
@@ -136,23 +133,23 @@ namespace SaveSystem {
         static partial void SetOnExitPlayModeCallback ();
 
 
-        private static void OnSceneLoaded (Scene scene, LoadSceneMode sceneMode) {
-            GameObject target = scene.GetRootGameObjects()
-               .FirstOrDefault(gameObject => gameObject.CompareTag("SceneLoader"));
-            if (target == null)
-                return;
+        private static async void OnSceneLoaded (Scene scene, LoadSceneMode sceneMode) {
+            try {
+                GameObject target = scene.GetRootGameObjects()
+                   .FirstOrDefault(gameObject => gameObject.CompareTag("SceneLoader"));
+                if (target == null)
+                    return;
 
-            var sceneLoader = target.GetComponent<SceneLoader>();
-            m_onSceneLoadStart?.Invoke(scene, sceneMode);
-            sceneLoader.Setup();
-            SynchronizationPoint.ScheduleTask(async token => {
-                    HandlingResult result =
-                        await sceneLoader.sceneContext.LoadSceneDataAsync(m_selectedSaveProfile, token);
-                    m_onSceneLoadEnd?.Invoke(scene, sceneMode);
-                    return result;
-                },
-                true
-            );
+                var sceneHandler = target.GetComponent<SceneHandler>();
+                sceneHandler.OnPreLoad();
+                await SynchronizationPoint.ExecuteTask(async () =>
+                    await sceneHandler.sceneContext.LoadSceneDataAsync(m_selectedSaveProfile, m_exitCancellation.Token)
+                );
+                sceneHandler.OnPostLoad();
+            }
+            catch (Exception exception) {
+                Debug.LogException(exception);
+            }
         }
 
 

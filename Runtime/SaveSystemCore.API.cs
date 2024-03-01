@@ -8,7 +8,6 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -163,35 +162,6 @@ namespace SaveSystem {
             remove {
                 m_onSaveEnd -= value;
                 Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event");
-            }
-        }
-
-
-        /// <summary>
-        /// TODO: add description
-        /// </summary>
-        public static event Action<Scene, LoadSceneMode> OnSceneLoadStart {
-            add {
-                m_onSceneLoadStart += value;
-                Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSceneLoadStart)} event");
-            }
-            remove {
-                m_onSceneLoadStart -= value;
-                Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSceneLoadStart)} event");
-            }
-        }
-
-        /// <summary>
-        /// TODO: add description
-        /// </summary>
-        public static event Action<Scene, LoadSceneMode> OnSceneLoadEnd {
-            add {
-                m_onSceneLoadEnd += value;
-                Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSceneLoadEnd)} event");
-            }
-            remove {
-                m_onSceneLoadEnd -= value;
-                Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSceneLoadEnd)} event");
             }
         }
 

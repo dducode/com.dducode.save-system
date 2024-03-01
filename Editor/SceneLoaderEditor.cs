@@ -5,13 +5,13 @@ using UnityEngine;
 
 namespace SaveSystem.Editor {
 
-    [CustomEditor(typeof(SceneLoader), true)]
+    [CustomEditor(typeof(SceneHandler), true)]
     public class SceneLoaderEditor : UnityEditor.Editor {
 
         private void OnEnable () {
-            var sceneLoader = (SceneLoader)target;
+            var sceneLoader = (SceneHandler)target;
             int sameObjects = sceneLoader.gameObject.scene.GetRootGameObjects()
-               .Count(go => go.TryGetComponent(out SceneLoader _));
+               .Count(go => go.TryGetComponent(out SceneHandler _));
             if (sameObjects > 1)
                 Debug.LogError("More than one scene loaders. It's not supported");
 

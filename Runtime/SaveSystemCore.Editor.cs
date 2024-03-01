@@ -17,7 +17,6 @@ namespace SaveSystem {
 
         private static void ResetOnExit () {
             ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
-            ResetProperties();
             m_onSaveStart = null;
             m_onSaveEnd = null;
             SerializableObjects.Clear();
@@ -46,16 +45,6 @@ namespace SaveSystem {
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
                 Logger.LogError($"Failed remove system: {typeof(SaveSystemCore)}");
-        }
-
-
-        private static void ResetProperties () {
-            var settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
-            m_enabledSaveEvents = settings.enabledSaveEvents;
-            m_savePeriod = settings.savePeriod;
-            m_isParallel = settings.isParallel;
-            Logger.EnabledLogs = settings.enabledLogs;
-            m_playerTag = settings.playerTag;
         }
 
     }

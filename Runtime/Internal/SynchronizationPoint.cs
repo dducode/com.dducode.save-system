@@ -11,21 +11,20 @@ namespace SaveSystem.Internal {
 
         internal bool IsPerformed { get; private set; }
 
-        private readonly Queue<Func<CancellationToken, UniTask<HandlingResult>>> m_queue = new();
+        private Func<CancellationToken, UniTask<HandlingResult>> m_scheduledTask;
 
 
-        internal void ScheduleTask (Func<CancellationToken, UniTask<HandlingResult>> task, bool isPriority = false) {
-            if (isPriority || m_queue.Count == 0)
-                m_queue.Enqueue(task);
+        internal void ScheduleTask (Func<CancellationToken, UniTask<HandlingResult>> task) {
+            m_scheduledTask ??= task;
         }
 
 
         internal async void ExecuteScheduledTask (CancellationToken token) {
-            if (m_queue.Count == 0 || IsPerformed)
+            if (m_scheduledTask == null || IsPerformed)
                 return;
 
             try {
-                await ExecuteTask(async () => await m_queue.Dequeue().Invoke(token));
+                await ExecuteTask(async () => await m_scheduledTask(token));
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning("Scheduled task was canceled");
