@@ -1,4 +1,5 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System.Threading;
+using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
 
 namespace SaveSystem {
@@ -31,13 +32,13 @@ namespace SaveSystem {
         /// <summary>
         /// Writes some data to <see cref="BinaryHandlers.BinaryWriter"/>
         /// </summary>
-        public UniTask Serialize (BinaryWriter writer);
+        public UniTask Serialize (BinaryWriter writer, CancellationToken token);
 
 
         /// <summary>
         /// Gets <see cref="BinaryReader"/> and read data from this
         /// </summary>
-        public UniTask Deserialize (BinaryReader reader);
+        public UniTask Deserialize (BinaryReader reader, CancellationToken token);
 
     }
 

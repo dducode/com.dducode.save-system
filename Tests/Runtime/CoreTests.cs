@@ -7,7 +7,6 @@ using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
-using Random = UnityEngine.Random;
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
 using UnityEngine.InputSystem;
@@ -28,7 +27,7 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.EnabledLogs = LogLevel.All;
             SaveSystemCore.SelectedSaveProfile = new SaveProfile {
-                Name = "test", DataPath = "test"
+                Name = "test", ProfileDataFolder = "test"
             };
             Debug.Log("Start test");
         }
@@ -118,10 +117,11 @@ namespace SaveSystem.Tests {
         public IEnumerator ManySpheres () {
             const string sphereTag = "Player";
             var spheres = new List<TestRigidbodyAdapter>();
+            var factory = new SphereFactory<TestRigidbody>();
 
             // Spawn spheres
             for (var i = 0; i < 1000; i++) {
-                var sphere = CreateSphere<TestRigidbody>();
+                TestRigidbody sphere = factory.CreateObject();
                 spheres.Add(new TestRigidbodyAdapter(sphere));
 
                 if (i == 0)
@@ -155,11 +155,13 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
+            var factory = new SphereFactory<TestMesh>();
+
             for (var i = 0; i < 5; i++) {
                 var meshes = new List<TestMeshAdapter>();
 
                 for (var j = 0; j < 50; j++)
-                    meshes.Add(new TestMeshAdapter(CreateSphere<TestMesh>()));
+                    meshes.Add(new TestMeshAdapter(factory.CreateObject()));
 
                 SaveSystemCore.RegisterSerializables(meshes);
                 yield return new WaitForEndOfFrame();
@@ -181,7 +183,7 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator Quitting () {
-            var sphereFactory = new DynamicObjectFactory<TestMesh>(CreateSphere<TestMesh>, CreateAdapter);
+            var sphereFactory = new DynamicObjectGroup<TestMesh>(new SphereFactory<TestMesh>(), new TestMeshProvider());
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
@@ -191,22 +193,10 @@ namespace SaveSystem.Tests {
         }
 
 
-        private ISerializationAdapter<TestMesh> CreateAdapter (TestMesh obj) {
-            return new TestMeshAdapter(obj);
-        }
-
-
         [TearDown]
         public void EndTest () {
             Storage.DeleteAllData();
             Debug.Log("End test");
-        }
-
-
-        private T CreateSphere<T> () where T : Component {
-            var primitive = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            primitive.transform.position = Random.insideUnitSphere * 10;
-            return primitive.AddComponent<T>();
         }
 
     }

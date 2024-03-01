@@ -7,8 +7,8 @@ namespace SaveSystem.Tests.TestObjects {
         public TestMesh Target { get; }
 
 
-        public TestMeshAdapter (TestMesh provider) {
-            Target = provider;
+        public TestMeshAdapter (TestMesh target) {
+            Target = target;
         }
 
 

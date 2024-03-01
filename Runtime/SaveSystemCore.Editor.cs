@@ -3,6 +3,7 @@ using SaveSystem.Internal;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using UnityEngine.SceneManagement;
 using Logger = SaveSystem.Internal.Logger;
 
 namespace SaveSystem {
@@ -32,7 +33,10 @@ namespace SaveSystem {
 
             m_autoSaveLastTime = 0;
             m_savedBeforeExit = false;
+            m_loaded = false;
+            m_registrationClosed = false;
 
+            SceneManager.sceneLoaded -= OnSceneLoaded;
             Application.quitting -= ResetOnExit;
         }
 

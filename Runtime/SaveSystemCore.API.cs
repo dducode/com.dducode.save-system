@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -167,6 +168,35 @@ namespace SaveSystem {
 
 
         /// <summary>
+        /// TODO: add description
+        /// </summary>
+        public static event Action<Scene, LoadSceneMode> OnSceneLoadStart {
+            add {
+                m_onSceneLoadStart += value;
+                Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSceneLoadStart)} event");
+            }
+            remove {
+                m_onSceneLoadStart -= value;
+                Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSceneLoadStart)} event");
+            }
+        }
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        public static event Action<Scene, LoadSceneMode> OnSceneLoadEnd {
+            add {
+                m_onSceneLoadEnd += value;
+                Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSceneLoadEnd)} event");
+            }
+            remove {
+                m_onSceneLoadEnd -= value;
+                Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSceneLoadEnd)} event");
+            }
+        }
+
+
+        /// <summary>
         /// Get all previously created saving profiles
         /// </summary>
         public static List<TProfile> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
@@ -219,7 +249,7 @@ namespace SaveSystem {
                 return;
 
             File.Delete(path);
-            Directory.Delete(profile.DataPath, true);
+            Directory.Delete(profile.ProfileDataFolder, true);
             Logger.Log($"Profile {{{profile}}} was deleted");
         }
 
@@ -227,9 +257,12 @@ namespace SaveSystem {
         /// <summary>
         /// Registers an serializable object to automatic save, quick-save, save at checkpoit and others
         /// </summary>
-        public static void RegisterSerializable (
-            [NotNull] IRuntimeSerializable serializable, [CallerMemberName] string caller = ""
-        ) {
+        public static void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
+            if (m_registrationClosed) {
+                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                return;
+            }
+
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
@@ -242,9 +275,12 @@ namespace SaveSystem {
         /// <summary>
         /// Registers an async serializable object to automatic save, quick-save, save at checkpoit and others
         /// </summary>
-        public static void RegisterSerializable (
-            [NotNull] IAsyncRuntimeSerializable serializable, [CallerMemberName] string caller = ""
-        ) {
+        public static void RegisterSerializable ([NotNull] IAsyncRuntimeSerializable serializable) {
+            if (m_registrationClosed) {
+                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                return;
+            }
+
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
@@ -257,9 +293,12 @@ namespace SaveSystem {
         /// <summary>
         /// Registers some serializable objects to automatic save, quick-save, save at checkpoit and others
         /// </summary>
-        public static void RegisterSerializables (
-            [NotNull] IEnumerable<IRuntimeSerializable> serializables, [CallerMemberName] string caller = ""
-        ) {
+        public static void RegisterSerializables ([NotNull] IEnumerable<IRuntimeSerializable> serializables) {
+            if (m_registrationClosed) {
+                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                return;
+            }
+
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
@@ -273,9 +312,12 @@ namespace SaveSystem {
         /// <summary>
         /// Registers some async serializable objects to automatic save, quick-save, save at checkpoit and others
         /// </summary>
-        public static void RegisterSerializables (
-            [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables, [CallerMemberName] string caller = ""
-        ) {
+        public static void RegisterSerializables ([NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables) {
+            if (m_registrationClosed) {
+                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                return;
+            }
+
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 

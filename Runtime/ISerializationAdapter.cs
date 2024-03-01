@@ -6,4 +6,12 @@
 
     }
 
+
+
+    public interface IAsyncSerializationAdapter<out TTarget> : IAsyncRuntimeSerializable {
+
+        public TTarget Target { get; }
+
+    }
+
 }

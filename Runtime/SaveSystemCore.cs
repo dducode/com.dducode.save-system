@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using UnityEngine.SceneManagement;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
@@ -20,7 +22,7 @@ using UnityEngine.InputSystem;
 namespace SaveSystem {
 
     /// <summary>
-    /// The Core of the Save System. It accepts <see cref="DynamicObjectFactory{TDynamic}">object group</see>
+    /// The Core of the Save System. It accepts <see cref="DynamicObjectGroup{TDynamic}">object group</see>
     /// and starts saving in three main modes - autosave, quick-save and save at checkpoint.
     /// Also it starts the saving when the player exit the game
     /// </summary>
@@ -43,6 +45,9 @@ namespace SaveSystem {
         private static Action<SaveType> m_onSaveStart;
         private static Action<SaveType> m_onSaveEnd;
 
+        private static Action<Scene, LoadSceneMode> m_onSceneLoadStart;
+        private static Action<Scene, LoadSceneMode> m_onSceneLoadEnd;
+
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
@@ -64,6 +69,8 @@ namespace SaveSystem {
         private static IProgress<float> m_loadProgress;
         private static readonly SynchronizationPoint SynchronizationPoint = new();
         private static bool m_savedBeforeExit;
+        private static bool m_loaded;
+        private static bool m_registrationClosed;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -79,10 +86,16 @@ namespace SaveSystem {
             SetOnExitPlayModeCallback();
 
             m_selectedSaveProfile = new SaveProfile {
-                Name = DefaultProfileName, DataPath = DefaultProfileName
+                Name = DefaultProfileName, ProfileDataFolder = DefaultProfileName
             };
             m_exitCancellation = new CancellationTokenSource();
             Logger.Log("Save System Core initialized");
+        }
+
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Start () {
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
 
@@ -123,46 +136,31 @@ namespace SaveSystem {
         static partial void SetOnExitPlayModeCallback ();
 
 
+        private static void OnSceneLoaded (Scene scene, LoadSceneMode sceneMode) {
+            GameObject target = scene.GetRootGameObjects()
+               .FirstOrDefault(gameObject => gameObject.CompareTag("SceneLoader"));
+            if (target == null)
+                return;
+
+            var sceneLoader = target.GetComponent<SceneLoader>();
+            m_onSceneLoadStart?.Invoke(scene, sceneMode);
+            sceneLoader.Setup();
+            SynchronizationPoint.ScheduleTask(async token => {
+                    HandlingResult result =
+                        await sceneLoader.sceneContext.LoadSceneDataAsync(m_selectedSaveProfile, token);
+                    m_onSceneLoadEnd?.Invoke(scene, sceneMode);
+                    return result;
+                },
+                true
+            );
+        }
+
+
         internal static void SaveAtCheckpoint (Component other) {
             if (!other.CompareTag(PlayerTag))
                 return;
 
             ScheduleSave(SaveType.SaveAtCheckpoint);
-        }
-
-
-        internal static async UniTask<HandlingResult> LoadProfileDataAsync (
-            SaveProfile profile, CancellationToken token
-        ) {
-            string dataPath = Path.Combine(profile.DataPath, $"{profile.Name}.profiledata");
-            if (!File.Exists(dataPath))
-                return HandlingResult.FileNotExists;
-
-            try {
-                using var reader = new BinaryReader(new MemoryStream());
-                await reader.ReadDataFromFileAsync(dataPath, token);
-                await profile.DeserializeScope(reader);
-
-                return HandlingResult.Success;
-            }
-            catch (OperationCanceledException) {
-                return HandlingResult.Canceled;
-            }
-        }
-
-
-        internal static async UniTask<HandlingResult> LoadSceneDataAsync (
-            SceneLoader sceneLoader, SaveProfile profile, CancellationToken token
-        ) {
-            string dataPath = Path.Combine(profile.DataPath, $"{sceneLoader.sceneName}.scenedata");
-            if (!File.Exists(dataPath))
-                return HandlingResult.FileNotExists;
-
-            using var reader = new BinaryReader(new MemoryStream());
-            await reader.ReadDataFromFileAsync(dataPath, token);
-            await sceneLoader.DeserializeScope(reader);
-
-            return HandlingResult.Success;
         }
 
 
@@ -292,31 +290,34 @@ namespace SaveSystem {
 
 
         private static async void SaveObjects (Action<HandlingResult> continuation) {
-            continuation(await SaveObjects(CancellationToken.None));
+            try {
+                continuation(await SaveObjects(CancellationToken.None));
+            }
+            catch (Exception exception) {
+                Debug.LogException(exception);
+            }
         }
 
 
         private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
-                if (ObjectsCount > 0)
-                    await SaveGlobalData(token);
-                if (m_selectedSaveProfile.ObjectsCount > 0)
-                    await SaveProfileData(m_selectedSaveProfile, token);
+                await SaveGlobalData(token);
+                await m_selectedSaveProfile.SaveProfileDataAsync(token);
 
-                SceneLoader[] sceneLoaders =
-                    Object.FindObjectsByType<SceneLoader>(FindObjectsSortMode.None);
+                SceneSerializationContext[] sceneLoaders =
+                    Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
 
                 if (sceneLoaders.Length > 0) {
-                    if (IsParallel) {
+                    if (IsParallel && sceneLoaders.Length > 1) {
                         await ParallelLoop.ForEachAsync(
                             sceneLoaders,
-                            async sceneLoader => await SaveSceneData(sceneLoader, m_selectedSaveProfile, token)
+                            async sceneLoader => await sceneLoader.SaveSceneDataAsync(m_selectedSaveProfile, token)
                         );
                     }
                     else {
-                        foreach (SceneLoader sceneLoader in sceneLoaders)
-                            await SaveSceneData(sceneLoader, m_selectedSaveProfile, token);
+                        foreach (SceneSerializationContext sceneLoader in sceneLoaders)
+                            await sceneLoader.SaveSceneDataAsync(m_selectedSaveProfile, token);
                     }
                 }
 
@@ -331,81 +332,77 @@ namespace SaveSystem {
 
 
         private static async UniTask SaveGlobalData (CancellationToken token) {
-            using var writer = new BinaryWriter(new MemoryStream());
-            SerializableObjects.RemoveAll(serializable =>
-                serializable == null || serializable is Object unitySerializable && unitySerializable == null
-            );
+            if (ObjectsCount == 0)
+                return;
+            if (!m_loaded)
+                Logger.LogWarning("Start saving when objects not loaded");
 
-            AsyncSerializableObjects.RemoveAll(serializable =>
-                serializable == null || serializable is Object unitySerializable && unitySerializable == null
-            );
+            m_registrationClosed = true;
 
-            var completedTasks = 0;
-            int tasksCount = SerializableObjects.Count + AsyncSerializableObjects.Count;
+            try {
+                token.ThrowIfCancellationRequested();
+                using var writer = new BinaryWriter(new MemoryStream());
+                var completedTasks = 0;
 
-            foreach (IRuntimeSerializable obj in SerializableObjects) {
-                obj.Serialize(writer);
-                ReportProgress(ref completedTasks, tasksCount, m_saveProgress);
+                foreach (IRuntimeSerializable obj in SerializableObjects) {
+                    obj.Serialize(writer);
+                    ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
+                }
+
+                foreach (IAsyncRuntimeSerializable obj in AsyncSerializableObjects) {
+                    await obj.Serialize(writer, token);
+                    ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
+                }
+
+                await writer.WriteDataToFileAsync(m_dataPath, token);
             }
-
-            foreach (IAsyncRuntimeSerializable obj in AsyncSerializableObjects) {
-                await obj.Serialize(writer);
-                ReportProgress(ref completedTasks, tasksCount, m_saveProgress);
+            catch (OperationCanceledException) {
+                Logger.LogWarning("Global data saving was canceled");
             }
-
-            await writer.WriteDataToFileAsync(m_dataPath, token);
-        }
-
-
-        private static async UniTask SaveProfileData (SaveProfile profile, CancellationToken token) {
-            using var writer = new BinaryWriter(new MemoryStream());
-            await profile.SerializeScope(writer);
-
-            string dataPath = Path.Combine(profile.DataPath, $"{profile.Name}.profiledata");
-            await writer.WriteDataToFileAsync(dataPath, token);
-        }
-
-
-        private static async UniTask SaveSceneData (
-            SceneLoader sceneLoader, SaveProfile context, CancellationToken token
-        ) {
-            using var writer = new BinaryWriter(new MemoryStream());
-            await sceneLoader.SerializeScope(writer);
-
-            string dataPath = Path.Combine(context.DataPath, $"{sceneLoader.sceneName}.scenedata");
-            await writer.WriteDataToFileAsync(dataPath, token);
         }
 
 
         private static async UniTask<HandlingResult> LoadGlobalData (CancellationToken token) {
-            if (!File.Exists(m_dataPath))
+            if (m_loaded) {
+                Logger.LogWarning("All objects already loaded");
+                return HandlingResult.Canceled;
+            }
+
+            if (ObjectsCount == 0) {
+                Logger.LogError("Cannot start loading operation - the Core hasn't any objects for loading");
+                return HandlingResult.Error;
+            }
+
+            if (!File.Exists(m_dataPath)) {
+                m_registrationClosed = m_loaded = true;
                 return HandlingResult.FileNotExists;
+            }
+
+            m_registrationClosed = true;
 
             try {
                 token.ThrowIfCancellationRequested();
-                await UniTask.Yield(token);
-
                 using var reader = new BinaryReader(new MemoryStream());
                 await reader.ReadDataFromFileAsync(m_dataPath, token);
 
                 var completedTasks = 0;
-                int tasksCount = SerializableObjects.Count + AsyncSerializableObjects.Count;
 
                 foreach (IRuntimeSerializable serializable in SerializableObjects) {
                     serializable.Deserialize(reader);
-                    ReportProgress(ref completedTasks, tasksCount, m_loadProgress);
+                    ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
                 }
 
                 foreach (IAsyncRuntimeSerializable serializable in AsyncSerializableObjects) {
-                    await serializable.Deserialize(reader);
-                    ReportProgress(ref completedTasks, tasksCount, m_loadProgress);
+                    await serializable.Deserialize(reader, token);
+                    ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
                 }
 
-                Logger.Log("All registered objects was loaded");
+                Logger.Log("Global data was loaded");
+                m_loaded = true;
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Loading operation was canceled");
+                Logger.LogWarning("Global data loading was canceled");
                 return HandlingResult.Canceled;
             }
         }

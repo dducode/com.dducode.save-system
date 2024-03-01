@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using SaveSystem.Internal;
 using UnityEditor;
 using UnityEngine;
 using Directory = UnityEngine.Windows.Directory;
@@ -12,15 +13,13 @@ namespace SaveSystem {
         public LogLevel enabledLogs = LogLevel.Error | LogLevel.Warning;
 
         [Min(0)]
-        [Tooltip("It's used into autosave loop to determine saving frequency" +
-                 "\nIf it equals 0, saving will be executed at every frame")]
+        [Tooltip(MessageTemplates.SavePeriodTooltip)]
         public float savePeriod = 15;
 
-        [Tooltip("Configure it to set parallel saving handlers" +
-                 "\nYou must ensure that your objects are thread safe")]
+        [Tooltip(MessageTemplates.IsParallelTooltip)]
         public bool isParallel;
 
-        [Tooltip("Path to save global data (registered in the Core)")]
+        [Tooltip(MessageTemplates.DataPathTooltip)]
         public string dataPath = "default_data_file.data";
 
         public string playerTag = "Player";

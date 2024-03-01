@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Object = UnityEngine.Object;
 
 namespace SaveSystem.Internal.Diagnostic {
 
@@ -45,7 +46,7 @@ namespace SaveSystem.Internal.Diagnostic {
             for (var i = 0; i < Dict.Count; i++) {
                 Type key = keys[i];
                 List<GCHandle> list = Dict[key];
-                list.RemoveAll(handle => handle.Target == null);
+                list.RemoveAll(handle => handle.Target == null || handle.Target is Object unityObj && unityObj == null);
 
                 if (list.Count == 0) {
                     Dict.Remove(key);
