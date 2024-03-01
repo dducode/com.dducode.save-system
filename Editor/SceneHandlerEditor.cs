@@ -6,7 +6,7 @@ using UnityEngine;
 namespace SaveSystem.Editor {
 
     [CustomEditor(typeof(SceneHandler), true)]
-    public class SceneLoaderEditor : UnityEditor.Editor {
+    public class SceneHandlerEditor : UnityEditor.Editor {
 
         private void OnEnable () {
             var sceneLoader = (SceneHandler)target;
@@ -19,9 +19,9 @@ namespace SaveSystem.Editor {
             if (sceneContext.boxedValue == null && sceneLoader.TryGetComponent(out SceneSerializationContext component))
                 sceneContext.boxedValue = component;
 
-            if (!sceneLoader.CompareTag(Tags.SceneLoaderTag)) {
-                PackageValidation.AddTagIfNotExists(Tags.SceneLoaderTag);
-                sceneLoader.tag = Tags.SceneLoaderTag;
+            if (!sceneLoader.CompareTag(Tags.SceneHandlerTag)) {
+                PackageValidation.AddTagIfNotExists(Tags.SceneHandlerTag);
+                sceneLoader.tag = Tags.SceneHandlerTag;
             }
 
             serializedObject.ApplyModifiedProperties();

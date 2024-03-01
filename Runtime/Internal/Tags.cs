@@ -2,7 +2,7 @@
 
     public static class Tags {
 
-        public const string SceneLoaderTag = "SceneLoader";
+        public const string SceneHandlerTag = nameof(SceneHandler);
 
     }
 
