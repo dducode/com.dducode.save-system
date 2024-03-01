@@ -1,6 +1,6 @@
 {
   "name": "com.dducode.save-system",
-  "version": "1.7.1",
+  "version": "2.0.0",
   "displayName": "Save System",
   "unity": "2021.3",
   "description": "Use this save system to save and load your game objects",
@@ -8,8 +8,8 @@
   "licensesUrl": "https://dducode.github.io/save-system-docs/license/LICENSE.html",
   "changelogUrl": "https://dducode.github.io/save-system-docs/changelog/CHANGELOG.html",
   "author": {
-    "name": "Denis",
-    "email": "denisdmitriev7851@gmail.com"
+    "name": "dducode",
+    "email": "dducode98@gmail.com"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/dducode"
