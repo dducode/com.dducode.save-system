@@ -137,7 +137,7 @@ namespace SaveSystem {
         private static async void OnSceneLoaded (Scene scene, LoadSceneMode sceneMode) {
             try {
                 GameObject target = scene.GetRootGameObjects()
-                   .FirstOrDefault(gameObject => gameObject.CompareTag("SceneLoader"));
+                   .FirstOrDefault(gameObject => gameObject.CompareTag(Tags.SceneHandlerTag));
                 if (target == null)
                     return;
 
