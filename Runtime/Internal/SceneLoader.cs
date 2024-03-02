@@ -13,7 +13,7 @@ namespace SaveSystem.Internal {
 
         internal static async void LoadScene (Action sceneLoading) {
             try {
-                ExecuteSceneHandling(await WaitForLoading(sceneLoading));
+                await ExecuteSceneHandling(await WaitForLoading(sceneLoading));
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -23,7 +23,7 @@ namespace SaveSystem.Internal {
 
         internal static async void LoadScene<TData> (Action sceneLoading, TData data) {
             try {
-                ExecuteSceneHandling(await WaitForLoading(sceneLoading), data);
+                await ExecuteSceneHandling(await WaitForLoading(sceneLoading), data);
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -32,12 +32,12 @@ namespace SaveSystem.Internal {
 
 
         internal static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
-            ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading));
+            await ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading));
         }
 
 
         internal static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData data) {
-            ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading), data);
+            await ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading), data);
         }
 
 
@@ -57,21 +57,21 @@ namespace SaveSystem.Internal {
         }
 
 
-        private static void ExecuteSceneHandling (Scene loadedScene) {
+        private static async UniTask ExecuteSceneHandling (Scene loadedScene) {
             var sceneHandler = SelectSceneHandler<SceneHandler>(loadedScene);
             if (sceneHandler == null)
                 return;
 
-            sceneHandler.StartScene();
+            await sceneHandler.StartScene();
         }
 
 
-        private static void ExecuteSceneHandling<TData> (Scene loadedScene, TData data) {
+        private static async UniTask ExecuteSceneHandling<TData> (Scene loadedScene, TData data) {
             var sceneHandler = SelectSceneHandler<SceneHandler<TData>>(loadedScene);
             if (sceneHandler == null)
                 return;
 
-            sceneHandler.StartScene(data);
+            await sceneHandler.StartScene(data);
         }
 
 

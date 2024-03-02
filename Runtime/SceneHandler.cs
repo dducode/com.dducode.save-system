@@ -1,11 +1,12 @@
-﻿using UnityEngine;
+﻿using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 namespace SaveSystem {
 
     public abstract class SceneHandler : MonoBehaviour {
 
         public SceneSerializationContext sceneContext;
-        public abstract void StartScene ();
+        public abstract UniTask StartScene ();
 
     }
 
@@ -14,7 +15,7 @@ namespace SaveSystem {
     public abstract class SceneHandler<TData> : MonoBehaviour {
 
         public SceneSerializationContext sceneContext;
-        public abstract void StartScene (TData data);
+        public abstract UniTask StartScene (TData data);
 
     }
 
