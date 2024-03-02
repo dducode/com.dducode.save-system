@@ -13,6 +13,8 @@
 
         public const string DataPathTooltip = "Path to save global data (registered in the Core)";
 
+        public const string CannotReadDataMessage = "Cannot read data when it hasn't loaded";
+
     }
 
 }

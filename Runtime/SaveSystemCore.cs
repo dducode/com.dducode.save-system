@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using UnityEngine.SceneManagement;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
@@ -68,7 +66,7 @@ namespace SaveSystem {
         private static bool m_savedBeforeExit;
         private static bool m_loaded;
         private static bool m_registrationClosed;
-        private static Action<SceneHandler> m_passDataAction;
+        private static DataBuffer m_buffer = new();
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -88,12 +86,6 @@ namespace SaveSystem {
             };
             m_exitCancellation = new CancellationTokenSource();
             Logger.Log("Save System Core initialized");
-        }
-
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Start () {
-            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
 
@@ -132,28 +124,6 @@ namespace SaveSystem {
 
 
         static partial void SetOnExitPlayModeCallback ();
-
-
-        private static async void OnSceneLoaded (Scene scene, LoadSceneMode sceneMode) {
-            try {
-                GameObject target = scene.GetRootGameObjects()
-                   .FirstOrDefault(gameObject => gameObject.CompareTag(Tags.SceneHandlerTag));
-                if (target == null)
-                    return;
-
-                var sceneHandler = target.GetComponent<SceneHandler>();
-                sceneHandler.OnPreLoad();
-                await SynchronizationPoint.ExecuteTask(async () =>
-                    await sceneHandler.sceneContext.LoadSceneDataAsync(m_selectedSaveProfile, m_exitCancellation.Token)
-                );
-                m_passDataAction?.Invoke(sceneHandler);
-                sceneHandler.OnPostLoad();
-                m_passDataAction = null;
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
-        }
 
 
         internal static void SaveAtCheckpoint (Component other) {
@@ -305,19 +275,19 @@ namespace SaveSystem {
                 await SaveGlobalData(token);
                 await m_selectedSaveProfile.SaveProfileDataAsync(token);
 
-                SceneSerializationContext[] sceneLoaders =
+                SceneSerializationContext[] contexts =
                     Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
 
-                if (sceneLoaders.Length > 0) {
-                    if (IsParallel && sceneLoaders.Length > 1) {
+                if (contexts.Length > 0) {
+                    if (IsParallel && contexts.Length > 1) {
                         await ParallelLoop.ForEachAsync(
-                            sceneLoaders,
-                            async sceneLoader => await sceneLoader.SaveSceneDataAsync(m_selectedSaveProfile, token)
+                            contexts,
+                            async sceneLoader => await sceneLoader.SaveSceneDataAsync(token)
                         );
                     }
                     else {
-                        foreach (SceneSerializationContext sceneLoader in sceneLoaders)
-                            await sceneLoader.SaveSceneDataAsync(m_selectedSaveProfile, token);
+                        foreach (SceneSerializationContext sceneLoader in contexts)
+                            await sceneLoader.SaveSceneDataAsync(token);
                     }
                 }
 
@@ -332,7 +302,7 @@ namespace SaveSystem {
 
 
         private static async UniTask SaveGlobalData (CancellationToken token) {
-            if (ObjectsCount == 0)
+            if (ObjectsCount == 0 && m_buffer.Count == 0)
                 return;
             if (!m_loaded)
                 Logger.LogWarning("Start saving when objects not loaded");
@@ -342,6 +312,8 @@ namespace SaveSystem {
             try {
                 token.ThrowIfCancellationRequested();
                 using var writer = new BinaryWriter(new MemoryStream());
+                writer.Write(m_buffer);
+
                 var completedTasks = 0;
 
                 foreach (IRuntimeSerializable obj in SerializableObjects) {
@@ -368,11 +340,6 @@ namespace SaveSystem {
                 return HandlingResult.Canceled;
             }
 
-            if (ObjectsCount == 0) {
-                Logger.LogError("Cannot start loading operation - the Core hasn't any objects for loading");
-                return HandlingResult.Error;
-            }
-
             if (!File.Exists(m_dataPath)) {
                 m_registrationClosed = m_loaded = true;
                 return HandlingResult.FileNotExists;
@@ -384,6 +351,8 @@ namespace SaveSystem {
                 token.ThrowIfCancellationRequested();
                 using var reader = new BinaryReader(new MemoryStream());
                 await reader.ReadDataFromFileAsync(m_dataPath, token);
+
+                m_buffer = reader.ReadDataBuffer();
 
                 var completedTasks = 0;
 

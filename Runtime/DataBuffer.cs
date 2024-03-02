@@ -19,6 +19,8 @@ namespace SaveSystem {
         private readonly Dictionary<string, MeshData> m_meshDataBuffer;
         private readonly Dictionary<string, string> m_stringBuffer;
 
+        public int Count => m_commonBuffer.Count + m_arrayBuffer.Count + m_meshDataBuffer.Count + m_stringBuffer.Count;
+
 
         public DataBuffer () {
             m_commonBuffer = new Dictionary<string, byte[]>();

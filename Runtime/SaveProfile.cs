@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using JetBrains.Annotations;
+using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
@@ -12,6 +13,7 @@ using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
+// ReSharper disable UnusedMember.Global
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable MemberCanBePrivate.Global
 
@@ -48,10 +50,30 @@ namespace SaveSystem {
         private readonly List<IRuntimeSerializable> m_serializables = new();
         private readonly List<IAsyncRuntimeSerializable> m_asyncSerializables = new();
 
+        private DataBuffer m_buffer = new();
         private string m_name;
         private string m_profileDataFolder;
         private bool m_loaded;
         private bool m_registrationClosed;
+
+
+        /// <summary>
+        /// Write any data for saving
+        /// </summary>
+        public void WriteData<TValue> (string key, TValue value) where TValue : unmanaged {
+            m_buffer.Add(key, value);
+        }
+
+
+        /// <summary>
+        /// Get writable data
+        /// </summary>
+        public TValue ReadData<TValue> (string key) where TValue : unmanaged {
+            if (!m_loaded)
+                throw new DataNotLoadedException(MessageTemplates.CannotReadDataMessage);
+
+            return m_buffer.Get<TValue>(key);
+        }
 
 
         public void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
@@ -135,11 +157,6 @@ namespace SaveSystem {
                 return HandlingResult.Canceled;
             }
 
-            if (ObjectsCount == 0) {
-                Logger.LogError("Cannot start loading operation - the profile hasn't any objects for loading");
-                return HandlingResult.Error;
-            }
-
             if (!File.Exists(DataPath)) {
                 m_registrationClosed = m_loaded = true;
                 return HandlingResult.FileNotExists;
@@ -151,6 +168,7 @@ namespace SaveSystem {
                 token.ThrowIfCancellationRequested();
                 using var reader = new BinaryReader(new MemoryStream());
                 await reader.ReadDataFromFileAsync(DataPath, token);
+                m_buffer = reader.ReadDataBuffer();
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
                     serializable.Deserialize(reader);
@@ -187,16 +205,17 @@ namespace SaveSystem {
 
 
         internal async UniTask SaveProfileDataAsync (CancellationToken token) {
-            if (ObjectsCount == 0)
+            if (ObjectsCount == 0 && m_buffer.Count == 0)
                 return;
             if (!m_loaded)
-                Logger.LogWarning("Start saving when objects not loaded");
+                Logger.LogWarning("Start saving when data not loaded");
 
             m_registrationClosed = true;
 
             try {
                 token.ThrowIfCancellationRequested();
                 using var writer = new BinaryWriter(new MemoryStream());
+                writer.Write(m_buffer);
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
                     serializable.Serialize(writer);

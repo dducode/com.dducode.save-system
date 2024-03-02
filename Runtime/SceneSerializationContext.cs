@@ -5,12 +5,15 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
+
+// ReSharper disable UnusedMember.Global
 
 namespace SaveSystem {
 
@@ -22,9 +25,29 @@ namespace SaveSystem {
         private int ObjectsCount => m_serializables.Count + m_asyncSerializables.Count;
         private readonly List<IRuntimeSerializable> m_serializables = new();
         private readonly List<IAsyncRuntimeSerializable> m_asyncSerializables = new();
-        
+
+        private DataBuffer m_buffer = new();
         private bool m_loaded;
         private bool m_registrationClosed;
+
+
+        /// <summary>
+        /// Write any data for saving
+        /// </summary>
+        public void WriteData<TValue> (string key, TValue value) where TValue : unmanaged {
+            m_buffer.Add(key, value);
+        }
+
+
+        /// <summary>
+        /// Get writable data
+        /// </summary>
+        public TValue ReadData<TValue> (string key) where TValue : unmanaged {
+            if (!m_loaded)
+                throw new DataNotLoadedException(MessageTemplates.CannotReadDataMessage);
+
+            return m_buffer.Get<TValue>(key);
+        }
 
 
         public SceneSerializationContext RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
@@ -97,48 +120,25 @@ namespace SaveSystem {
         }
 
 
-        internal async UniTask SaveSceneDataAsync (SaveProfile context, CancellationToken token) {
-            if (ObjectsCount == 0)
-                return;
-            if (!m_loaded)
-                Logger.LogWarning("Start saving when objects not loaded", this);
-
-            m_registrationClosed = true;
-
+        public async void LoadSceneDataAsync (
+            Action<HandlingResult> continuation, CancellationToken token = default
+        ) {
             try {
-                token.ThrowIfCancellationRequested();
-                using var writer = new BinaryWriter(new MemoryStream());
-
-                foreach (IRuntimeSerializable serializable in m_serializables)
-                    serializable.Serialize(writer);
-
-                foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                    await serializable.Serialize(writer, token);
-
-                await writer.WriteDataToFileAsync(GetPathFromContext(context), token);
-                Logger.Log($"{sceneName} data was saved");
+                continuation(await LoadSceneDataAsync(token));
             }
-            catch (OperationCanceledException) {
-                Logger.LogWarning($"{sceneName} data saving was canceled", this);
+            catch (Exception exception) {
+                Debug.LogException(exception);
             }
         }
 
 
-        internal async UniTask<HandlingResult> LoadSceneDataAsync (SaveProfile context, CancellationToken token) {
+        public async UniTask<HandlingResult> LoadSceneDataAsync (CancellationToken token = default) {
             if (m_loaded) {
                 Logger.LogWarning("All objects already loaded", this);
                 return HandlingResult.Canceled;
             }
 
-            if (ObjectsCount == 0) {
-                Logger.LogError(
-                    "Cannot start loading operation - scene serialization context hasn't any objects for loading",
-                    this
-                );
-                return HandlingResult.Error;
-            }
-
-            string dataPath = GetPathFromContext(context);
+            string dataPath = GetPathFromProfile();
 
             if (!File.Exists(dataPath)) {
                 m_registrationClosed = m_loaded = true;
@@ -151,6 +151,7 @@ namespace SaveSystem {
                 token.ThrowIfCancellationRequested();
                 using var reader = new BinaryReader(new MemoryStream());
                 await reader.ReadDataFromFileAsync(dataPath, token);
+                m_buffer = reader.ReadDataBuffer();
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
                     serializable.Deserialize(reader);
@@ -169,8 +170,36 @@ namespace SaveSystem {
         }
 
 
-        private string GetPathFromContext (SaveProfile context) {
-            return Path.Combine(context.ProfileDataFolder, $"{sceneName}.scenedata");
+        internal async UniTask SaveSceneDataAsync (CancellationToken token) {
+            if (ObjectsCount == 0 && m_buffer.Count == 0)
+                return;
+            if (!m_loaded)
+                Logger.LogWarning("Start saving when data not loaded", this);
+
+            m_registrationClosed = true;
+
+            try {
+                token.ThrowIfCancellationRequested();
+                using var writer = new BinaryWriter(new MemoryStream());
+                writer.Write(m_buffer);
+
+                foreach (IRuntimeSerializable serializable in m_serializables)
+                    serializable.Serialize(writer);
+
+                foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
+                    await serializable.Serialize(writer, token);
+
+                await writer.WriteDataToFileAsync(GetPathFromProfile(), token);
+                Logger.Log($"{sceneName} data was saved");
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning($"{sceneName} data saving was canceled", this);
+            }
+        }
+
+
+        private string GetPathFromProfile () {
+            return Path.Combine(SaveSystemCore.SelectedSaveProfile.ProfileDataFolder, $"{sceneName}.scenedata");
         }
 
     }

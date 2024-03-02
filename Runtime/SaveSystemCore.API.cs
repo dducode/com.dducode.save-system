@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using UnityEngine;
@@ -225,6 +226,25 @@ namespace SaveSystem {
 
 
         /// <summary>
+        /// Write any data for saving
+        /// </summary>
+        public static void WriteData<TValue> (string key, TValue value) where TValue : unmanaged {
+            m_buffer.Add(key, value);
+        }
+
+
+        /// <summary>
+        /// Get writable data
+        /// </summary>
+        public static TValue ReadData<TValue> (string key) where TValue : unmanaged {
+            if (!m_loaded)
+                throw new DataNotLoadedException(MessageTemplates.CannotReadDataMessage);
+
+            return m_buffer.Get<TValue>(key);
+        }
+
+
+        /// <summary>
         /// Registers an serializable object to automatic save, quick-save, save at checkpoit and others
         /// </summary>
         public static void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
@@ -373,11 +393,23 @@ namespace SaveSystem {
     #endif
 
 
-        /// <summary>
-        /// Pass any data to scene handler before scene loading
-        /// </summary>
-        public static void PassDataToHandler (Action<SceneHandler> passDataAction) {
-            m_passDataAction = passDataAction;
+        public static void LoadScene (Action sceneLoading) {
+            SceneLoader.LoadScene(sceneLoading);
+        }
+
+
+        public static void LoadScene<TData> (Action sceneLoading, TData passedData) {
+            SceneLoader.LoadScene(sceneLoading, passedData);
+        }
+
+
+        public static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
+            await SceneLoader.LoadSceneAsync(asyncSceneLoading);
+        }
+        
+        
+        public static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData passedData) {
+            await SceneLoader.LoadSceneAsync(asyncSceneLoading, passedData);
         }
 
 

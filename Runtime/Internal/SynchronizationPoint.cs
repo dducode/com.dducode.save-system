@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -31,6 +30,9 @@ namespace SaveSystem.Internal {
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
+            }
+            finally {
+                m_scheduledTask = null;
             }
         }
 
