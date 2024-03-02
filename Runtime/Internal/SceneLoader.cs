@@ -11,9 +11,9 @@ namespace SaveSystem.Internal {
         private static UniTaskCompletionSource<Scene> m_tcs;
 
 
-        internal static async void LoadScene (Action sceneLoading) {
+        internal static async UniTask LoadSceneAsync (Action sceneLoading) {
             try {
-                await ExecuteSceneHandling(await WaitForLoading(sceneLoading));
+                ExecuteSceneHandling(await WaitForLoading(sceneLoading));
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -21,9 +21,9 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal static async void LoadScene<TData> (Action sceneLoading, TData data) {
+        internal static async UniTask LoadSceneAsync<TData> (Action sceneLoading, TData data) {
             try {
-                await ExecuteSceneHandling(await WaitForLoading(sceneLoading), data);
+                ExecuteSceneHandling(await WaitForLoading(sceneLoading), data);
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -32,12 +32,12 @@ namespace SaveSystem.Internal {
 
 
         internal static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
-            await ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading));
+            ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading));
         }
 
 
         internal static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData data) {
-            await ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading), data);
+            ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading), data);
         }
 
 
@@ -57,21 +57,27 @@ namespace SaveSystem.Internal {
         }
 
 
-        private static async UniTask ExecuteSceneHandling (Scene loadedScene) {
+        private static void ExecuteSceneHandling (Scene loadedScene) {
             var sceneHandler = SelectSceneHandler<SceneHandler>(loadedScene);
-            if (sceneHandler == null)
-                return;
 
-            await sceneHandler.StartScene();
+            if (sceneHandler == null) {
+                Logger.LogError("There is no target scene handler");
+                return;
+            }
+
+            sceneHandler.StartScene();
         }
 
 
-        private static async UniTask ExecuteSceneHandling<TData> (Scene loadedScene, TData data) {
+        private static void ExecuteSceneHandling<TData> (Scene loadedScene, TData data) {
             var sceneHandler = SelectSceneHandler<SceneHandler<TData>>(loadedScene);
-            if (sceneHandler == null)
-                return;
 
-            await sceneHandler.StartScene(data);
+            if (sceneHandler == null) {
+                Logger.LogError("There is no target scene handler");
+                return;
+            }
+
+            sceneHandler.StartScene(data);
         }
 
 

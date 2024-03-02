@@ -393,13 +393,13 @@ namespace SaveSystem {
     #endif
 
 
-        public static void LoadScene (Action sceneLoading) {
-            SceneLoader.LoadScene(sceneLoading);
+        public static async UniTask LoadSceneAsync (Action sceneLoading) {
+            await SceneLoader.LoadSceneAsync(sceneLoading);
         }
 
 
-        public static void LoadScene<TData> (Action sceneLoading, TData passedData) {
-            SceneLoader.LoadScene(sceneLoading, passedData);
+        public static async UniTask LoadSceneAsync<TData> (Action sceneLoading, TData passedData) {
+            await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
         }
 
 
