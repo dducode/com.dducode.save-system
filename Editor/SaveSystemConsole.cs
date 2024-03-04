@@ -30,6 +30,10 @@ namespace SaveSystem.Editor {
             }
         };
 
+        private SavedFilesTab m_savedFilesTab;
+        private TrackerTab m_trackerTab;
+        private SettingsTab m_settingsTab;
+
 
         [MenuItem("Window/" + WindowName)]
         private static void Init () {
@@ -74,11 +78,11 @@ namespace SaveSystem.Editor {
         private IConsoleTab GetConsoleTab (ConsoleTabsNames selectedTab) {
             switch (selectedTab) {
                 case ConsoleTabsNames.SavedFiles:
-                    return new SavedFilesTab();
+                    return m_savedFilesTab ??= new SavedFilesTab();
                 case ConsoleTabsNames.HandlersTracker:
-                    return new TrackerTab();
+                    return m_trackerTab ??= new TrackerTab();
                 case ConsoleTabsNames.Settings:
-                    return new SettingsTab();
+                    return m_settingsTab ??= new SettingsTab();
                 default:
                     throw new ArgumentOutOfRangeException();
             }

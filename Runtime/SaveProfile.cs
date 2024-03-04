@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
+using SaveSystem.Internal.Templates;
 using UnityEngine;
 using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
@@ -43,6 +44,14 @@ namespace SaveSystem {
             }
         }
 
+        public DataBuffer DataBuffer {
+            get {
+                if (!m_loaded)
+                    throw new DataNotLoadedException(Messages.CannotReadData);
+                return m_dataBuffer;
+            }
+        }
+
         public string DataPath => Path.Combine(m_profileDataFolder, $"{m_name}.profiledata");
 
         private int ObjectsCount => m_serializables.Count + m_asyncSerializables.Count;
@@ -50,35 +59,16 @@ namespace SaveSystem {
         private readonly List<IRuntimeSerializable> m_serializables = new();
         private readonly List<IAsyncRuntimeSerializable> m_asyncSerializables = new();
 
-        private DataBuffer m_buffer = new();
+        private DataBuffer m_dataBuffer = new();
         private string m_name;
         private string m_profileDataFolder;
         private bool m_loaded;
         private bool m_registrationClosed;
 
 
-        /// <summary>
-        /// Write any data for saving
-        /// </summary>
-        public void WriteData<TValue> (string key, TValue value) where TValue : unmanaged {
-            m_buffer.Add(key, value);
-        }
-
-
-        /// <summary>
-        /// Get writable data
-        /// </summary>
-        public TValue ReadData<TValue> (string key) where TValue : unmanaged {
-            if (!m_loaded)
-                throw new DataNotLoadedException(MessageTemplates.CannotReadDataMessage);
-
-            return m_buffer.Get<TValue>(key);
-        }
-
-
         public void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(Name, Messages.RegistrationClosed);
                 return;
             }
 
@@ -87,13 +77,13 @@ namespace SaveSystem {
 
             m_serializables.Add(serializable);
             DiagnosticService.AddObject(serializable);
-            Logger.Log($"Serializable {serializable} was registered in {Name}");
+            Logger.Log(Name, $"Serializable {serializable} was registered in {Name}");
         }
 
 
         public void RegisterSerializable ([NotNull] IAsyncRuntimeSerializable serializable) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(Name, Messages.RegistrationClosed);
                 return;
             }
 
@@ -102,13 +92,13 @@ namespace SaveSystem {
 
             m_asyncSerializables.Add(serializable);
             DiagnosticService.AddObject(serializable);
-            Logger.Log($"Serializable {serializable} was registered in {Name}");
+            Logger.Log(Name, $"Serializable {serializable} was registered in {Name}");
         }
 
 
         public void RegisterSerializables ([NotNull] IEnumerable<IRuntimeSerializable> serializables) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(Name, Messages.RegistrationClosed);
                 return;
             }
 
@@ -118,13 +108,13 @@ namespace SaveSystem {
             IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
             m_serializables.AddRange(objects);
             DiagnosticService.AddObjects(objects);
-            Logger.Log($"Serializable objects were registered in {Name}");
+            Logger.Log(Name, $"Serializable objects were registered in {Name}");
         }
 
 
         public void RegisterSerializables ([NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(Name, Messages.RegistrationClosed);
                 return;
             }
 
@@ -135,7 +125,7 @@ namespace SaveSystem {
                 serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
             m_asyncSerializables.AddRange(objects);
             DiagnosticService.AddObjects(objects);
-            Logger.Log($"Serializable objects were registered in {Name}");
+            Logger.Log(Name, $"Serializable objects were registered in {Name}");
         }
 
 
@@ -153,7 +143,7 @@ namespace SaveSystem {
 
         public async UniTask<HandlingResult> LoadProfileDataAsync (CancellationToken token = default) {
             if (m_loaded) {
-                Logger.LogWarning("All objects already loaded");
+                Logger.LogWarning(Name, "All objects already loaded");
                 return HandlingResult.Canceled;
             }
 
@@ -168,7 +158,7 @@ namespace SaveSystem {
                 token.ThrowIfCancellationRequested();
                 using var reader = new BinaryReader(new MemoryStream());
                 await reader.ReadDataFromFileAsync(DataPath, token);
-                m_buffer = reader.ReadDataBuffer();
+                m_dataBuffer = reader.ReadDataBuffer();
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
                     serializable.Deserialize(reader);
@@ -176,12 +166,12 @@ namespace SaveSystem {
                 foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
                     await serializable.Deserialize(reader, token);
 
-                Logger.Log("Profile was loading");
+                Logger.Log(Name, "Profile was loading");
                 m_loaded = true;
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Profile loading was canceled");
+                Logger.LogWarning(Name, "Profile loading was canceled");
                 return HandlingResult.Canceled;
             }
         }
@@ -205,17 +195,17 @@ namespace SaveSystem {
 
 
         internal async UniTask SaveProfileDataAsync (CancellationToken token) {
-            if (ObjectsCount == 0 && m_buffer.Count == 0)
+            if (ObjectsCount == 0 && DataBuffer.Count == 0)
                 return;
             if (!m_loaded)
-                Logger.LogWarning("Start saving when data not loaded");
+                Logger.LogWarning(Name, "Start saving when data not loaded");
 
             m_registrationClosed = true;
 
             try {
                 token.ThrowIfCancellationRequested();
                 using var writer = new BinaryWriter(new MemoryStream());
-                writer.Write(m_buffer);
+                writer.Write(DataBuffer);
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
                     serializable.Serialize(writer);
@@ -226,7 +216,7 @@ namespace SaveSystem {
                 await writer.WriteDataToFileAsync(DataPath, token);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Profile saving was canceled");
+                Logger.LogWarning(Name, "Profile saving was canceled");
             }
         }
 

@@ -15,13 +15,13 @@ namespace SaveSystem.Tests.TestObjects {
 
         public void Serialize (BinaryWriter writer) {
             var buffer = new DataBuffer();
-            buffer.Add(nameof(Target.transform.position), Target.transform.position);
-            buffer.Add(nameof(Target.transform.localPosition), Target.transform.localPosition);
-            buffer.Add(nameof(Target.transform.rotation), Target.transform.rotation);
-            buffer.Add(nameof(Target.transform.localRotation), Target.transform.localRotation);
+            buffer.Write(nameof(Target.transform.position), Target.transform.position);
+            buffer.Write(nameof(Target.transform.localPosition), Target.transform.localPosition);
+            buffer.Write(nameof(Target.transform.rotation), Target.transform.rotation);
+            buffer.Write(nameof(Target.transform.localRotation), Target.transform.localRotation);
 
-            buffer.Add(nameof(Target.MeshFilter.mesh), Target.MeshFilter.mesh);
-            buffer.Add(nameof(Target.MeshRenderer.material.color), Target.MeshRenderer.material.color);
+            buffer.Write(nameof(Target.MeshFilter.mesh), Target.MeshFilter.mesh);
+            buffer.Write(nameof(Target.MeshRenderer.material.color), Target.MeshRenderer.material.color);
             writer.Write(buffer);
         }
 

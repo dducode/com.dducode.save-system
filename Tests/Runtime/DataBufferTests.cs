@@ -22,7 +22,7 @@ namespace SaveSystem.Tests {
             for (var i = 0; i < positions.Length; i++)
                 positions[i] = Random.insideUnitSphere;
 
-            buffer.Add(PositionsKey, positions);
+            buffer.Write(PositionsKey, positions);
             using var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate));
             writer.Write(buffer);
 

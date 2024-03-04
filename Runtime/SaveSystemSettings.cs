@@ -1,49 +1,24 @@
-﻿using System.IO;
-using SaveSystem.Internal;
-using UnityEditor;
+﻿using SaveSystem.Internal.Templates;
 using UnityEngine;
-using Directory = UnityEngine.Windows.Directory;
-using File = UnityEngine.Windows.File;
 
 namespace SaveSystem {
 
     public class SaveSystemSettings : ScriptableObject {
 
         public SaveEvents enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnExit;
-        public LogLevel enabledLogs = LogLevel.Error | LogLevel.Warning;
+        public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
 
         [Min(0)]
-        [Tooltip(MessageTemplates.SavePeriodTooltip)]
+        [Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 15;
 
-        [Tooltip(MessageTemplates.IsParallelTooltip)]
+        [Tooltip(Tooltips.IsParallel)]
         public bool isParallel;
 
-        [Tooltip(MessageTemplates.DataPathTooltip)]
+        [Tooltip(Tooltips.DataPath)]
         public string dataPath = "default_data_file.data";
 
         public string playerTag = "Player";
-
-
-    #if UNITY_EDITOR
-        [InitializeOnLoadMethod]
-        public static void CreateSettings () {
-            string resourcesPath = Path.Combine(Application.dataPath, "Resources");
-            string settingsFilePath = Path.Combine(resourcesPath, $"{nameof(SaveSystemSettings)}.asset");
-
-            if (!Directory.Exists(resourcesPath)) {
-                AssetDatabase.CreateFolder("Assets", "Resources");
-                AssetDatabase.Refresh();
-            }
-
-            if (!File.Exists(settingsFilePath)) {
-                AssetDatabase.CreateAsset(
-                    CreateInstance<SaveSystemSettings>(), $"Assets/Resources/{nameof(SaveSystemSettings)}.asset"
-                );
-                AssetDatabase.Refresh();
-            }
-        }
-    #endif
 
     }
 

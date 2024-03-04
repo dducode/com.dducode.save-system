@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Linq;
 using Cysharp.Threading.Tasks;
+using SaveSystem.Internal.Extensions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,6 +13,7 @@ namespace SaveSystem.Internal {
 
         internal static async UniTask LoadSceneAsync (Action sceneLoading) {
             try {
+                SetupTask();
                 ExecuteSceneHandling(await WaitForLoading(sceneLoading));
             }
             catch (Exception exception) {
@@ -23,6 +24,7 @@ namespace SaveSystem.Internal {
 
         internal static async UniTask LoadSceneAsync<TData> (Action sceneLoading, TData data) {
             try {
+                SetupTask();
                 ExecuteSceneHandling(await WaitForLoading(sceneLoading), data);
             }
             catch (Exception exception) {
@@ -32,36 +34,49 @@ namespace SaveSystem.Internal {
 
 
         internal static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
+            SetupTask();
             ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading));
         }
 
 
         internal static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData data) {
+            SetupTask();
             ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading), data);
         }
 
 
-        private static async UniTask<Scene> WaitForLoading (Action sceneLoading) {
+        private static void SetupTask () {
             m_tcs = new UniTaskCompletionSource<Scene>();
             SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+
+        private static async UniTask<Scene> WaitForLoading (Action sceneLoading) {
             sceneLoading();
             return await m_tcs.Task;
         }
 
 
         private static async UniTask<Scene> WaitForAsyncLoading (Func<UniTask> asyncSceneLoading) {
-            m_tcs = new UniTaskCompletionSource<Scene>();
-            SceneManager.sceneLoaded += OnSceneLoaded;
             await asyncSceneLoading();
             return await m_tcs.Task;
         }
 
 
         private static void ExecuteSceneHandling (Scene loadedScene) {
-            var sceneHandler = SelectSceneHandler<SceneHandler>(loadedScene);
+            GameObject gameObject = loadedScene.FindWithTag(Tags.SceneHandlerTag);
+
+            if (gameObject == null) {
+                Logger.LogError(nameof(SceneLoader), $"There is no target with {Tags.SceneHandlerTag} tag");
+                return;
+            }
+
+            var sceneHandler = gameObject.GetComponent<SceneHandler>();
 
             if (sceneHandler == null) {
-                Logger.LogError("There is no target scene handler");
+                Logger.LogError(nameof(SceneLoader),
+                    $"Game object {gameObject.name} has {Tags.SceneHandlerTag} tag, but hasn't {nameof(SceneHandler)} component"
+                );
                 return;
             }
 
@@ -70,22 +85,23 @@ namespace SaveSystem.Internal {
 
 
         private static void ExecuteSceneHandling<TData> (Scene loadedScene, TData data) {
-            var sceneHandler = SelectSceneHandler<SceneHandler<TData>>(loadedScene);
+            GameObject gameObject = loadedScene.FindWithTag(Tags.SceneHandlerTag);
+
+            if (gameObject == null) {
+                Logger.LogError(nameof(SceneLoader), $"There is no target with {Tags.SceneHandlerTag} tag");
+                return;
+            }
+
+            var sceneHandler = gameObject.GetComponent<SceneHandler<TData>>();
 
             if (sceneHandler == null) {
-                Logger.LogError("There is no target scene handler");
+                Logger.LogError(nameof(SceneLoader),
+                    $"Game object {gameObject.name} has {Tags.SceneHandlerTag} tag, but hasn't {nameof(SceneHandler<TData>)} component"
+                );
                 return;
             }
 
             sceneHandler.StartScene(data);
-        }
-
-
-        private static TSceneHandler SelectSceneHandler<TSceneHandler> (Scene loadedScene) {
-            return loadedScene
-               .GetRootGameObjects()
-               .Select(go => go.GetComponent<TSceneHandler>())
-               .FirstOrDefault(component => component != null);
         }
 
 

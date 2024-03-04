@@ -8,6 +8,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.Exceptions;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
+using SaveSystem.Internal.Templates;
 using UnityEngine;
 using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
@@ -26,7 +27,6 @@ namespace SaveSystem {
         /// <summary>
         /// TODO: add description
         /// </summary>
-        /// <exception cref="ArgumentNullException"></exception>
         [NotNull]
         public static SaveProfile SelectedSaveProfile {
             get => m_selectedSaveProfile;
@@ -35,7 +35,7 @@ namespace SaveSystem {
                     throw new ArgumentNullException(nameof(SelectedSaveProfile));
 
                 RegisterSaveProfile(m_selectedSaveProfile = value);
-                Logger.Log($"Set save profile: {{{value}}}");
+                Logger.Log(nameof(SaveSystemCore), $"Set save profile: {{{value}}}");
             }
         }
 
@@ -48,7 +48,7 @@ namespace SaveSystem {
             get => m_enabledSaveEvents;
             set {
                 SetupEvents(m_enabledSaveEvents = value);
-                Logger.Log($"Set save events: {value}");
+                Logger.Log(nameof(SaveSystemCore), $"Set save events: {value}");
             }
         }
 
@@ -61,7 +61,7 @@ namespace SaveSystem {
             get => Logger.EnabledLogs;
             set {
                 Logger.EnabledLogs = value;
-                Logger.Log($"Set enabled logs: {value}");
+                Logger.Log(nameof(SaveSystemCore), $"Set enabled logs: {value}");
             }
         }
 
@@ -80,7 +80,7 @@ namespace SaveSystem {
                 }
 
                 m_savePeriod = value;
-                Logger.Log($"Set save period: {value}");
+                Logger.Log(nameof(SaveSystemCore), $"Set save period: {value}");
             }
         }
 
@@ -91,7 +91,7 @@ namespace SaveSystem {
             get => m_isParallel;
             set {
                 m_isParallel = value;
-                Logger.Log((value ? "Enable" : "Disable") + " parallel saving");
+                Logger.Log(nameof(SaveSystemCore), (value ? "Enable" : "Disable") + " parallel saving");
             }
         }
 
@@ -110,7 +110,7 @@ namespace SaveSystem {
                 }
 
                 m_playerTag = value;
-                Logger.Log($"Set player tag: {value}");
+                Logger.Log(nameof(SaveSystemCore), $"Set player tag: {value}");
             }
         }
 
@@ -126,7 +126,7 @@ namespace SaveSystem {
                     throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
 
                 m_dataPath = Storage.PrepareBeforeUsing(value, false);
-                Logger.Log($"Set data path: {value}");
+                Logger.Log(nameof(SaveSystemCore), $"Set data path: {value}");
             }
         }
 
@@ -140,11 +140,11 @@ namespace SaveSystem {
         public static event Action<SaveType> OnSaveStart {
             add {
                 m_onSaveStart += value;
-                Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event");
+                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event");
             }
             remove {
                 m_onSaveStart -= value;
-                Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event");
+                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event");
             }
         }
 
@@ -158,11 +158,23 @@ namespace SaveSystem {
         public static event Action<SaveType> OnSaveEnd {
             add {
                 m_onSaveEnd += value;
-                Logger.Log($"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event");
+                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event");
             }
             remove {
                 m_onSaveEnd -= value;
-                Logger.Log($"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event");
+                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event");
+            }
+        }
+
+
+        /// <summary>
+        /// TODO: add description
+        /// </summary>
+        public static DataBuffer DataBuffer {
+            get {
+                if (!m_loaded)
+                    throw new DataNotLoadedException(Messages.CannotReadData);
+                return m_dataBuffer;
             }
         }
 
@@ -204,7 +216,7 @@ namespace SaveSystem {
             using var writer = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate));
             writer.Write(profile.GetType().ToString());
             profile.Serialize(writer);
-            Logger.Log($"Profile {{{profile}}} was registered");
+            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was registered");
         }
 
 
@@ -221,26 +233,7 @@ namespace SaveSystem {
 
             File.Delete(path);
             Directory.Delete(profile.ProfileDataFolder, true);
-            Logger.Log($"Profile {{{profile}}} was deleted");
-        }
-
-
-        /// <summary>
-        /// Write any data for saving
-        /// </summary>
-        public static void WriteData<TValue> (string key, TValue value) where TValue : unmanaged {
-            m_buffer.Add(key, value);
-        }
-
-
-        /// <summary>
-        /// Get writable data
-        /// </summary>
-        public static TValue ReadData<TValue> (string key) where TValue : unmanaged {
-            if (!m_loaded)
-                throw new DataNotLoadedException(MessageTemplates.CannotReadDataMessage);
-
-            return m_buffer.Get<TValue>(key);
+            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was deleted");
         }
 
 
@@ -249,7 +242,7 @@ namespace SaveSystem {
         /// </summary>
         public static void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
                 return;
             }
 
@@ -258,7 +251,7 @@ namespace SaveSystem {
 
             SerializableObjects.Add(serializable);
             DiagnosticService.AddObject(serializable);
-            Logger.Log($"Serializable object {serializable} was registered");
+            Logger.Log(nameof(SaveSystemCore), $"Serializable object {serializable} was registered");
         }
 
 
@@ -267,7 +260,7 @@ namespace SaveSystem {
         /// </summary>
         public static void RegisterSerializable ([NotNull] IAsyncRuntimeSerializable serializable) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
                 return;
             }
 
@@ -276,7 +269,7 @@ namespace SaveSystem {
 
             AsyncSerializableObjects.Add(serializable);
             DiagnosticService.AddObject(serializable);
-            Logger.Log($"Serializable object {serializable} was registered");
+            Logger.Log(nameof(SaveSystemCore), $"Serializable object {serializable} was registered");
         }
 
 
@@ -285,7 +278,7 @@ namespace SaveSystem {
         /// </summary>
         public static void RegisterSerializables ([NotNull] IEnumerable<IRuntimeSerializable> serializables) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
                 return;
             }
 
@@ -295,7 +288,7 @@ namespace SaveSystem {
             IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
             SerializableObjects.AddRange(objects);
             DiagnosticService.AddObjects(objects);
-            Logger.Log("Serializable objects was registered");
+            Logger.Log(nameof(SaveSystemCore), "Serializable objects was registered");
         }
 
 
@@ -304,7 +297,7 @@ namespace SaveSystem {
         /// </summary>
         public static void RegisterSerializables ([NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables) {
             if (m_registrationClosed) {
-                Logger.LogError(MessageTemplates.RegistrationClosedMessage);
+                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
                 return;
             }
 
@@ -315,7 +308,7 @@ namespace SaveSystem {
                 serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
             AsyncSerializableObjects.AddRange(objects);
             DiagnosticService.AddObjects(objects);
-            Logger.Log("Serializable objects was registered");
+            Logger.Log(nameof(SaveSystemCore), "Serializable objects was registered");
         }
 
 
@@ -336,14 +329,12 @@ namespace SaveSystem {
             m_playerTag = playerTag;
             m_savePeriod = savePeriod;
 
-            Logger.Log(
-                "Parameters was configured:" +
-                $"\nEnabled Save Events: {EnabledSaveEvents}" +
-                $"\nIs Parallel: {IsParallel}" +
-                $"\nEnabled Logs: {enabledLogs}" +
-                $"\nPlayer Tag: {PlayerTag}" +
-                $"\nSave Period: {SavePeriod}"
-            );
+            Logger.Log(nameof(SaveSystemCore), "Parameters was configured:" +
+                             $"\nEnabled Save Events: {EnabledSaveEvents}" +
+                             $"\nIs Parallel: {IsParallel}" +
+                             $"\nEnabled Logs: {enabledLogs}" +
+                             $"\nPlayer Tag: {PlayerTag}" +
+                             $"\nSave Period: {SavePeriod}");
         }
 
 
@@ -354,7 +345,7 @@ namespace SaveSystem {
         public static void ObserveProgress ([NotNull] IProgress<float> progress) {
             m_saveProgress = progress ?? throw new ArgumentNullException(nameof(progress));
             m_loadProgress = progress;
-            Logger.Log($"Progress observer {progress} was register");
+            Logger.Log(nameof(SaveSystemCore), $"Progress observer {progress} was register");
         }
 
 
@@ -367,7 +358,7 @@ namespace SaveSystem {
         ) {
             m_saveProgress = saveProgress ?? throw new ArgumentNullException(nameof(saveProgress));
             m_loadProgress = loadProgress ?? throw new ArgumentNullException(nameof(loadProgress));
-            Logger.Log($"Progress observers {saveProgress} and {loadProgress} was registered");
+            Logger.Log(nameof(SaveSystemCore), $"Progress observers {saveProgress} and {loadProgress} was registered");
         }
 
 
@@ -377,7 +368,7 @@ namespace SaveSystem {
         /// </summary>
         public static void BindKey (KeyCode keyCode) {
             m_quickSaveKey = keyCode;
-            Logger.Log($"Key \"{keyCode}\" was bind with quick save");
+            Logger.Log(nameof(SaveSystemCore), $"Key \"{keyCode}\" was bind with quick save");
         }
     #endif
 
@@ -388,7 +379,7 @@ namespace SaveSystem {
         /// </summary>
         public static void BindAction (InputAction action) {
             m_quickSaveAction = action;
-            Logger.Log($"Action \"{action}\" was bind with quick save");
+            Logger.Log(nameof(SaveSystemCore), $"Action \"{action}\" was bind with quick save");
         }
     #endif
 
@@ -406,8 +397,8 @@ namespace SaveSystem {
         public static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
             await SceneLoader.LoadSceneAsync(asyncSceneLoading);
         }
-        
-        
+
+
         public static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData passedData) {
             await SceneLoader.LoadSceneAsync(asyncSceneLoading, passedData);
         }

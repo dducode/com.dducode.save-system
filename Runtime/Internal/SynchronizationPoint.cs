@@ -26,7 +26,7 @@ namespace SaveSystem.Internal {
                 await ExecuteTask(async () => await m_scheduledTask(token));
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Scheduled task was canceled");
+                Logger.LogWarning(nameof(SynchronizationPoint), "Scheduled task was canceled");
             }
             catch (Exception exception) {
                 Debug.LogException(exception);

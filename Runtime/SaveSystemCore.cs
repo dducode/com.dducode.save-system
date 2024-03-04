@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
+using SaveSystem.Internal.Templates;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -46,6 +46,8 @@ namespace SaveSystem {
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
+        private static DataBuffer m_dataBuffer = new();
+
         private static readonly List<IRuntimeSerializable> SerializableObjects = new();
         private static readonly List<IAsyncRuntimeSerializable> AsyncSerializableObjects = new();
         private static int ObjectsCount => SerializableObjects.Count + AsyncSerializableObjects.Count;
@@ -66,18 +68,12 @@ namespace SaveSystem {
         private static bool m_savedBeforeExit;
         private static bool m_loaded;
         private static bool m_registrationClosed;
-        private static DataBuffer m_buffer = new();
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Initialize () {
-            var saveSystemLoop = new PlayerLoopSystem {
-                type = typeof(SaveSystemCore),
-                updateDelegate = UpdateSystem
-            };
-
-            SetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop(), saveSystemLoop);
-            SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            SetPlayerLoop();
+            SetSettings();
             SetInternalSavedPaths();
             SetOnExitPlayModeCallback();
 
@@ -85,23 +81,32 @@ namespace SaveSystem {
                 Name = DefaultProfileName, ProfileDataFolder = DefaultProfileName
             };
             m_exitCancellation = new CancellationTokenSource();
-            Logger.Log("Save System Core initialized");
+            Logger.Log(nameof(SaveSystemCore), "Initialized");
         }
 
 
-        private static void SetPlayerLoop (PlayerLoopSystem modifiedLoop, PlayerLoopSystem saveSystemLoop) {
+        private static void SetPlayerLoop () {
+            PlayerLoopSystem modifiedLoop = PlayerLoop.GetCurrentPlayerLoop();
+            var saveSystemLoop = new PlayerLoopSystem {
+                type = typeof(SaveSystemCore),
+                updateDelegate = UpdateSystem
+            };
+
             if (PlayerLoopManager.TryInsertSubSystem(ref modifiedLoop, saveSystemLoop, typeof(PreLateUpdate)))
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
-                Logger.LogError($"Failed insert system: {saveSystemLoop}");
+                Logger.LogError(nameof(SaveSystemCore), $"Failed insert system: {saveSystemLoop}");
         }
 
 
-        private static void SetSettings ([NotNull] SaveSystemSettings settings) {
+        private static void SetSettings () {
+            var settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
+
             if (settings == null) {
-                throw new ArgumentNullException(
-                    nameof(settings), "Save system settings not found. Did you delete, rename or transfer them?"
-                );
+                settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
+                Debug.LogWarning(Logger.FormattedMessage(
+                    nameof(SaveSystemCore), Messages.SettingsNotFound
+                ));
             }
 
             // Core settings
@@ -207,7 +212,7 @@ namespace SaveSystem {
             m_exitCancellation.Cancel();
 
             if (Application.isEditor) {
-                Logger.LogWarning("Saving before the quitting is not supported in the editor");
+                Logger.LogWarning(nameof(SaveSystemCore), "Saving before the quitting is not supported in the editor");
                 return m_savedBeforeExit = true;
             }
             else {
@@ -220,11 +225,11 @@ namespace SaveSystem {
                 m_onSaveEnd?.Invoke(SaveType.OnExit);
                 m_savedBeforeExit = true;
                 if (result is HandlingResult.Success)
-                    Logger.Log("Successful saving before the quitting");
+                    Logger.Log(nameof(SaveSystemCore), "Successful saving before the quitting");
                 else if (result is HandlingResult.Canceled)
-                    Logger.LogWarning("The saving before the quitting was canceled");
+                    Logger.LogWarning(nameof(SaveSystemCore), "The saving before the quitting was canceled");
                 else if (result is HandlingResult.Error)
-                    Logger.LogError("Some error was occured");
+                    Logger.LogError(nameof(SaveSystemCore), "Some error was occured");
                 Application.Quit();
             }
         }
@@ -248,11 +253,11 @@ namespace SaveSystem {
                 m_onSaveEnd?.Invoke(saveType);
 
                 if (result is HandlingResult.Success)
-                    Logger.Log($"{saveType}: success");
+                    Logger.Log(nameof(SaveSystemCore), $"{saveType}: success");
                 else if (result is HandlingResult.Canceled)
-                    Logger.LogWarning($"{saveType}: canceled");
+                    Logger.LogWarning(nameof(SaveSystemCore), $"{saveType}: canceled");
                 else if (result is HandlingResult.Error)
-                    Logger.LogError($"{saveType}: error");
+                    Logger.LogError(nameof(SaveSystemCore), $"{saveType}: error");
 
                 return result;
             });
@@ -291,28 +296,28 @@ namespace SaveSystem {
                     }
                 }
 
-                Logger.Log("All registered objects was saved");
+                Logger.Log(nameof(SaveSystemCore), "All registered objects was saved");
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Loading operation was canceled");
+                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation was canceled");
                 return HandlingResult.Canceled;
             }
         }
 
 
         private static async UniTask SaveGlobalData (CancellationToken token) {
-            if (ObjectsCount == 0 && m_buffer.Count == 0)
+            if (ObjectsCount == 0 && DataBuffer.Count == 0)
                 return;
             if (!m_loaded)
-                Logger.LogWarning("Start saving when objects not loaded");
+                Logger.LogWarning(nameof(SaveSystemCore), "Start saving when objects not loaded");
 
             m_registrationClosed = true;
 
             try {
                 token.ThrowIfCancellationRequested();
                 using var writer = new BinaryWriter(new MemoryStream());
-                writer.Write(m_buffer);
+                writer.Write(DataBuffer);
 
                 var completedTasks = 0;
 
@@ -329,14 +334,14 @@ namespace SaveSystem {
                 await writer.WriteDataToFileAsync(m_dataPath, token);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Global data saving was canceled");
+                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving was canceled");
             }
         }
 
 
         private static async UniTask<HandlingResult> LoadGlobalData (CancellationToken token) {
             if (m_loaded) {
-                Logger.LogWarning("All objects already loaded");
+                Logger.LogWarning(nameof(SaveSystemCore), "All objects already loaded");
                 return HandlingResult.Canceled;
             }
 
@@ -352,7 +357,7 @@ namespace SaveSystem {
                 using var reader = new BinaryReader(new MemoryStream());
                 await reader.ReadDataFromFileAsync(m_dataPath, token);
 
-                m_buffer = reader.ReadDataBuffer();
+                m_dataBuffer = reader.ReadDataBuffer();
 
                 var completedTasks = 0;
 
@@ -366,12 +371,12 @@ namespace SaveSystem {
                     ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
                 }
 
-                Logger.Log("Global data was loaded");
+                Logger.Log(nameof(SaveSystemCore), "Global data was loaded");
                 m_loaded = true;
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning("Global data loading was canceled");
+                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading was canceled");
                 return HandlingResult.Canceled;
             }
         }

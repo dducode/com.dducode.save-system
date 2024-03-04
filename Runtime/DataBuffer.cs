@@ -16,66 +16,64 @@ namespace SaveSystem {
 
         private readonly Dictionary<string, byte[]> m_commonBuffer;
         private readonly Dictionary<string, KeyValuePair<int, byte[]>> m_arrayBuffer;
-        private readonly Dictionary<string, MeshData> m_meshDataBuffer;
         private readonly Dictionary<string, string> m_stringBuffer;
+        private readonly Dictionary<string, MeshData> m_meshDataBuffer;
 
-        public int Count => m_commonBuffer.Count + m_arrayBuffer.Count + m_meshDataBuffer.Count + m_stringBuffer.Count;
+        public int Count => m_commonBuffer.Count + m_arrayBuffer.Count + m_stringBuffer.Count + m_meshDataBuffer.Count;
 
 
         public DataBuffer () {
             m_commonBuffer = new Dictionary<string, byte[]>();
             m_arrayBuffer = new Dictionary<string, KeyValuePair<int, byte[]>>();
-            m_meshDataBuffer = new Dictionary<string, MeshData>();
             m_stringBuffer = new Dictionary<string, string>();
+            m_meshDataBuffer = new Dictionary<string, MeshData>();
         }
 
 
         internal DataBuffer (BinaryReader reader) {
             m_commonBuffer = ReadCommonBuffer(reader);
             m_arrayBuffer = ReadArrayBuffer(reader);
-            m_meshDataBuffer = ReadMeshDataBuffer(reader);
             m_stringBuffer = ReadStringBuffer(reader);
+            m_meshDataBuffer = ReadMeshDataBuffer(reader);
         }
 
 
-        public void Add<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
+        public void Write<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            byte[] data = MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray();
-            m_commonBuffer.Add(key, data);
+            m_commonBuffer[key] = MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray();
         }
 
 
-        public void Add<TArray> ([NotNull] string key, [NotNull] TArray[] array) where TArray : unmanaged {
+        public void Write<TArray> ([NotNull] string key, [NotNull] TArray[] array) where TArray : unmanaged {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            var data = new KeyValuePair<int, byte[]>(
+            m_arrayBuffer[key] = new KeyValuePair<int, byte[]>(
                 array.Length,
                 MemoryMarshal.AsBytes((ReadOnlySpan<TArray>)array).ToArray()
             );
-            m_arrayBuffer.Add(key, data);
         }
 
 
-        public void Add ([NotNull] string key, MeshData value) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            m_meshDataBuffer.Add(key, value);
-        }
-
-
-        public void Add ([NotNull] string key, [NotNull] string value) {
+        public void Write ([NotNull] string key, [NotNull] string value) {
             if (string.IsNullOrEmpty(value))
                 throw new ArgumentNullException(nameof(value));
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            m_stringBuffer.Add(key, value);
+            m_stringBuffer[key] = value;
+        }
+
+
+        public void Write ([NotNull] string key, MeshData value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_meshDataBuffer[key] = value;
         }
 
 
@@ -83,7 +81,7 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_commonBuffer.ContainsKey(key) ? MemoryMarshal.Read<TValue>(m_commonBuffer[key]) : default;
+            return m_commonBuffer.TryGetValue(key, out byte[] value) ? MemoryMarshal.Read<TValue>(value) : default;
         }
 
 
@@ -105,19 +103,19 @@ namespace SaveSystem {
         }
 
 
-        public MeshData GetMeshData ([NotNull] string key) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_meshDataBuffer.ContainsKey(key) ? m_meshDataBuffer[key] : default;
-        }
-
-
         public string GetString ([NotNull] string key) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_stringBuffer.ContainsKey(key) ? m_stringBuffer[key] : default;
+            return m_stringBuffer.GetValueOrDefault(key);
+        }
+
+
+        public MeshData GetMeshData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_meshDataBuffer.GetValueOrDefault(key);
         }
 
 

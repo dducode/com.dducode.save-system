@@ -13,12 +13,6 @@ namespace SaveSystem.Editor {
                .Count(go => go.TryGetComponent(out SceneSerializationContext _));
             if (sameObjects > 1)
                 Debug.LogError("More than one scene serialization contexts. It's not supported");
-
-            SerializedProperty sceneName = serializedObject.FindProperty("sceneName");
-            if (string.IsNullOrEmpty(sceneName.stringValue))
-                sceneName.stringValue = sceneContext.gameObject.scene.name;
-
-            serializedObject.ApplyModifiedProperties();
         }
 
     }
