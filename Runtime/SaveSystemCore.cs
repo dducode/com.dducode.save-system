@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
@@ -17,6 +18,8 @@ using Object = UnityEngine.Object;
 using UnityEngine.InputSystem;
 #endif
 
+// ReSharper disable SuspiciousTypeConversion.Global
+
 namespace SaveSystem {
 
     /// <summary>
@@ -27,9 +30,7 @@ namespace SaveSystem {
     public static partial class SaveSystemCore {
 
         internal const string SaveSystemFolder = "save_system_internal";
-
         private const string ProfileMetadataExtension = ".profilemetadata";
-        private const string DefaultProfileName = "default_profile";
 
         private static string m_profilesFolderPath;
         private static string m_dataPath;
@@ -77,9 +78,7 @@ namespace SaveSystem {
             SetInternalSavedPaths();
             SetOnExitPlayModeCallback();
 
-            m_selectedSaveProfile = new SaveProfile {
-                Name = DefaultProfileName, ProfileDataFolder = DefaultProfileName
-            };
+            m_selectedSaveProfile = SaveProfile.Default;
             m_exitCancellation = new CancellationTokenSource();
             Logger.Log(nameof(SaveSystemCore), "Initialized");
         }
@@ -217,7 +216,7 @@ namespace SaveSystem {
             }
             else {
                 m_onSaveStart?.Invoke(SaveType.OnExit);
-                SaveObjects(OnSaveEnd);
+                SaveObjectsAsync(OnSaveEnd);
                 return false;
             }
 
@@ -253,7 +252,7 @@ namespace SaveSystem {
 
         private static async UniTask<HandlingResult> CommonSavingTask (SaveType saveType, CancellationToken token) {
             m_onSaveStart?.Invoke(saveType);
-            HandlingResult result = await SaveObjects(token);
+            HandlingResult result = await SaveObjectsAsync(token);
             m_onSaveEnd?.Invoke(saveType);
 
             if (result is HandlingResult.Success)
@@ -267,9 +266,9 @@ namespace SaveSystem {
         }
 
 
-        private static async void SaveObjects (Action<HandlingResult> continuation) {
+        private static async void SaveObjectsAsync (Action<HandlingResult> continuation) {
             try {
-                continuation(await SaveObjects(CancellationToken.None));
+                continuation(await SaveObjectsAsync(CancellationToken.None));
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -277,10 +276,10 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
+        private static async UniTask<HandlingResult> SaveObjectsAsync (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SaveGlobalData(token);
+                await SaveGlobalDataAsync(token);
                 await m_selectedSaveProfile.SaveProfileDataAsync(token);
 
                 SceneSerializationContext[] contexts =
@@ -308,7 +307,7 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask SaveGlobalData (CancellationToken token) {
+        private static async UniTask SaveGlobalDataAsync (CancellationToken token) {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
             if (!m_loaded)
@@ -319,8 +318,56 @@ namespace SaveSystem {
             token.ThrowIfCancellationRequested();
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(m_dataBuffer);
 
+            writer.Write(m_dataBuffer);
+            await SerializeObjects(writer, token);
+
+            await memoryStream.WriteDataToFileAsync(m_dataPath, token);
+            Logger.Log(nameof(SaveSystemCore), "Saved");
+        }
+
+
+        private static async UniTask<HandlingResult> LoadGlobalDataAsync (CancellationToken token) {
+            if (m_loaded) {
+                Logger.LogWarning(nameof(SaveSystemCore), "All objects already loaded");
+                return HandlingResult.Canceled;
+            }
+
+            if (!File.Exists(m_dataPath)) {
+                m_registrationClosed = true;
+                SetDefaults();
+                m_loaded = true;
+                return HandlingResult.FileNotExists;
+            }
+
+            m_registrationClosed = true;
+
+            try {
+                return await TryLoadGlobalDataAsync(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        private static async UniTask<HandlingResult> TryLoadGlobalDataAsync (CancellationToken token) {
+            token.ThrowIfCancellationRequested();
+            var memoryStream = new MemoryStream();
+            await memoryStream.ReadDataFromFileAsync(m_dataPath, token);
+            await using var reader = new SaveReader(memoryStream);
+
+            m_dataBuffer = reader.ReadDataBuffer();
+            await DeserializeObjects(reader, token);
+
+            Logger.Log(nameof(SaveSystemCore), "Loaded");
+            m_loaded = true;
+            return HandlingResult.Success;
+        }
+
+
+        private static async UniTask SerializeObjects (SaveWriter writer, CancellationToken token) {
             var completedTasks = 0;
 
             foreach (IRuntimeSerializable obj in SerializableObjects) {
@@ -332,53 +379,34 @@ namespace SaveSystem {
                 await obj.Serialize(writer, token);
                 ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
             }
-
-            await memoryStream.WriteDataToFileAsync(m_dataPath, token);
-            Logger.Log(nameof(SaveSystemCore), "Saved");
         }
 
 
-        private static async UniTask<HandlingResult> LoadGlobalData (CancellationToken token) {
-            if (m_loaded) {
-                Logger.LogWarning(nameof(SaveSystemCore), "All objects already loaded");
-                return HandlingResult.Canceled;
+        private static async UniTask DeserializeObjects (SaveReader reader, CancellationToken token) {
+            var completedTasks = 0;
+
+            foreach (IRuntimeSerializable serializable in SerializableObjects) {
+                serializable.Deserialize(reader);
+                ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
             }
 
-            if (!File.Exists(m_dataPath)) {
-                m_registrationClosed = m_loaded = true;
-                return HandlingResult.FileNotExists;
+            foreach (IAsyncRuntimeSerializable serializable in AsyncSerializableObjects) {
+                await serializable.Deserialize(reader, token);
+                ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
             }
+        }
 
-            m_registrationClosed = true;
 
-            try {
-                token.ThrowIfCancellationRequested();
-                var memoryStream = new MemoryStream();
-                await memoryStream.ReadDataFromFileAsync(m_dataPath, token);
-                await using var reader = new SaveReader(memoryStream);
+        private static void SetDefaults () {
+            IEnumerable<IDefault> serializables =
+                SerializableObjects.Select(serializable => serializable as IDefault);
+            foreach (IDefault serializable in serializables)
+                serializable?.SetDefaults();
 
-                m_dataBuffer = reader.ReadDataBuffer();
-
-                var completedTasks = 0;
-
-                foreach (IRuntimeSerializable serializable in SerializableObjects) {
-                    serializable.Deserialize(reader);
-                    ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
-                }
-
-                foreach (IAsyncRuntimeSerializable serializable in AsyncSerializableObjects) {
-                    await serializable.Deserialize(reader, token);
-                    ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
-                }
-
-                Logger.Log(nameof(SaveSystemCore), "Loaded");
-                m_loaded = true;
-                return HandlingResult.Success;
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
-                return HandlingResult.Canceled;
-            }
+            IEnumerable<IDefault> asyncSerializables =
+                AsyncSerializableObjects.Select(serializable => serializable as IDefault);
+            foreach (IDefault serializable in asyncSerializables)
+                serializable?.SetDefaults();
         }
 
 

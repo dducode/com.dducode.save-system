@@ -13,6 +13,7 @@ using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
+// ReSharper disable SuspiciousTypeConversion.Global
 
 namespace SaveSystem {
 
@@ -128,28 +129,16 @@ namespace SaveSystem {
             string dataPath = GetPathFromProfile();
 
             if (!File.Exists(dataPath)) {
-                m_registrationClosed = m_loaded = true;
+                m_registrationClosed = true;
+                SetDefaults();
+                m_loaded = true;
                 return HandlingResult.FileNotExists;
             }
 
             m_registrationClosed = true;
 
             try {
-                token.ThrowIfCancellationRequested();
-                var memoryStream = new MemoryStream();
-                await memoryStream.ReadDataFromFileAsync(dataPath, token);
-                await using var reader = new SaveReader(memoryStream);
-                m_dataBuffer = reader.ReadDataBuffer();
-
-                foreach (IRuntimeSerializable serializable in m_serializables)
-                    serializable.Deserialize(reader);
-
-                foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                    await serializable.Deserialize(reader, token);
-
-                Logger.Log(name, $"{SceneName} data loaded", this);
-                m_loaded = true;
-                return HandlingResult.Success;
+                return await TryLoadSceneDataAsync(token, dataPath);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, $"{SceneName} data loading was canceled", this);
@@ -169,17 +158,54 @@ namespace SaveSystem {
             token.ThrowIfCancellationRequested();
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(m_dataBuffer);
 
+            writer.Write(m_dataBuffer);
+            await SerializeObjects(writer, token);
+
+            await memoryStream.WriteDataToFileAsync(GetPathFromProfile(), token);
+            Logger.Log(name, $"{SceneName} data saved");
+        }
+
+
+        private async UniTask<HandlingResult> TryLoadSceneDataAsync (CancellationToken token, string dataPath) {
+            token.ThrowIfCancellationRequested();
+            var memoryStream = new MemoryStream();
+            await memoryStream.ReadDataFromFileAsync(dataPath, token);
+            await using var reader = new SaveReader(memoryStream);
+
+            m_dataBuffer = reader.ReadDataBuffer();
+            await DeserializeObjects(token, reader);
+
+            Logger.Log(name, $"{SceneName} data loaded", this);
+            m_loaded = true;
+            return HandlingResult.Success;
+        }
+
+
+        private async UniTask SerializeObjects (SaveWriter writer, CancellationToken token) {
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Serialize(writer);
 
             foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
                 await serializable.Serialize(writer, token);
+        }
 
-            await File.WriteAllBytesAsync(GetPathFromProfile(), ((MemoryStream)writer.input).ToArray(), token);
-                
-            Logger.Log(name, $"{SceneName} data saved");
+
+        private async UniTask DeserializeObjects (CancellationToken token, SaveReader reader) {
+            foreach (IRuntimeSerializable serializable in m_serializables)
+                serializable.Deserialize(reader);
+
+            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
+                await serializable.Deserialize(reader, token);
+        }
+
+
+        private void SetDefaults () {
+            foreach (IDefault serializable in m_serializables.Select(serializable => serializable as IDefault))
+                serializable?.SetDefaults();
+
+            foreach (IDefault serializable in m_asyncSerializables.Select(serializable => serializable as IDefault))
+                serializable?.SetDefaults();
         }
 
 

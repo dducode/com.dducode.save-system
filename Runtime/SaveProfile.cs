@@ -12,6 +12,7 @@ using SaveSystem.Internal.Templates;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
+// ReSharper disable SuspiciousTypeConversion.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -19,6 +20,16 @@ using Logger = SaveSystem.Internal.Logger;
 namespace SaveSystem {
 
     public class SaveProfile : IRuntimeSerializable {
+
+        public static SaveProfile Default {
+            get {
+                return m_default ??= new SaveProfile {
+                    Name = "default_profile", ProfileDataFolder = "default_profile"
+                };
+            }
+        }
+
+        private static SaveProfile m_default;
 
         [NotNull]
         public string Name {
@@ -146,28 +157,16 @@ namespace SaveSystem {
             }
 
             if (!File.Exists(DataPath)) {
-                m_registrationClosed = m_loaded = true;
+                m_registrationClosed = true;
+                SetDefaults();
+                m_loaded = true;
                 return HandlingResult.FileNotExists;
             }
 
             m_registrationClosed = true;
 
             try {
-                token.ThrowIfCancellationRequested();
-                var memoryStream = new MemoryStream();
-                await memoryStream.ReadDataFromFileAsync(DataPath, token);
-                await using var reader = new SaveReader(memoryStream);
-                m_dataBuffer = reader.ReadDataBuffer();
-
-                foreach (IRuntimeSerializable serializable in m_serializables)
-                    serializable.Deserialize(reader);
-
-                foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                    await serializable.Deserialize(reader, token);
-
-                Logger.Log(Name, "Profile loaded");
-                m_loaded = true;
-                return HandlingResult.Success;
+                return await TryLoadProfileDataAsync(token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile loading was canceled");
@@ -204,16 +203,54 @@ namespace SaveSystem {
             token.ThrowIfCancellationRequested();
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(m_dataBuffer);
 
+            writer.Write(m_dataBuffer);
+            await SerializeObjects(token, writer);
+
+            await memoryStream.WriteDataToFileAsync(DataPath, token);
+            Logger.Log(Name, "Profile saved");
+        }
+
+
+        private async UniTask<HandlingResult> TryLoadProfileDataAsync (CancellationToken token) {
+            token.ThrowIfCancellationRequested();
+            var memoryStream = new MemoryStream();
+            await memoryStream.ReadDataFromFileAsync(DataPath, token);
+            await using var reader = new SaveReader(memoryStream);
+
+            m_dataBuffer = reader.ReadDataBuffer();
+            await DeserializeObjects(token, reader);
+
+            Logger.Log(Name, "Profile loaded");
+            m_loaded = true;
+            return HandlingResult.Success;
+        }
+
+
+        private async UniTask SerializeObjects (CancellationToken token, SaveWriter writer) {
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Serialize(writer);
 
             foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
                 await serializable.Serialize(writer, token);
+        }
 
-            await memoryStream.WriteDataToFileAsync(DataPath, token);
-            Logger.Log(Name, "Profile saved");
+
+        private async UniTask DeserializeObjects (CancellationToken token, SaveReader reader) {
+            foreach (IRuntimeSerializable serializable in m_serializables)
+                serializable.Deserialize(reader);
+
+            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
+                await serializable.Deserialize(reader, token);
+        }
+
+
+        private void SetDefaults () {
+            foreach (IDefault serializable in m_serializables.Select(serializable => serializable as IDefault))
+                    serializable?.SetDefaults();
+
+            foreach (IDefault serializable in m_asyncSerializables.Select(serializable => serializable as IDefault))
+                    serializable?.SetDefaults();
         }
 
     }

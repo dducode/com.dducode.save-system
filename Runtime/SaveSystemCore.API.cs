@@ -446,7 +446,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await SaveObjectsAsync(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
@@ -473,7 +473,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await LoadGlobalData(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await LoadGlobalDataAsync(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
