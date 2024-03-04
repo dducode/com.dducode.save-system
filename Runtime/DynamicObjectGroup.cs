@@ -4,10 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.Attributes;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal.Diagnostic;
 using ArgumentException = System.ArgumentException;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Object = UnityEngine.Object;
 
 // ReSharper disable UnusedMember.Global
@@ -128,7 +127,7 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask Serialize (BinaryWriter writer, CancellationToken token) {
+        public async UniTask Serialize (SaveWriter writer, CancellationToken token) {
             ClearNullObjects();
 
             if (m_objects.Count != m_serializables.Count + m_asyncSerializables.Count)
@@ -146,7 +145,7 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask Deserialize (BinaryReader reader, CancellationToken token) {
+        public async UniTask Deserialize (SaveReader reader, CancellationToken token) {
             var count = reader.Read<int>();
             if (count == 0)
                 return;

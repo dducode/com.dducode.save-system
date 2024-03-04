@@ -5,12 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Exceptions;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
 #if ENABLE_INPUT_SYSTEM
@@ -25,7 +24,7 @@ namespace SaveSystem {
     public static partial class SaveSystemCore {
 
         /// <summary>
-        /// TODO: add description
+        /// Uses for serializing data into a separately file
         /// </summary>
         [NotNull]
         public static SaveProfile SelectedSaveProfile {
@@ -168,12 +167,12 @@ namespace SaveSystem {
 
 
         /// <summary>
-        /// TODO: add description
+        /// Buffer to writing data in a global scope
         /// </summary>
         public static DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
-                    throw new DataNotLoadedException(Messages.CannotReadData);
+                    Logger.LogWarning(nameof(SaveSystemCore), Messages.AttemptToReadNotLoadedData);
                 return m_dataBuffer;
             }
         }
@@ -189,7 +188,7 @@ namespace SaveSystem {
             var profiles = new List<TProfile>();
 
             foreach (string path in paths) {
-                using var reader = new SaveSystem.BinaryHandlers.BinaryReader(File.Open(path, FileMode.Open));
+                using var reader = new SaveReader(File.Open(path, FileMode.Open));
                 if (typeof(TProfile).ToString() != reader.ReadString())
                     continue;
 
@@ -213,7 +212,7 @@ namespace SaveSystem {
             if (File.Exists(path))
                 return;
 
-            using var writer = new BinaryWriter(File.Open(path, FileMode.OpenOrCreate));
+            using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
             writer.Write(profile.GetType().ToString());
             profile.Serialize(writer);
             Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was registered");

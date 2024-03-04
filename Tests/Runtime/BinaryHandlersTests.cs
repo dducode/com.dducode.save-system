@@ -3,9 +3,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using SaveSystem.BinaryHandlers;
 using UnityEngine;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
 
 namespace SaveSystem.Tests {
 
@@ -26,10 +25,10 @@ namespace SaveSystem.Tests {
 
         [Test]
         public void WriteRead () {
-            using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
+            using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 writer.Write(GetData(25));
 
-            using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open))) {
+            using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open))) {
                 var message = new StringBuilder();
                 int[] data = reader.ReadArray<int>();
                 foreach (int i in data)
@@ -41,10 +40,10 @@ namespace SaveSystem.Tests {
 
         [Test]
         public async Task WriteReadAsync () {
-            using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
+            using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 await writer.WriteAsync(GetData(25));
 
-            using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open))) {
+            using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open))) {
                 var message = new StringBuilder();
                 int[] data = await reader.ReadArrayAsync<int>();
                 foreach (int i in data)
@@ -65,14 +64,14 @@ namespace SaveSystem.Tests {
             var meshFilter = gameObject.GetComponent<MeshFilter>();
             Mesh mesh = meshFilter.mesh;
 
-            using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
+            using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 writer.Write(mesh);
 
             Object.Destroy(meshFilter.mesh);
             Debug.Log("Destroy mesh");
             await UniTask.WaitForSeconds(duration);
 
-            using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open)))
+            using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open)))
                 meshFilter.mesh = reader.ReadMeshData();
 
             Debug.Log("Load mesh");

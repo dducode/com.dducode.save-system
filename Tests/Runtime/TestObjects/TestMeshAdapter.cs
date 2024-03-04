@@ -12,12 +12,12 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void Serialize (BinaryWriter writer) {
+        public void Serialize (SaveWriter writer) {
             writer.Write(Target.meshData);
         }
 
 
-        public void Deserialize (BinaryReader reader) {
+        public void Deserialize (SaveReader reader) {
             Target.meshData = reader.ReadMeshData();
         }
 

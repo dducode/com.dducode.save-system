@@ -3,10 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 
 
 namespace SaveSystem.Tests {
@@ -32,7 +31,7 @@ namespace SaveSystem.Tests {
             );
             objectGroup.CreateObjects(100);
 
-            using (var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
+            using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 await objectGroup.Serialize(writer, CancellationToken.None);
 
             await UniTask.WaitForSeconds(2);
@@ -46,7 +45,7 @@ namespace SaveSystem.Tests {
                     new BufferableObjectFactory(), new BufferableObjectProvider()
                 );
 
-            using (var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open)))
+            using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open)))
                 await objectGroup.Deserialize(reader, CancellationToken.None);
 
             await UniTask.WaitForSeconds(2);

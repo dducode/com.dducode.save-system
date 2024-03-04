@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine.Rendering;
 
@@ -11,12 +11,12 @@ using UnityEngine.Rendering;
 
 namespace SaveSystem.BinaryHandlers {
 
-    public class BinaryWriter : IDisposable {
+    public class SaveWriter : IDisposable, IAsyncDisposable {
 
         public readonly Stream input;
 
 
-        public BinaryWriter (Stream input) {
+        public SaveWriter (Stream input) {
             this.input = input;
         }
 
@@ -145,13 +145,14 @@ namespace SaveSystem.BinaryHandlers {
 
 
         public void Dispose () {
-            input.SetLength(input.Position);
-            input.Dispose();
+            input?.SetLength(input.Position);
+            input?.Dispose();
         }
 
 
-        internal async UniTask WriteDataToFileAsync (string path, CancellationToken token) {
-            await File.WriteAllBytesAsync(path, ((MemoryStream)input).ToArray(), token);
+        public async ValueTask DisposeAsync () {
+            if (input != null)
+                await input.DisposeAsync();
         }
 
     }

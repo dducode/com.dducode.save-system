@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -11,13 +12,13 @@ using UnityEngine.Rendering;
 
 namespace SaveSystem.BinaryHandlers {
 
-    public class BinaryReader : IDisposable {
+    public class SaveReader : IDisposable, IAsyncDisposable {
 
         public readonly Stream output;
         private long m_streamPosition;
 
 
-        public BinaryReader (Stream output) {
+        public SaveReader (Stream output) {
             this.output = output;
         }
 
@@ -168,9 +169,9 @@ namespace SaveSystem.BinaryHandlers {
         }
 
 
-        internal async UniTask ReadDataFromFileAsync (string path, CancellationToken token) {
-            await output.WriteAsync(await File.ReadAllBytesAsync(path, token), token);
-            output.Position = 0;
+        public async ValueTask DisposeAsync () {
+            if (output != null)
+                await output.DisposeAsync();
         }
 
     }

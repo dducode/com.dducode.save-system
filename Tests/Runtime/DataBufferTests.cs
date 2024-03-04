@@ -1,9 +1,8 @@
 ﻿using System.IO;
 using System.Text;
 using NUnit.Framework;
+using SaveSystem.BinaryHandlers;
 using UnityEngine;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 
 namespace SaveSystem.Tests {
 
@@ -23,7 +22,7 @@ namespace SaveSystem.Tests {
                 positions[i] = Random.insideUnitSphere;
 
             buffer.Write(PositionsKey, positions);
-            using var writer = new BinaryWriter(File.Open(m_filePath, FileMode.OpenOrCreate));
+            using var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate));
             writer.Write(buffer);
 
             var message = new StringBuilder();
@@ -35,7 +34,7 @@ namespace SaveSystem.Tests {
 
         [Test]
         public void ReadArray () {
-            using var reader = new BinaryReader(File.Open(m_filePath, FileMode.Open));
+            using var reader = new SaveReader(File.Open(m_filePath, FileMode.Open));
             DataBuffer buffer = reader.ReadDataBuffer();
             Vector3[] positions = buffer.GetArray<Vector3>(PositionsKey);
 

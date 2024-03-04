@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal;
+using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 using Object = UnityEngine.Object;
 
@@ -296,46 +296,42 @@ namespace SaveSystem {
                     }
                 }
 
-                Logger.Log(nameof(SaveSystemCore), "All registered objects was saved");
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation was canceled");
+                Logger.LogWarning(nameof(SaveSystemCore), "Saving operation canceled");
                 return HandlingResult.Canceled;
             }
         }
 
 
         private static async UniTask SaveGlobalData (CancellationToken token) {
-            if (ObjectsCount == 0 && DataBuffer.Count == 0)
+            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
             if (!m_loaded)
                 Logger.LogWarning(nameof(SaveSystemCore), "Start saving when objects not loaded");
 
             m_registrationClosed = true;
 
-            try {
-                token.ThrowIfCancellationRequested();
-                using var writer = new BinaryWriter(new MemoryStream());
-                writer.Write(DataBuffer);
+            token.ThrowIfCancellationRequested();
+            var memoryStream = new MemoryStream();
+            await using var writer = new SaveWriter(memoryStream);
+            writer.Write(m_dataBuffer);
 
-                var completedTasks = 0;
+            var completedTasks = 0;
 
-                foreach (IRuntimeSerializable obj in SerializableObjects) {
-                    obj.Serialize(writer);
-                    ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
-                }
-
-                foreach (IAsyncRuntimeSerializable obj in AsyncSerializableObjects) {
-                    await obj.Serialize(writer, token);
-                    ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
-                }
-
-                await writer.WriteDataToFileAsync(m_dataPath, token);
+            foreach (IRuntimeSerializable obj in SerializableObjects) {
+                obj.Serialize(writer);
+                ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
             }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving was canceled");
+
+            foreach (IAsyncRuntimeSerializable obj in AsyncSerializableObjects) {
+                await obj.Serialize(writer, token);
+                ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
             }
+
+            await memoryStream.WriteDataToFileAsync(m_dataPath, token);
+            Logger.Log(nameof(SaveSystemCore), "Saved");
         }
 
 
@@ -354,8 +350,9 @@ namespace SaveSystem {
 
             try {
                 token.ThrowIfCancellationRequested();
-                using var reader = new BinaryReader(new MemoryStream());
-                await reader.ReadDataFromFileAsync(m_dataPath, token);
+                var memoryStream = new MemoryStream();
+                await memoryStream.ReadDataFromFileAsync(m_dataPath, token);
+                await using var reader = new SaveReader(memoryStream);
 
                 m_dataBuffer = reader.ReadDataBuffer();
 
@@ -371,12 +368,12 @@ namespace SaveSystem {
                     ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
                 }
 
-                Logger.Log(nameof(SaveSystemCore), "Global data was loaded");
+                Logger.Log(nameof(SaveSystemCore), "Loaded");
                 m_loaded = true;
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading was canceled");
+                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
                 return HandlingResult.Canceled;
             }
         }

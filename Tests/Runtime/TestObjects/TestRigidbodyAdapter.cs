@@ -13,12 +13,12 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void Serialize (BinaryWriter writer) {
+        public void Serialize (SaveWriter writer) {
             writer.Write(Target.position);
         }
 
 
-        public void Deserialize (BinaryReader reader) {
+        public void Deserialize (SaveReader reader) {
             Target.position = reader.Read<Vector3>();
         }
 

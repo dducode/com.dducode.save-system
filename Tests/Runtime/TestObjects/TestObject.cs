@@ -11,8 +11,8 @@ namespace SaveSystem.Tests.TestObjects {
         public Quaternion rotation;
         public Color color;
 
-        public abstract void Serialize (BinaryWriter writer);
-        public abstract void Deserialize (BinaryReader reader);
+        public abstract void Serialize (SaveWriter writer);
+        public abstract void Deserialize (SaveReader reader);
 
 
         protected bool Equals (TestObject other) {

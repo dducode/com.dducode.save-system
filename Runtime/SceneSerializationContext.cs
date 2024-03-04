@@ -5,13 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Exceptions;
-using SaveSystem.Internal;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal.Diagnostic;
+using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -23,7 +21,7 @@ namespace SaveSystem {
         public DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
-                    throw new DataNotLoadedException(Messages.CannotReadData);
+                    Logger.LogWarning(name, Messages.AttemptToReadNotLoadedData);
                 return m_dataBuffer;
             }
         }
@@ -138,8 +136,9 @@ namespace SaveSystem {
 
             try {
                 token.ThrowIfCancellationRequested();
-                using var reader = new BinaryReader(new MemoryStream());
-                await reader.ReadDataFromFileAsync(dataPath, token);
+                var memoryStream = new MemoryStream();
+                await memoryStream.ReadDataFromFileAsync(dataPath, token);
+                await using var reader = new SaveReader(memoryStream);
                 m_dataBuffer = reader.ReadDataBuffer();
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
@@ -148,7 +147,7 @@ namespace SaveSystem {
                 foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
                     await serializable.Deserialize(reader, token);
 
-                Logger.Log(name, $"{SceneName} data was loaded", this);
+                Logger.Log(name, $"{SceneName} data loaded", this);
                 m_loaded = true;
                 return HandlingResult.Success;
             }
@@ -167,23 +166,20 @@ namespace SaveSystem {
 
             m_registrationClosed = true;
 
-            try {
-                token.ThrowIfCancellationRequested();
-                using var writer = new BinaryWriter(new MemoryStream());
-                writer.Write(m_dataBuffer);
+            token.ThrowIfCancellationRequested();
+            var memoryStream = new MemoryStream();
+            await using var writer = new SaveWriter(memoryStream);
+            writer.Write(m_dataBuffer);
 
-                foreach (IRuntimeSerializable serializable in m_serializables)
-                    serializable.Serialize(writer);
+            foreach (IRuntimeSerializable serializable in m_serializables)
+                serializable.Serialize(writer);
 
-                foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                    await serializable.Serialize(writer, token);
+            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
+                await serializable.Serialize(writer, token);
 
-                await writer.WriteDataToFileAsync(GetPathFromProfile(), token);
-                Logger.Log(name, $"{SceneName} data was saved");
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, $"{SceneName} data saving was canceled", this);
-            }
+            await File.WriteAllBytesAsync(GetPathFromProfile(), ((MemoryStream)writer.input).ToArray(), token);
+                
+            Logger.Log(name, $"{SceneName} data saved");
         }
 
 

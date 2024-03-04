@@ -34,7 +34,7 @@ namespace SaveSystem {
         /// </summary>
         /// <remarks>
         /// <para>
-        /// TODO: add description
+        /// It is not supported in the Editor
         /// </para>
         /// </remarks>
         OnExit = 8,

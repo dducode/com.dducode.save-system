@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using JetBrains.Annotations;
-using SaveSystem.Exceptions;
-using SaveSystem.Internal;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal.Diagnostic;
+using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
-using BinaryReader = SaveSystem.BinaryHandlers.BinaryReader;
-using BinaryWriter = SaveSystem.BinaryHandlers.BinaryWriter;
 using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -47,7 +45,7 @@ namespace SaveSystem {
         public DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
-                    throw new DataNotLoadedException(Messages.CannotReadData);
+                    Logger.LogWarning(Name, Messages.AttemptToReadNotLoadedData);
                 return m_dataBuffer;
             }
         }
@@ -156,8 +154,9 @@ namespace SaveSystem {
 
             try {
                 token.ThrowIfCancellationRequested();
-                using var reader = new BinaryReader(new MemoryStream());
-                await reader.ReadDataFromFileAsync(DataPath, token);
+                var memoryStream = new MemoryStream();
+                await memoryStream.ReadDataFromFileAsync(DataPath, token);
+                await using var reader = new SaveReader(memoryStream);
                 m_dataBuffer = reader.ReadDataBuffer();
 
                 foreach (IRuntimeSerializable serializable in m_serializables)
@@ -166,7 +165,7 @@ namespace SaveSystem {
                 foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
                     await serializable.Deserialize(reader, token);
 
-                Logger.Log(Name, "Profile was loading");
+                Logger.Log(Name, "Profile loaded");
                 m_loaded = true;
                 return HandlingResult.Success;
             }
@@ -177,13 +176,13 @@ namespace SaveSystem {
         }
 
 
-        public virtual void Serialize (BinaryWriter writer) {
+        public virtual void Serialize (SaveWriter writer) {
             writer.Write(Name);
             writer.Write(ProfileDataFolder);
         }
 
 
-        public virtual void Deserialize (BinaryReader reader) {
+        public virtual void Deserialize (SaveReader reader) {
             Name = reader.ReadString();
             ProfileDataFolder = reader.ReadString();
         }
@@ -202,22 +201,19 @@ namespace SaveSystem {
 
             m_registrationClosed = true;
 
-            try {
-                token.ThrowIfCancellationRequested();
-                using var writer = new BinaryWriter(new MemoryStream());
-                writer.Write(DataBuffer);
+            token.ThrowIfCancellationRequested();
+            var memoryStream = new MemoryStream();
+            await using var writer = new SaveWriter(memoryStream);
+            writer.Write(DataBuffer);
 
-                foreach (IRuntimeSerializable serializable in m_serializables)
-                    serializable.Serialize(writer);
+            foreach (IRuntimeSerializable serializable in m_serializables)
+                serializable.Serialize(writer);
 
-                foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                    await serializable.Serialize(writer, token);
+            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
+                await serializable.Serialize(writer, token);
 
-                await writer.WriteDataToFileAsync(DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile saving was canceled");
-            }
+            await memoryStream.WriteDataToFileAsync(DataPath, token);
+            Logger.Log(Name, "Profile saved");
         }
 
     }

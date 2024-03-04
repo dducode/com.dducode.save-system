@@ -13,7 +13,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void Serialize (BinaryWriter writer) {
+        public void Serialize (SaveWriter writer) {
             var buffer = new DataBuffer();
             buffer.Write(nameof(Target.transform.position), Target.transform.position);
             buffer.Write(nameof(Target.transform.localPosition), Target.transform.localPosition);
@@ -26,7 +26,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void Deserialize (BinaryReader reader) {
+        public void Deserialize (SaveReader reader) {
             DataBuffer buffer = reader.ReadDataBuffer();
             Target.transform.rotation = buffer.Get<Quaternion>(nameof(Target.transform.rotation));
             Target.transform.localRotation = buffer.Get<Quaternion>(nameof(Target.transform.localRotation));

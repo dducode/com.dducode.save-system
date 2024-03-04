@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
 using SaveSystem.Tests.TestObjects;
@@ -190,6 +191,11 @@ namespace SaveSystem.Tests {
             SaveSystemCore.RegisterSerializable(sphereFactory);
             yield return new WaitForEndOfFrame();
             Application.Quit();
+        }
+
+
+        public async Task WriteToDataBuffer () {
+            var buffer = SaveSystemCore.DataBuffer;
         }
 
 
