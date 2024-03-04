@@ -19,6 +19,11 @@
         /// This is sent when the Core starts saving in internal loop
         /// </summary>
         AutoSave,
+        
+        /// <summary>
+        /// This event will be invoked during a scene loading (only when the scene loading operation starts from the Core)
+        /// </summary>
+        OnSceneLoad,
 
         /// <summary>
         /// This is sent when the player exit the game

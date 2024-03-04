@@ -30,6 +30,11 @@ namespace SaveSystem {
         OnLowMemory = 4,
 
         /// <summary>
+        /// This event will be invoked during a scene loading (only when the scene loading operation starts from the Core)
+        /// </summary>
+        OnSceneLoad = 8,
+
+        /// <summary>
         /// This event will be executed when the player will exit the game
         /// </summary>
         /// <remarks>
@@ -37,7 +42,7 @@ namespace SaveSystem {
         /// It is not supported in the Editor
         /// </para>
         /// </remarks>
-        OnExit = 8,
+        OnExit = 16,
 
         /// <summary>
         /// All events will be executed

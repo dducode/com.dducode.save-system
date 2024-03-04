@@ -247,20 +247,23 @@ namespace SaveSystem {
 
 
         private static void ScheduleSave (SaveType saveType) {
-            SynchronizationPoint.ScheduleTask(async token => {
-                m_onSaveStart?.Invoke(saveType);
-                HandlingResult result = await SaveObjects(token);
-                m_onSaveEnd?.Invoke(saveType);
+            SynchronizationPoint.ScheduleTask(async token => await CommonSavingTask(saveType, token));
+        }
 
-                if (result is HandlingResult.Success)
-                    Logger.Log(nameof(SaveSystemCore), $"{saveType}: success");
-                else if (result is HandlingResult.Canceled)
-                    Logger.LogWarning(nameof(SaveSystemCore), $"{saveType}: canceled");
-                else if (result is HandlingResult.Error)
-                    Logger.LogError(nameof(SaveSystemCore), $"{saveType}: error");
 
-                return result;
-            });
+        private static async UniTask<HandlingResult> CommonSavingTask (SaveType saveType, CancellationToken token) {
+            m_onSaveStart?.Invoke(saveType);
+            HandlingResult result = await SaveObjects(token);
+            m_onSaveEnd?.Invoke(saveType);
+
+            if (result is HandlingResult.Success)
+                Logger.Log(nameof(SaveSystemCore), $"{saveType}: success");
+            else if (result is HandlingResult.Canceled)
+                Logger.LogWarning(nameof(SaveSystemCore), $"{saveType}: canceled");
+            else if (result is HandlingResult.Error)
+                Logger.LogError(nameof(SaveSystemCore), $"{saveType}: error");
+
+            return result;
         }
 
 

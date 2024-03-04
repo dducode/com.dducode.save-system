@@ -139,11 +139,15 @@ namespace SaveSystem {
         public static event Action<SaveType> OnSaveStart {
             add {
                 m_onSaveStart += value;
-                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event");
+                Logger.Log(nameof(SaveSystemCore),
+                    $"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event"
+                );
             }
             remove {
                 m_onSaveStart -= value;
-                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event");
+                Logger.Log(nameof(SaveSystemCore),
+                    $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event"
+                );
             }
         }
 
@@ -157,11 +161,15 @@ namespace SaveSystem {
         public static event Action<SaveType> OnSaveEnd {
             add {
                 m_onSaveEnd += value;
-                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event");
+                Logger.Log(nameof(SaveSystemCore),
+                    $"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event"
+                );
             }
             remove {
                 m_onSaveEnd -= value;
-                Logger.Log(nameof(SaveSystemCore), $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event");
+                Logger.Log(nameof(SaveSystemCore),
+                    $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event"
+                );
             }
         }
 
@@ -328,12 +336,14 @@ namespace SaveSystem {
             m_playerTag = playerTag;
             m_savePeriod = savePeriod;
 
-            Logger.Log(nameof(SaveSystemCore), "Parameters was configured:" +
-                             $"\nEnabled Save Events: {EnabledSaveEvents}" +
-                             $"\nIs Parallel: {IsParallel}" +
-                             $"\nEnabled Logs: {enabledLogs}" +
-                             $"\nPlayer Tag: {PlayerTag}" +
-                             $"\nSave Period: {SavePeriod}");
+            Logger.Log(nameof(SaveSystemCore),
+                "Parameters was configured:" +
+                $"\nEnabled Save Events: {EnabledSaveEvents}" +
+                $"\nIs Parallel: {IsParallel}" +
+                $"\nEnabled Logs: {enabledLogs}" +
+                $"\nPlayer Tag: {PlayerTag}" +
+                $"\nSave Period: {SavePeriod}"
+            );
         }
 
 
@@ -383,22 +393,36 @@ namespace SaveSystem {
     #endif
 
 
-        public static async UniTask LoadSceneAsync (Action sceneLoading) {
+        public static async UniTask LoadSceneAsync (Action sceneLoading, CancellationToken token = default) {
+            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
+                await ExecuteOnSceneLoadSaving(token);
             await SceneLoader.LoadSceneAsync(sceneLoading);
         }
 
 
-        public static async UniTask LoadSceneAsync<TData> (Action sceneLoading, TData passedData) {
+        public static async UniTask LoadSceneAsync<TData> (
+            Action sceneLoading, TData passedData, CancellationToken token = default
+        ) {
+            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
+                await ExecuteOnSceneLoadSaving(token);
             await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
         }
 
 
-        public static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
+        public static async UniTask LoadSceneAsync (
+            Func<UniTask> asyncSceneLoading, CancellationToken token = default
+        ) {
+            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
+                await ExecuteOnSceneLoadSaving(token);
             await SceneLoader.LoadSceneAsync(asyncSceneLoading);
         }
 
 
-        public static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData passedData) {
+        public static async UniTask LoadSceneAsync<TData> (
+            Func<UniTask> asyncSceneLoading, TData passedData, CancellationToken token = default
+        ) {
+            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
+                await ExecuteOnSceneLoadSaving(token);
             await SceneLoader.LoadSceneAsync(asyncSceneLoading, passedData);
         }
 
@@ -454,6 +478,11 @@ namespace SaveSystem {
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
             }
+        }
+
+
+        private static async UniTask ExecuteOnSceneLoadSaving (CancellationToken token) {
+            await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
         }
 
     }
