@@ -45,7 +45,7 @@ namespace SaveSystem {
         public DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
-                    Logger.LogWarning(Name, Messages.AttemptToReadNotLoadedData);
+                    Logger.LogWarning(Name, Messages.TryingToReadNotLoadedData);
                 return m_dataBuffer;
             }
         }
@@ -194,7 +194,7 @@ namespace SaveSystem {
 
 
         internal async UniTask SaveProfileDataAsync (CancellationToken token) {
-            if (ObjectsCount == 0 && DataBuffer.Count == 0)
+            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
             if (!m_loaded)
                 Logger.LogWarning(Name, "Start saving when data not loaded");
@@ -204,7 +204,7 @@ namespace SaveSystem {
             token.ThrowIfCancellationRequested();
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(DataBuffer);
+            writer.Write(m_dataBuffer);
 
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Serialize(writer);

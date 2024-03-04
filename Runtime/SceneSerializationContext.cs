@@ -21,7 +21,7 @@ namespace SaveSystem {
         public DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
-                    Logger.LogWarning(name, Messages.AttemptToReadNotLoadedData);
+                    Logger.LogWarning(name, Messages.TryingToReadNotLoadedData);
                 return m_dataBuffer;
             }
         }

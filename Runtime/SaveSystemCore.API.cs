@@ -172,7 +172,7 @@ namespace SaveSystem {
         public static DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
-                    Logger.LogWarning(nameof(SaveSystemCore), Messages.AttemptToReadNotLoadedData);
+                    Logger.LogWarning(nameof(SaveSystemCore), Messages.TryingToReadNotLoadedData);
                 return m_dataBuffer;
             }
         }
