@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
 using SaveSystem.Tests.TestObjects;
@@ -36,17 +37,12 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator AutoSave () {
-            var simpleObject = new BinaryObject {
-                name = "Binary Object",
-                position = new Vector3(10, 0, 15),
-                rotation = new Quaternion(100, 5, 14, 0),
-                color = Color.cyan
-            };
+            TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
             SaveSystemCore.SavePeriod = 1.5f;
             SaveSystemCore.EnabledSaveEvents = SaveEvents.AutoSave;
 
-            SaveSystemCore.RegisterSerializable(simpleObject);
+            SaveSystemCore.RegisterSerializable(new TestObjectAdapter(simpleObject));
 
             var autoSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -61,13 +57,7 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator QuickSave () {
-            var simpleObject = new BinaryObject {
-                name = "Binary Object",
-                position = new Vector3(10, 0, 15),
-                rotation = new Quaternion(100, 5, 14, 0),
-                color = Color.cyan
-            };
-
+            TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
         #if ENABLE_LEGACY_INPUT_MANAGER
             SaveSystemCore.BindKey(KeyCode.S);
@@ -77,7 +67,7 @@ namespace SaveSystem.Tests {
             #error Compile error: no unity inputs enabled
         #endif
 
-            SaveSystemCore.RegisterSerializable(simpleObject);
+            SaveSystemCore.RegisterSerializable(new TestObjectAdapter(simpleObject));
 
             var quickSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -118,7 +108,7 @@ namespace SaveSystem.Tests {
         public IEnumerator ManySpheres () {
             const string sphereTag = "Player";
             var spheres = new List<TestRigidbodyAdapter>();
-            var factory = new SphereFactory<TestRigidbody>();
+            var factory = new TestObjectDecorator<TestRigidbody>(new TestObjectFactory(PrimitiveType.Sphere));
 
             // Spawn spheres
             for (var i = 0; i < 1000; i++) {
@@ -130,9 +120,12 @@ namespace SaveSystem.Tests {
             }
 
             SaveSystemCore.RegisterSerializables(spheres);
-            SaveSystemCore.ConfigureParameters(
-                SaveEvents.AutoSave | SaveEvents.OnFocusLost, LogLevel.All,
-                false, sphereTag, 3);
+            var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
+            settings.enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusLost;
+            settings.savePeriod = 3;
+            settings.enabledLogs = LogLevel.All;
+            settings.playerTag = sphereTag;
+            SaveSystemCore.ConfigureSettings(settings);
 
             var testStopped = false;
 
@@ -156,13 +149,13 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
-            var factory = new SphereFactory<TestMesh>();
+            var factory = new TestObjectFactory(PrimitiveType.Cube);
 
             for (var i = 0; i < 5; i++) {
-                var meshes = new List<TestMeshAdapter>();
+                var meshes = new List<TestObjectAdapter>();
 
                 for (var j = 0; j < 50; j++)
-                    meshes.Add(new TestMeshAdapter(factory.CreateObject()));
+                    meshes.Add(new TestObjectAdapter(factory.CreateObject()));
 
                 SaveSystemCore.RegisterSerializables(meshes);
                 yield return new WaitForEndOfFrame();
@@ -184,7 +177,9 @@ namespace SaveSystem.Tests {
 
         [UnityTest]
         public IEnumerator Quitting () {
-            var sphereFactory = new DynamicObjectGroup<TestMesh>(new SphereFactory<TestMesh>(), new TestMeshProvider());
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Cube), new TestObjectProvider()
+            );
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
@@ -194,6 +189,34 @@ namespace SaveSystem.Tests {
         }
 
 
+        [Test]
+        public async Task SerializeWithEncryption () {
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
+            );
+            sphereFactory.CreateObjects(250);
+
+            SaveSystemCore.Encrypt = true;
+            SaveSystemCore.RegisterSerializable(sphereFactory);
+            await SaveSystemCore.SaveAsync();
+            await UniTask.WaitForSeconds(2);
+        }
+
+
+        [Test]
+        public async Task DeserializeWithDecryption () {
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
+            );
+
+            SaveSystemCore.Encrypt = true;
+            SaveSystemCore.RegisterSerializable(sphereFactory);
+            await SaveSystemCore.LoadAsync();
+            await UniTask.WaitForSeconds(2);
+        }
+
+
+        // TODO: write test
         public async Task WriteToDataBuffer () {
             var buffer = SaveSystemCore.DataBuffer;
         }
@@ -201,7 +224,6 @@ namespace SaveSystem.Tests {
 
         [TearDown]
         public void EndTest () {
-            Storage.DeleteAllData();
             Debug.Log("End test");
         }
 

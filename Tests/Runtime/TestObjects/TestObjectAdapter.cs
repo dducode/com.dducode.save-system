@@ -3,12 +3,12 @@ using UnityEngine;
 
 namespace SaveSystem.Tests.TestObjects {
 
-    public class BufferableObjectAdapter : ISerializationAdapter<BufferableObject> {
+    public class TestObjectAdapter : ISerializationAdapter<TestObject> {
 
-        public BufferableObject Target { get; }
+        public TestObject Target { get; }
 
 
-        public BufferableObjectAdapter (BufferableObject target) {
+        public TestObjectAdapter (TestObject target) {
             Target = target;
         }
 
