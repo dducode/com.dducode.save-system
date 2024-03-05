@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
+using SaveSystem.Cryptography;
+using SaveSystem.Internal.CryptoProviders;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using SaveSystem.Internal.Templates;
@@ -90,7 +92,22 @@ namespace SaveSystem {
             get => m_isParallel;
             set {
                 m_isParallel = value;
-                Logger.Log(nameof(SaveSystemCore), (value ? "Enable" : "Disable") + " parallel saving");
+                Logger.Log(nameof(SaveSystemCore), "Parallel saving: " + (value ? "enable" : "disable"));
+            }
+        }
+
+        /// <summary>
+        /// Set the global data path
+        /// </summary>
+        [NotNull]
+        public static string DataPath {
+            get => m_dataPath;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
+
+                m_dataPath = Storage.PrepareBeforeUsing(value, false);
+                Logger.Log(nameof(SaveSystemCore), $"Set data path: {value}");
             }
         }
 
@@ -113,19 +130,58 @@ namespace SaveSystem {
             }
         }
 
+        /// <summary>
+        /// Enable/disable a file encryption
+        /// </summary>
+        public static bool Encrypt {
+            get => m_encrypt;
+            set {
+                m_encrypt = value;
+                Logger.Log(nameof(SaveSystemCore), $"Encrypt: {(value ? "enable" : "disable")}");
+            }
+        }
 
         /// <summary>
-        /// Set the global data path
+        /// Configure length of the encryption key
         /// </summary>
-        [NotNull]
-        public static string DataPath {
-            get => m_dataPath;
+        /// <remarks> This is ignored when encryption is disabled </remarks>
+        public static AESKeyLength AesKeyLength {
+            get => m_aesKeyLength;
             set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
+                m_aesKeyLength = value;
+                Logger.Log(nameof(SaveSystemCore), $"Set AES key length: {value}");
+            }
+        }
 
-                m_dataPath = Storage.PrepareBeforeUsing(value, false);
-                Logger.Log(nameof(SaveSystemCore), $"Set data path: {value}");
+        /// <summary>
+        /// Set your custom password provider
+        /// </summary>
+        /// <remarks>
+        /// <para> By default used <see cref="DefaultPasswordProvider"/> </para>
+        /// <para> This is ignored when encryption is disabled </para>
+        /// </remarks>
+        [NotNull]
+        public static IKeyProvider<string> PasswordProvider {
+            get => m_passwordProvider;
+            set {
+                m_passwordProvider = value ?? throw new ArgumentNullException(nameof(value));
+                Logger.Log(nameof(SaveSystemCore), $"Set password provider: {value}");
+            }
+        }
+
+        /// <summary>
+        /// Set your custom salt key provider
+        /// </summary>
+        /// <remarks>
+        /// <para> By default used <see cref="DefaultSaltProvider"/> </para>
+        /// <para> This is ignored when encryption is disabled </para>
+        /// </remarks>
+        [NotNull]
+        public static IKeyProvider<byte[]> SaltProvider {
+            get => m_saltProvider;
+            set {
+                m_saltProvider = value ?? throw new ArgumentNullException(nameof(value));
+                Logger.Log(nameof(SaveSystemCore), $"Set salt provider: {value}");
             }
         }
 
@@ -323,27 +379,9 @@ namespace SaveSystem {
         /// Configures all the Core parameters
         /// </summary>
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
-        public static void ConfigureParameters (
-            SaveEvents enabledSaveEvents,
-            LogLevel enabledLogs,
-            bool isParallel,
-            string playerTag,
-            float savePeriod = 0
-        ) {
-            SetupEvents(m_enabledSaveEvents = enabledSaveEvents);
-            Logger.EnabledLogs = enabledLogs;
-            m_isParallel = isParallel;
-            m_playerTag = playerTag;
-            m_savePeriod = savePeriod;
-
-            Logger.Log(nameof(SaveSystemCore),
-                "Parameters was configured:" +
-                $"\nEnabled Save Events: {EnabledSaveEvents}" +
-                $"\nIs Parallel: {IsParallel}" +
-                $"\nEnabled Logs: {enabledLogs}" +
-                $"\nPlayer Tag: {PlayerTag}" +
-                $"\nSave Period: {SavePeriod}"
-            );
+        public static void ConfigureSettings (SaveSystemSettings settings) {
+            SetSettings(settings);
+            Logger.Log(nameof(SaveSystemCore), $"Parameters was configured: {settings}");
         }
 
 
@@ -446,7 +484,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await SaveObjectsAsync(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
@@ -473,7 +511,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await LoadGlobalDataAsync(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await LoadGlobalData(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
