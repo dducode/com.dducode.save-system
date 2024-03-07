@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -24,10 +22,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_playerTagProperty;
 
         private SerializedProperty m_encryptProperty;
-        private SerializedProperty m_useCustomProvidersProperty;
-        private SerializedProperty m_passwordProperty;
-        private SerializedProperty m_saltKeyProperty;
-        private SerializedProperty m_keyGenerationParamsProperty;
+        private SerializedProperty m_encryptionSettingsProperty;
 
 
         public SettingsTab () {
@@ -87,10 +82,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
 
             m_encryptProperty = m_serializedSettings.FindProperty("encryption");
-            m_useCustomProvidersProperty = m_serializedSettings.FindProperty("useCustomProviders");
-            m_passwordProperty = m_serializedSettings.FindProperty("password");
-            m_saltKeyProperty = m_serializedSettings.FindProperty("saltKey");
-            m_keyGenerationParamsProperty = m_serializedSettings.FindProperty("keyGenerationParams");
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -126,40 +118,10 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.LabelField("Encryption settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_encryptProperty);
 
-            if (m_encryptProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_useCustomProvidersProperty);
-
-                if (!m_useCustomProvidersProperty.boolValue) {
-                    DrawKeyProperty(m_passwordProperty, "Generate Password");
-                    DrawKeyProperty(m_saltKeyProperty, "Generate Salt Key");
-                }
-
-                EditorGUILayout.PropertyField(m_keyGenerationParamsProperty, GUILayout.MaxWidth(300));
-            }
+            if (m_encryptProperty.boolValue) 
+                EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
 
             EditorGUILayout.Space(15);
-        }
-
-
-        private void DrawKeyProperty (SerializedProperty keyProperty, string buttonTitle) {
-            using var scope = new GUILayout.HorizontalScope();
-            if (string.IsNullOrEmpty(keyProperty.stringValue))
-                keyProperty.stringValue = GenerateRandomKey();
-
-            EditorGUILayout.PropertyField(keyProperty, GUILayout.MaxWidth(500));
-            if (GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false)))
-                keyProperty.stringValue = GenerateRandomKey();
-        }
-
-
-        private string GenerateRandomKey () {
-            const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!#$%&*";
-            var result = new StringBuilder();
-
-            for (var i = 0; i < 16; i++)
-                result.Append(valid[RandomNumberGenerator.GetInt32(0, valid.Length)]);
-
-            return result.ToString();
         }
 
     }

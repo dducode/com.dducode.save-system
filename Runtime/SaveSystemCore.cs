@@ -7,7 +7,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Cryptography;
 using SaveSystem.Internal;
-using SaveSystem.Internal.CryptoProviders;
+using SaveSystem.Internal.Cryptography;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 using UnityEngine.LowLevel;
@@ -128,15 +128,13 @@ namespace SaveSystem {
 
             // Encryption settings
             m_encrypt = settings.encryption;
-            m_cryptographer ??= new Cryptographer(
-                new DefaultPasswordProvider(settings.password),
-                new DefaultSaltProvider(settings.saltKey),
-                settings.keyGenerationParams
-            );
+            m_selectedSaveProfile.Encrypt = settings.encryption;
+            m_cryptographer ??= new Cryptographer(settings.encryptionSettings);
+            m_selectedSaveProfile.Cryptographer ??= m_cryptographer;
 
-            if (m_encrypt && !settings.useCustomProviders) {
-                m_cryptographer.PasswordProvider = new DefaultPasswordProvider(settings.password);
-                m_cryptographer.SaltProvider = new DefaultSaltProvider(settings.saltKey);
+            if (m_encrypt && !settings.encryptionSettings.useCustomProviders) {
+                m_cryptographer.PasswordProvider = new DefaultPasswordProvider(settings.encryptionSettings.password);
+                m_cryptographer.SaltProvider = new DefaultSaltProvider(settings.encryptionSettings.saltKey);
             }
         }
 
@@ -301,7 +299,7 @@ namespace SaveSystem {
             try {
                 token.ThrowIfCancellationRequested();
                 await SaveGlobalData(token);
-                await m_selectedSaveProfile.SaveProfileDataAsync(token);
+                await m_selectedSaveProfile.SaveProfileData(token);
 
                 SceneSerializationContext[] contexts =
                     Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
@@ -310,12 +308,12 @@ namespace SaveSystem {
                     if (IsParallel && contexts.Length > 1) {
                         await ParallelLoop.ForEachAsync(
                             contexts,
-                            async sceneLoader => await sceneLoader.SaveSceneDataAsync(token)
+                            async sceneLoader => await sceneLoader.SaveSceneData(token)
                         );
                     }
                     else {
                         foreach (SceneSerializationContext sceneLoader in contexts)
-                            await sceneLoader.SaveSceneDataAsync(token);
+                            await sceneLoader.SaveSceneData(token);
                     }
                 }
 
@@ -346,7 +344,7 @@ namespace SaveSystem {
             byte[] data = memoryStream.ToArray();
 
             if (Encrypt)
-                data = await m_cryptographer.Encrypt(data);
+                data = await m_cryptographer.Encrypt(data, token);
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(nameof(SaveSystemCore), "Saved");
@@ -383,7 +381,7 @@ namespace SaveSystem {
             byte[] data = await File.ReadAllBytesAsync(DataPath, token).AsUniTask();
 
             if (Encrypt)
-                data = await m_cryptographer.Decrypt(data);
+                data = await m_cryptographer.Decrypt(data, token);
 
             var memoryStream = new MemoryStream(data);
             await using var reader = new SaveReader(memoryStream);

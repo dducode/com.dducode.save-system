@@ -7,7 +7,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Cryptography;
-using SaveSystem.Internal.CryptoProviders;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using SaveSystem.Internal.Templates;
@@ -141,10 +140,13 @@ namespace SaveSystem {
             }
         }
 
+        /// <summary>
+        /// Cryptographer used to encrypt/decrypt serializable data
+        /// </summary>
         public static Cryptographer Cryptographer {
             get => m_cryptographer;
             set {
-                m_cryptographer = value ?? throw new ArgumentNullException(nameof(value));
+                m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
                 Logger.Log(nameof(SaveSystemCore), $"Set cryptographer: {value}");
             }
         }

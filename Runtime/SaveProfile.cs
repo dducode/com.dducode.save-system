@@ -6,8 +6,8 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
+using SaveSystem.Cryptography;
 using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
@@ -53,6 +53,23 @@ namespace SaveSystem {
             }
         }
 
+        public bool Encrypt {
+            get => m_encrypt;
+            set {
+                m_encrypt = value;
+                Logger.Log(Name, $"{(value ? "Enable" : "Disable")} encryption");
+            }
+        }
+
+        [NotNull]
+        public Cryptographer Cryptographer {
+            get => m_cryptographer;
+            set {
+                m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
+                Logger.Log(Name, $"Set cryptographer: {value}");
+            }
+        }
+
         public DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
@@ -68,11 +85,13 @@ namespace SaveSystem {
         private readonly List<IRuntimeSerializable> m_serializables = new();
         private readonly List<IAsyncRuntimeSerializable> m_asyncSerializables = new();
 
+        private Cryptographer m_cryptographer;
         private DataBuffer m_dataBuffer = new();
         private string m_name;
         private string m_profileDataFolder;
         private bool m_loaded;
         private bool m_registrationClosed;
+        private bool m_encrypt;
 
 
         public void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
@@ -138,11 +157,11 @@ namespace SaveSystem {
         }
 
 
-        public async void LoadProfileDataAsync (
+        public async void LoadProfileData (
             Action<HandlingResult> continuation, CancellationToken token = default
         ) {
             try {
-                continuation(await LoadProfileDataAsync(token));
+                continuation(await LoadProfileData(token));
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -150,7 +169,7 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadProfileDataAsync (CancellationToken token = default) {
+        public async UniTask<HandlingResult> LoadProfileData (CancellationToken token = default) {
             if (m_loaded) {
                 Logger.LogWarning(Name, "All objects already loaded");
                 return HandlingResult.Canceled;
@@ -166,7 +185,7 @@ namespace SaveSystem {
             m_registrationClosed = true;
 
             try {
-                return await TryLoadProfileDataAsync(token);
+                return await TryLoadProfileData(token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile loading was canceled");
@@ -192,7 +211,7 @@ namespace SaveSystem {
         }
 
 
-        internal async UniTask SaveProfileDataAsync (CancellationToken token) {
+        internal async UniTask SaveProfileData (CancellationToken token) {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
             if (!m_loaded)
@@ -205,21 +224,30 @@ namespace SaveSystem {
             await using var writer = new SaveWriter(memoryStream);
 
             writer.Write(m_dataBuffer);
-            await SerializeObjects(token, writer);
+            await SerializeObjects(writer, token);
 
-            await memoryStream.WriteDataToFileAsync(DataPath, token);
+            byte[] data = memoryStream.ToArray();
+
+            if (Encrypt)
+                data = await m_cryptographer.Encrypt(data, token);
+
+            await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Profile saved");
         }
 
 
-        private async UniTask<HandlingResult> TryLoadProfileDataAsync (CancellationToken token) {
+        private async UniTask<HandlingResult> TryLoadProfileData (CancellationToken token) {
             token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
-            await memoryStream.ReadDataFromFileAsync(DataPath, token);
+            byte[] data = await File.ReadAllBytesAsync(DataPath, token);
+
+            if (Encrypt)
+                data = await m_cryptographer.Decrypt(data, token);
+
+            var memoryStream = new MemoryStream(data);
             await using var reader = new SaveReader(memoryStream);
 
             m_dataBuffer = reader.ReadDataBuffer();
-            await DeserializeObjects(token, reader);
+            await DeserializeObjects(reader, token);
 
             Logger.Log(Name, "Profile loaded");
             m_loaded = true;
@@ -227,7 +255,7 @@ namespace SaveSystem {
         }
 
 
-        private async UniTask SerializeObjects (CancellationToken token, SaveWriter writer) {
+        private async UniTask SerializeObjects (SaveWriter writer, CancellationToken token) {
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Serialize(writer);
 
@@ -236,7 +264,7 @@ namespace SaveSystem {
         }
 
 
-        private async UniTask DeserializeObjects (CancellationToken token, SaveReader reader) {
+        private async UniTask DeserializeObjects (SaveReader reader, CancellationToken token) {
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Deserialize(reader);
 
@@ -247,10 +275,10 @@ namespace SaveSystem {
 
         private void SetDefaults () {
             foreach (IDefault serializable in m_serializables.Select(serializable => serializable as IDefault))
-                    serializable?.SetDefaults();
+                serializable?.SetDefaults();
 
             foreach (IDefault serializable in m_asyncSerializables.Select(serializable => serializable as IDefault))
-                    serializable?.SetDefaults();
+                serializable?.SetDefaults();
         }
 
     }

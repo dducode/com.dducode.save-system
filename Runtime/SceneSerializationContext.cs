@@ -6,12 +6,13 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
+using SaveSystem.Cryptography;
 using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
+// ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable SuspiciousTypeConversion.Global
 
@@ -19,11 +20,34 @@ namespace SaveSystem {
 
     public sealed class SceneSerializationContext : MonoBehaviour {
 
+        [SerializeField]
+        private bool encrypt;
+
+        [SerializeField]
+        private EncryptionSettings encryptionSettings;
+
+
         public DataBuffer DataBuffer {
             get {
                 if (!m_loaded)
                     Logger.LogWarning(name, Messages.TryingToReadNotLoadedData);
                 return m_dataBuffer;
+            }
+        }
+
+        public bool Encrypt {
+            get => encrypt;
+            set {
+                encrypt = value;
+                Logger.Log(name, $"{(value ? "Enable" : "Disable")} encryption", this);
+            }
+        }
+
+        public Cryptographer Cryptographer {
+            get => m_cryptographer;
+            set {
+                m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
+                Logger.Log(name, $"Set cryptographer: {value}");
             }
         }
 
@@ -36,6 +60,12 @@ namespace SaveSystem {
         private DataBuffer m_dataBuffer = new();
         private bool m_loaded;
         private bool m_registrationClosed;
+        private Cryptographer m_cryptographer;
+
+
+        private void Awake () {
+            m_cryptographer ??= new Cryptographer(encryptionSettings);
+        }
 
 
         public SceneSerializationContext RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
@@ -108,11 +138,11 @@ namespace SaveSystem {
         }
 
 
-        public async void LoadSceneDataAsync (
+        public async void LoadSceneData (
             Action<HandlingResult> continuation, CancellationToken token = default
         ) {
             try {
-                continuation(await LoadSceneDataAsync(token));
+                continuation(await LoadSceneData(token));
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -120,7 +150,7 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneDataAsync (CancellationToken token = default) {
+        public async UniTask<HandlingResult> LoadSceneData (CancellationToken token = default) {
             if (m_loaded) {
                 Logger.LogWarning(name, "All objects already loaded", this);
                 return HandlingResult.Canceled;
@@ -138,7 +168,7 @@ namespace SaveSystem {
             m_registrationClosed = true;
 
             try {
-                return await TryLoadSceneDataAsync(token, dataPath);
+                return await TryLoadSceneData(token, dataPath);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, $"{SceneName} data loading was canceled", this);
@@ -147,7 +177,7 @@ namespace SaveSystem {
         }
 
 
-        internal async UniTask SaveSceneDataAsync (CancellationToken token) {
+        internal async UniTask SaveSceneData (CancellationToken token) {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
             if (!m_loaded)
@@ -162,19 +192,28 @@ namespace SaveSystem {
             writer.Write(m_dataBuffer);
             await SerializeObjects(writer, token);
 
-            await memoryStream.WriteDataToFileAsync(GetPathFromProfile(), token);
+            byte[] data = memoryStream.ToArray();
+
+            if (Encrypt)
+                data = await m_cryptographer.Encrypt(data, token);
+
+            await File.WriteAllBytesAsync(GetPathFromProfile(), data, token);
             Logger.Log(name, $"{SceneName} data saved");
         }
 
 
-        private async UniTask<HandlingResult> TryLoadSceneDataAsync (CancellationToken token, string dataPath) {
+        private async UniTask<HandlingResult> TryLoadSceneData (CancellationToken token, string dataPath) {
             token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
-            await memoryStream.ReadDataFromFileAsync(dataPath, token);
+            byte[] data = await File.ReadAllBytesAsync(dataPath, token);
+
+            if (Encrypt)
+                data = await m_cryptographer.Decrypt(data, token);
+
+            var memoryStream = new MemoryStream(data);
             await using var reader = new SaveReader(memoryStream);
 
             m_dataBuffer = reader.ReadDataBuffer();
-            await DeserializeObjects(token, reader);
+            await DeserializeObjects(reader, token);
 
             Logger.Log(name, $"{SceneName} data loaded", this);
             m_loaded = true;
@@ -191,7 +230,7 @@ namespace SaveSystem {
         }
 
 
-        private async UniTask DeserializeObjects (CancellationToken token, SaveReader reader) {
+        private async UniTask DeserializeObjects (SaveReader reader, CancellationToken token) {
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Deserialize(reader);
 
