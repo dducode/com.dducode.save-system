@@ -5,8 +5,9 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
+using SaveSystem.Cryptography;
 using SaveSystem.Internal;
-using SaveSystem.Internal.Extensions;
+using SaveSystem.Internal.CryptoProviders;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 using UnityEngine.LowLevel;
@@ -33,13 +34,19 @@ namespace SaveSystem {
         private const string ProfileMetadataExtension = ".profilemetadata";
 
         private static string m_profilesFolderPath;
-        private static string m_dataPath;
 
+        // Common settings
         private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
         private static bool m_isParallel;
+        private static string m_dataPath;
+
+        // Checkpoints settings
         private static string m_playerTag;
+
+        // Encryption settings
+        private static bool m_encrypt;
 
         private static Action<SaveType> m_onSaveStart;
         private static Action<SaveType> m_onSaveEnd;
@@ -63,6 +70,9 @@ namespace SaveSystem {
 
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
+
+        private static Cryptographer m_cryptographer;
+
         private static IProgress<float> m_saveProgress;
         private static IProgress<float> m_loadProgress;
         private static readonly SynchronizationPoint SynchronizationPoint = new();
@@ -74,7 +84,7 @@ namespace SaveSystem {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Initialize () {
             SetPlayerLoop();
-            SetSettings();
+            SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
             SetInternalSavedPaths();
             SetOnExitPlayModeCallback();
 
@@ -98,9 +108,7 @@ namespace SaveSystem {
         }
 
 
-        private static void SetSettings () {
-            var settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
-
+        private static void SetSettings (SaveSystemSettings settings) {
             if (settings == null) {
                 settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
                 Debug.LogWarning(Logger.FormattedMessage(
@@ -110,13 +118,26 @@ namespace SaveSystem {
 
             // Core settings
             SetupEvents(m_enabledSaveEvents = settings.enabledSaveEvents);
-            m_dataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
+            Logger.EnabledLogs = settings.enabledLogs;
             m_savePeriod = settings.savePeriod;
             m_isParallel = settings.isParallel;
-            Logger.EnabledLogs = settings.enabledLogs;
+            m_dataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
 
             // Checkpoints settings
             m_playerTag = settings.playerTag;
+
+            // Encryption settings
+            m_encrypt = settings.encryption;
+            m_cryptographer ??= new Cryptographer(
+                new DefaultPasswordProvider(settings.password),
+                new DefaultSaltProvider(settings.saltKey),
+                settings.keyGenerationParams
+            );
+
+            if (m_encrypt && !settings.useCustomProviders) {
+                m_cryptographer.PasswordProvider = new DefaultPasswordProvider(settings.password);
+                m_cryptographer.SaltProvider = new DefaultSaltProvider(settings.saltKey);
+            }
         }
 
 
@@ -216,7 +237,7 @@ namespace SaveSystem {
             }
             else {
                 m_onSaveStart?.Invoke(SaveType.OnExit);
-                SaveObjectsAsync(OnSaveEnd);
+                SaveObjects(OnSaveEnd);
                 return false;
             }
 
@@ -252,7 +273,7 @@ namespace SaveSystem {
 
         private static async UniTask<HandlingResult> CommonSavingTask (SaveType saveType, CancellationToken token) {
             m_onSaveStart?.Invoke(saveType);
-            HandlingResult result = await SaveObjectsAsync(token);
+            HandlingResult result = await SaveObjects(token);
             m_onSaveEnd?.Invoke(saveType);
 
             if (result is HandlingResult.Success)
@@ -266,9 +287,9 @@ namespace SaveSystem {
         }
 
 
-        private static async void SaveObjectsAsync (Action<HandlingResult> continuation) {
+        private static async void SaveObjects (Action<HandlingResult> continuation) {
             try {
-                continuation(await SaveObjectsAsync(CancellationToken.None));
+                continuation(await SaveObjects(CancellationToken.None));
             }
             catch (Exception exception) {
                 Debug.LogException(exception);
@@ -276,10 +297,10 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask<HandlingResult> SaveObjectsAsync (CancellationToken token) {
+        private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SaveGlobalDataAsync(token);
+                await SaveGlobalData(token);
                 await m_selectedSaveProfile.SaveProfileDataAsync(token);
 
                 SceneSerializationContext[] contexts =
@@ -307,7 +328,7 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask SaveGlobalDataAsync (CancellationToken token) {
+        private static async UniTask SaveGlobalData (CancellationToken token) {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
             if (!m_loaded)
@@ -322,18 +343,23 @@ namespace SaveSystem {
             writer.Write(m_dataBuffer);
             await SerializeObjects(writer, token);
 
-            await memoryStream.WriteDataToFileAsync(m_dataPath, token);
+            byte[] data = memoryStream.ToArray();
+
+            if (Encrypt)
+                data = await m_cryptographer.Encrypt(data);
+
+            await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(nameof(SaveSystemCore), "Saved");
         }
 
 
-        private static async UniTask<HandlingResult> LoadGlobalDataAsync (CancellationToken token) {
+        private static async UniTask<HandlingResult> LoadGlobalData (CancellationToken token) {
             if (m_loaded) {
                 Logger.LogWarning(nameof(SaveSystemCore), "All objects already loaded");
                 return HandlingResult.Canceled;
             }
 
-            if (!File.Exists(m_dataPath)) {
+            if (!File.Exists(DataPath)) {
                 m_registrationClosed = true;
                 SetDefaults();
                 m_loaded = true;
@@ -343,7 +369,7 @@ namespace SaveSystem {
             m_registrationClosed = true;
 
             try {
-                return await TryLoadGlobalDataAsync(token);
+                return await TryLoadGlobalData(token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
@@ -352,10 +378,14 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask<HandlingResult> TryLoadGlobalDataAsync (CancellationToken token) {
+        private static async UniTask<HandlingResult> TryLoadGlobalData (CancellationToken token) {
             token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
-            await memoryStream.ReadDataFromFileAsync(m_dataPath, token);
+            byte[] data = await File.ReadAllBytesAsync(DataPath, token).AsUniTask();
+
+            if (Encrypt)
+                data = await m_cryptographer.Decrypt(data);
+
+            var memoryStream = new MemoryStream(data);
             await using var reader = new SaveReader(memoryStream);
 
             m_dataBuffer = reader.ReadDataBuffer();

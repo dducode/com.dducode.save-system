@@ -1,10 +1,17 @@
-﻿using UnityEditor;
+﻿using System.Security.Cryptography;
+using System.Text;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace SaveSystem.Editor.ConsoleTabs {
 
     internal class SettingsTab : IConsoleTab {
+
+        private readonly GUIContent m_playerTagContent = new() {
+            text = "Player Tag",
+            tooltip = "Tag is used to detect collisions from checkpoints"
+        };
 
         private SerializedObject m_serializedSettings;
 
@@ -13,7 +20,14 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_isParallelProperty;
         private SerializedProperty m_dataPathProperty;
+
         private SerializedProperty m_playerTagProperty;
+
+        private SerializedProperty m_encryptProperty;
+        private SerializedProperty m_useCustomProvidersProperty;
+        private SerializedProperty m_passwordProperty;
+        private SerializedProperty m_saltKeyProperty;
+        private SerializedProperty m_keyGenerationParamsProperty;
 
 
         public SettingsTab () {
@@ -34,8 +48,8 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_serializedSettings.Update();
 
             DrawCoreSettings();
-            EditorGUILayout.Space(15);
             DrawCheckpointsSettings();
+            DrawEncryptionSettings();
 
             m_serializedSettings.ApplyModifiedProperties();
         }
@@ -72,13 +86,18 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
 
+            m_encryptProperty = m_serializedSettings.FindProperty("encryption");
+            m_useCustomProvidersProperty = m_serializedSettings.FindProperty("useCustomProviders");
+            m_passwordProperty = m_serializedSettings.FindProperty("password");
+            m_saltKeyProperty = m_serializedSettings.FindProperty("saltKey");
+            m_keyGenerationParamsProperty = m_serializedSettings.FindProperty("keyGenerationParams");
+
             m_serializedSettings.FindProperty("registerImmediately");
         }
 
 
         private void DrawCoreSettings () {
-            EditorGUILayout.LabelField("Core Settings", EditorStyles.boldLabel);
-
+            EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_enabledSaveEventsProperty, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
 
@@ -88,12 +107,59 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             EditorGUILayout.PropertyField(m_isParallelProperty);
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
+
+            EditorGUILayout.Space(15);
         }
 
 
         private void DrawCheckpointsSettings () {
             EditorGUILayout.LabelField("Checkpoints settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(m_playerTagProperty, GUILayout.MaxWidth(300));
+            m_playerTagProperty.stringValue = EditorGUILayout.TagField(
+                m_playerTagContent, m_playerTagProperty.stringValue, GUILayout.MaxWidth(300)
+            );
+
+            EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawEncryptionSettings () {
+            EditorGUILayout.LabelField("Encryption settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(m_encryptProperty);
+
+            if (m_encryptProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_useCustomProvidersProperty);
+
+                if (!m_useCustomProvidersProperty.boolValue) {
+                    DrawKeyProperty(m_passwordProperty, "Generate Password");
+                    DrawKeyProperty(m_saltKeyProperty, "Generate Salt Key");
+                }
+
+                EditorGUILayout.PropertyField(m_keyGenerationParamsProperty, GUILayout.MaxWidth(300));
+            }
+
+            EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawKeyProperty (SerializedProperty keyProperty, string buttonTitle) {
+            using var scope = new GUILayout.HorizontalScope();
+            if (string.IsNullOrEmpty(keyProperty.stringValue))
+                keyProperty.stringValue = GenerateRandomKey();
+
+            EditorGUILayout.PropertyField(keyProperty, GUILayout.MaxWidth(500));
+            if (GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false)))
+                keyProperty.stringValue = GenerateRandomKey();
+        }
+
+
+        private string GenerateRandomKey () {
+            const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!#$%&*";
+            var result = new StringBuilder();
+
+            for (var i = 0; i < 16; i++)
+                result.Append(valid[RandomNumberGenerator.GetInt32(0, valid.Length)]);
+
+            return result.ToString();
         }
 
     }

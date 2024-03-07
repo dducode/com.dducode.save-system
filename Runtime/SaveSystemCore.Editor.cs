@@ -33,6 +33,7 @@
                 m_savedBeforeExit = false;
                 m_loaded = false;
                 m_registrationClosed = false;
+                m_cryptographer = null;
 
                 Application.quitting -= ResetOnExit;
             }

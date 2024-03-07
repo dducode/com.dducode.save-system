@@ -1,30 +1,42 @@
-﻿using System;
-using SaveSystem.BinaryHandlers;
+﻿using SaveSystem.Attributes;
 using UnityEngine;
 
 namespace SaveSystem.Tests.TestObjects {
 
-    internal abstract class TestObject : IRuntimeSerializable {
+    [DynamicObject]
+    public class TestObject : MonoBehaviour {
 
-        public string name;
-        public Vector3 position;
-        public Quaternion rotation;
-        public Color color;
-
-        public abstract void Serialize (SaveWriter writer);
-        public abstract void Deserialize (SaveReader reader);
+        public MeshFilter MeshFilter { get; private set; }
+        public MeshRenderer MeshRenderer { get; private set; }
 
 
-        protected bool Equals (TestObject other) {
-            return name == other.name
-                   && position.Equals(other.position)
-                   && rotation.Equals(other.rotation)
-                   && color.Equals(other.color);
+        private void Awake () {
+            MeshFilter = GetComponent<MeshFilter>();
+            MeshRenderer = GetComponent<MeshRenderer>();
         }
 
 
-        public override int GetHashCode () {
-            return HashCode.Combine(name, position, rotation, color);
+        public TestObject SetRandomTransform () {
+            transform.position = Random.insideUnitSphere * 10;
+            transform.rotation = Random.rotation;
+
+            return this;
+        }
+
+
+        public TestObject SetRandomColor () {
+            MeshRenderer.material.color = Random.ColorHSV(
+                0.5f, 1f, 0.75f, 1f, 0, 1
+            );
+
+            return this;
+        }
+
+
+        public void Reset () {
+            transform.position = Vector3.zero;
+            transform.rotation = Quaternion.identity;
+            MeshRenderer.material.color = MeshRenderer.sharedMaterial.color;
         }
 
     }
