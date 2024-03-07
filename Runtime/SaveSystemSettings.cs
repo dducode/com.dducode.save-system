@@ -23,10 +23,7 @@ namespace SaveSystem {
         public string playerTag = "Player";
 
         public bool encryption;
-        public bool useCustomProviders;
-        public string password;
-        public string saltKey;
-        public KeyGenerationParams keyGenerationParams = KeyGenerationParams.Default;
+        public EncryptionSettings encryptionSettings;
 
 
         public override string ToString () {
@@ -40,7 +37,7 @@ namespace SaveSystem {
             result.Append($"\nPlayer Tag: {playerTag}");
             result.Append($"\nEncryption: {(encryption ? "Enable" : "Disable")}");
             if (encryption)
-                result.Append($"\nKey Generation Parameters: {{{keyGenerationParams}}}");
+                result.Append($"\nEncryption Settings: {{{encryptionSettings}}}");
             return result.ToString();
         }
 

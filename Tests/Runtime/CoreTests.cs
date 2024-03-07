@@ -6,7 +6,7 @@ using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
 using SaveSystem.Cryptography;
-using SaveSystem.Internal.CryptoProviders;
+using SaveSystem.Internal.Cryptography;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;

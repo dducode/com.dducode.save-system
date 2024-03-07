@@ -2,7 +2,7 @@
 using System.Text;
 using SaveSystem.Cryptography;
 
-namespace SaveSystem.Internal.CryptoProviders {
+namespace SaveSystem.Internal.Cryptography {
 
     internal class DefaultSaltProvider : IKeyProvider {
 

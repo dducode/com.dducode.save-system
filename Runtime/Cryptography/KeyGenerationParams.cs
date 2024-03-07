@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 
 namespace SaveSystem.Cryptography {
 
@@ -9,6 +10,8 @@ namespace SaveSystem.Cryptography {
 
         public AESKeyLength keyLength;
         public HashAlgorithm hashAlgorithm;
+
+        [Min(1)]
         public int iterations;
 
 
