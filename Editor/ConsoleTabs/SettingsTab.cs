@@ -27,7 +27,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_useCustomProvidersProperty;
         private SerializedProperty m_passwordProperty;
         private SerializedProperty m_saltKeyProperty;
-        private SerializedProperty m_aesKeyLengthProperty;
+        private SerializedProperty m_keyGenerationParamsProperty;
 
 
         public SettingsTab () {
@@ -90,7 +90,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             m_useCustomProvidersProperty = m_serializedSettings.FindProperty("useCustomProviders");
             m_passwordProperty = m_serializedSettings.FindProperty("password");
             m_saltKeyProperty = m_serializedSettings.FindProperty("saltKey");
-            m_aesKeyLengthProperty = m_serializedSettings.FindProperty("keyLength");
+            m_keyGenerationParamsProperty = m_serializedSettings.FindProperty("keyGenerationParams");
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -134,7 +134,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
                     DrawKeyProperty(m_saltKeyProperty, "Generate Salt Key");
                 }
 
-                EditorGUILayout.PropertyField(m_aesKeyLengthProperty, GUILayout.MaxWidth(300));
+                EditorGUILayout.PropertyField(m_keyGenerationParamsProperty, GUILayout.MaxWidth(300));
             }
 
             EditorGUILayout.Space(15);
@@ -153,9 +153,13 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private string GenerateRandomKey () {
-            var key = new byte[16];
-            RandomNumberGenerator.Create().GetBytes(key);
-            return Encoding.UTF8.GetString(key);
+            const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!#$%&*";
+            var result = new StringBuilder();
+
+            for (var i = 0; i < 16; i++)
+                result.Append(valid[RandomNumberGenerator.GetInt32(0, valid.Length)]);
+
+            return result.ToString();
         }
 
     }

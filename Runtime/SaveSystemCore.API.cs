@@ -141,47 +141,11 @@ namespace SaveSystem {
             }
         }
 
-        /// <summary>
-        /// Configure length of the encryption key
-        /// </summary>
-        /// <remarks> This is ignored when encryption is disabled </remarks>
-        public static AESKeyLength AesKeyLength {
-            get => m_aesKeyLength;
+        public static Cryptographer Cryptographer {
+            get => m_cryptographer;
             set {
-                m_aesKeyLength = value;
-                Logger.Log(nameof(SaveSystemCore), $"Set AES key length: {value}");
-            }
-        }
-
-        /// <summary>
-        /// Set your custom password provider
-        /// </summary>
-        /// <remarks>
-        /// <para> By default used <see cref="DefaultPasswordProvider"/> </para>
-        /// <para> This is ignored when encryption is disabled </para>
-        /// </remarks>
-        [NotNull]
-        public static IKeyProvider<string> PasswordProvider {
-            get => m_passwordProvider;
-            set {
-                m_passwordProvider = value ?? throw new ArgumentNullException(nameof(value));
-                Logger.Log(nameof(SaveSystemCore), $"Set password provider: {value}");
-            }
-        }
-
-        /// <summary>
-        /// Set your custom salt key provider
-        /// </summary>
-        /// <remarks>
-        /// <para> By default used <see cref="DefaultSaltProvider"/> </para>
-        /// <para> This is ignored when encryption is disabled </para>
-        /// </remarks>
-        [NotNull]
-        public static IKeyProvider<byte[]> SaltProvider {
-            get => m_saltProvider;
-            set {
-                m_saltProvider = value ?? throw new ArgumentNullException(nameof(value));
-                Logger.Log(nameof(SaveSystemCore), $"Set salt provider: {value}");
+                m_cryptographer = value ?? throw new ArgumentNullException(nameof(value));
+                Logger.Log(nameof(SaveSystemCore), $"Set cryptographer: {value}");
             }
         }
 

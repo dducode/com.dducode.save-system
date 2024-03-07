@@ -1,8 +1,10 @@
-﻿using SaveSystem.Cryptography;
+﻿using System.Security.Cryptography;
+using System.Text;
+using SaveSystem.Cryptography;
 
 namespace SaveSystem.Internal.CryptoProviders {
 
-    internal class DefaultPasswordProvider : IKeyProvider<string> {
+    internal class DefaultPasswordProvider : IKeyProvider {
 
         private readonly string m_password;
 
@@ -12,8 +14,8 @@ namespace SaveSystem.Internal.CryptoProviders {
         }
 
 
-        public string GetKey () {
-            return m_password;
+        public byte[] GetKey () {
+            return new SHA1Cng().ComputeHash(Encoding.UTF8.GetBytes(m_password));
         }
 
     }

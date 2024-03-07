@@ -47,7 +47,6 @@ namespace SaveSystem {
 
         // Encryption settings
         private static bool m_encrypt;
-        private static AESKeyLength m_aesKeyLength;
 
         private static Action<SaveType> m_onSaveStart;
         private static Action<SaveType> m_onSaveEnd;
@@ -72,8 +71,7 @@ namespace SaveSystem {
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
 
-        private static IKeyProvider<string> m_passwordProvider;
-        private static IKeyProvider<byte[]> m_saltProvider;
+        private static Cryptographer m_cryptographer;
 
         private static IProgress<float> m_saveProgress;
         private static IProgress<float> m_loadProgress;
@@ -130,11 +128,15 @@ namespace SaveSystem {
 
             // Encryption settings
             m_encrypt = settings.encryption;
-            m_aesKeyLength = settings.keyLength;
+            m_cryptographer ??= new Cryptographer(
+                new DefaultPasswordProvider(settings.password),
+                new DefaultSaltProvider(settings.saltKey),
+                settings.keyGenerationParams
+            );
 
-            if (!settings.useCustomProviders) {
-                m_passwordProvider = new DefaultPasswordProvider(settings.password);
-                m_saltProvider = new DefaultSaltProvider(settings.saltKey);
+            if (m_encrypt && !settings.useCustomProviders) {
+                m_cryptographer.PasswordProvider = new DefaultPasswordProvider(settings.password);
+                m_cryptographer.SaltProvider = new DefaultSaltProvider(settings.saltKey);
             }
         }
 
@@ -344,7 +346,7 @@ namespace SaveSystem {
             byte[] data = memoryStream.ToArray();
 
             if (Encrypt)
-                data = await AES.Encrypt(data, PasswordProvider, SaltProvider, AesKeyLength);
+                data = await m_cryptographer.Encrypt(data);
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(nameof(SaveSystemCore), "Saved");
@@ -381,7 +383,7 @@ namespace SaveSystem {
             byte[] data = await File.ReadAllBytesAsync(DataPath, token).AsUniTask();
 
             if (Encrypt)
-                data = await AES.Decrypt(data, PasswordProvider, SaltProvider, AesKeyLength);
+                data = await m_cryptographer.Decrypt(data);
 
             var memoryStream = new MemoryStream(data);
             await using var reader = new SaveReader(memoryStream);

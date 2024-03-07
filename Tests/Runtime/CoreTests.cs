@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
+using SaveSystem.Cryptography;
+using SaveSystem.Internal.CryptoProviders;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -19,6 +21,16 @@ namespace SaveSystem.Tests {
     public class CoreTests {
 
         public static bool[] parallelConfig = {true, false};
+
+        private static readonly HashAlgorithm[] HashAlgorithm = {
+            Cryptography.HashAlgorithm.SHA1,
+            Cryptography.HashAlgorithm.SHA256,
+            Cryptography.HashAlgorithm.SHA384,
+            Cryptography.HashAlgorithm.SHA512
+        };
+
+        private const string Password = "password";
+        private const string SaltKey = "salt";
 
 
         [SetUp]
@@ -190,29 +202,45 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task SerializeWithEncryption () {
+        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithm hashAlgorithm) {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
             sphereFactory.CreateObjects(250);
 
+            var generationParams = KeyGenerationParams.Default;
+            generationParams.hashAlgorithm = hashAlgorithm;
             SaveSystemCore.Encrypt = true;
+            SaveSystemCore.Cryptographer = new Cryptographer(
+                new DefaultPasswordProvider(Password),
+                new DefaultSaltProvider(SaltKey),
+                generationParams
+            );
             SaveSystemCore.RegisterSerializable(sphereFactory);
             await SaveSystemCore.SaveAsync();
-            await UniTask.WaitForSeconds(2);
+            await UniTask.WaitForSeconds(1);
         }
 
 
         [Test]
-        public async Task DeserializeWithDecryption () {
+        public async Task DeserializeWithDecryption (
+            [ValueSource(nameof(HashAlgorithm))] HashAlgorithm hashAlgorithm
+        ) {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
+            var generationParams = KeyGenerationParams.Default;
+            generationParams.hashAlgorithm = hashAlgorithm;
             SaveSystemCore.Encrypt = true;
+            SaveSystemCore.Cryptographer = new Cryptographer(
+                new DefaultPasswordProvider(Password),
+                new DefaultSaltProvider(SaltKey),
+                generationParams
+            );
             SaveSystemCore.RegisterSerializable(sphereFactory);
             await SaveSystemCore.LoadAsync();
-            await UniTask.WaitForSeconds(2);
+            await UniTask.WaitForSeconds(1);
         }
 
 

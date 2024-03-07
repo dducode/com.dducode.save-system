@@ -1,4 +1,5 @@
-﻿using SaveSystem.Cryptography;
+﻿using System.Text;
+using SaveSystem.Cryptography;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 
@@ -25,18 +26,22 @@ namespace SaveSystem {
         public bool useCustomProviders;
         public string password;
         public string saltKey;
-        public AESKeyLength keyLength = AESKeyLength._128Bit;
+        public KeyGenerationParams keyGenerationParams = KeyGenerationParams.Default;
 
 
         public override string ToString () {
-            return $"\nEnabled Save Events: {enabledSaveEvents}" +
-                   $"\nEnabled Logs: {enabledLogs}" +
-                   $"\nSave Period: {savePeriod} sec" +
-                   $"\nParallel saving: {(isParallel ? "Enable" : "Disable")}" +
-                   $"\nData Path: {dataPath}" +
-                   $"\nPlayer Tag: {playerTag}" +
-                   $"\nEncryption: {(encryption ? "Enable" : "Disable")}" +
-                   $"\nAES Key Length: {keyLength}";
+            var result = new StringBuilder();
+            result.Append($"\nEnabled Save Events: {enabledSaveEvents}");
+            result.Append($"\nEnabled Logs: {enabledLogs}");
+            if (enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
+                result.Append($"\nSave Period: {savePeriod} sec");
+            result.Append($"\nParallel saving: {(isParallel ? "Enable" : "Disable")}");
+            result.Append($"\nData Path: {dataPath}");
+            result.Append($"\nPlayer Tag: {playerTag}");
+            result.Append($"\nEncryption: {(encryption ? "Enable" : "Disable")}");
+            if (encryption)
+                result.Append($"\nKey Generation Parameters: {{{keyGenerationParams}}}");
+            return result.ToString();
         }
 
     }

@@ -1,9 +1,10 @@
-﻿using System.Text;
+﻿using System.Security.Cryptography;
+using System.Text;
 using SaveSystem.Cryptography;
 
 namespace SaveSystem.Internal.CryptoProviders {
 
-    internal class DefaultSaltProvider : IKeyProvider<byte[]> {
+    internal class DefaultSaltProvider : IKeyProvider {
 
         private readonly string m_saltKey;
 
@@ -14,7 +15,7 @@ namespace SaveSystem.Internal.CryptoProviders {
 
 
         public byte[] GetKey () {
-            return Encoding.UTF8.GetBytes(m_saltKey);
+            return new SHA1Cng().ComputeHash(Encoding.UTF8.GetBytes(m_saltKey));
         }
 
     }

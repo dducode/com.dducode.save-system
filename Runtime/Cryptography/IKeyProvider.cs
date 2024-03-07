@@ -1,8 +1,8 @@
 ﻿namespace SaveSystem.Cryptography {
 
-    public interface IKeyProvider<out TKey> {
+    public interface IKeyProvider {
 
-        public TKey GetKey ();
+        public byte[] GetKey ();
 
     }
 
