@@ -40,9 +40,7 @@ namespace SaveSystem.Tests {
             camera.transform.position = new Vector3(0, 0, -10);
 
             SaveSystemCore.EnabledLogs = LogLevel.All;
-            SaveSystemCore.SelectedSaveProfile = new SaveProfile {
-                Name = "test", ProfileDataFolder = "test"
-            };
+            SaveSystemCore.SelectedSaveProfile = new TestSaveProfile();
             Debug.Log("Start test");
         }
 
@@ -54,7 +52,7 @@ namespace SaveSystem.Tests {
             SaveSystemCore.SavePeriod = 1.5f;
             SaveSystemCore.EnabledSaveEvents = SaveEvents.AutoSave;
 
-            SaveSystemCore.RegisterSerializable(new TestObjectAdapter(simpleObject));
+            SaveSystemCore.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var autoSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -79,7 +77,7 @@ namespace SaveSystem.Tests {
             #error Compile error: no unity inputs enabled
         #endif
 
-            SaveSystemCore.RegisterSerializable(new TestObjectAdapter(simpleObject));
+            SaveSystemCore.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var quickSaveCompleted = false;
             SaveSystemCore.OnSaveEnd += saveType => {
@@ -102,7 +100,7 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.PlayerTag = sphereTag;
 
-            SaveSystemCore.RegisterSerializable(new TestRigidbodyAdapter(sphere));
+            SaveSystemCore.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -131,7 +129,7 @@ namespace SaveSystem.Tests {
                     sphere.tag = sphereTag;
             }
 
-            SaveSystemCore.RegisterSerializables(spheres);
+            SaveSystemCore.RegisterSerializables(nameof(spheres), spheres);
             var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
             settings.enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusLost;
             settings.savePeriod = 3;
@@ -169,7 +167,7 @@ namespace SaveSystem.Tests {
                 for (var j = 0; j < 50; j++)
                     meshes.Add(new TestObjectAdapter(factory.CreateObject()));
 
-                SaveSystemCore.RegisterSerializables(meshes);
+                SaveSystemCore.RegisterSerializables(nameof(meshes), meshes);
                 yield return new WaitForEndOfFrame();
             }
 
@@ -179,7 +177,7 @@ namespace SaveSystem.Tests {
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            SaveSystemCore.SaveAsync(_ => saveIsCompleted = true);
+            SaveSystemCore.SaveAll().ContinueWith(_ => saveIsCompleted = true).Forget();
             yield return new WaitWhile(() => !saveIsCompleted);
             stopwatch.Stop();
             Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
@@ -195,7 +193,7 @@ namespace SaveSystem.Tests {
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
-            SaveSystemCore.RegisterSerializable(sphereFactory);
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             yield return new WaitForEndOfFrame();
             Application.Quit();
         }
@@ -210,14 +208,13 @@ namespace SaveSystem.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = hashAlgorithm;
-            SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
-                new DefaultPasswordProvider(Password),
-                new DefaultSaltProvider(SaltKey),
+                new DefaultKeyProvider(Password),
+                new DefaultKeyProvider(SaltKey),
                 generationParams
             );
-            SaveSystemCore.RegisterSerializable(sphereFactory);
-            await SaveSystemCore.SaveAsync();
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystemCore.SaveAll();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -232,22 +229,19 @@ namespace SaveSystem.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = hashAlgorithm;
-            SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
-                new DefaultPasswordProvider(Password),
-                new DefaultSaltProvider(SaltKey),
+                new DefaultKeyProvider(Password),
+                new DefaultKeyProvider(SaltKey),
                 generationParams
             );
-            SaveSystemCore.RegisterSerializable(sphereFactory);
-            await SaveSystemCore.LoadAsync();
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystemCore.LoadGlobalData(SaveSystemCore.DataPath);
             await UniTask.WaitForSeconds(1);
         }
 
 
         // TODO: write test
-        public async Task WriteToDataBuffer () {
-            var buffer = SaveSystemCore.DataBuffer;
-        }
+        public async Task WriteToDataBuffer () { }
 
 
         [TearDown]

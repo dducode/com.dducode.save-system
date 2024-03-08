@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Cryptography;
 using SaveSystem.Internal;
-using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Internal.Templates;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -35,7 +33,6 @@ namespace SaveSystem {
                     throw new ArgumentNullException(nameof(SelectedSaveProfile));
 
                 RegisterSaveProfile(m_selectedSaveProfile = value);
-                Logger.Log(nameof(SaveSystemCore), $"Set save profile: {{{value}}}");
             }
         }
 
@@ -46,10 +43,7 @@ namespace SaveSystem {
         /// <seealso cref="SaveEvents"/>
         public static SaveEvents EnabledSaveEvents {
             get => m_enabledSaveEvents;
-            set {
-                SetupEvents(m_enabledSaveEvents = value);
-                Logger.Log(nameof(SaveSystemCore), $"Set save events: {value}");
-            }
+            set => SetupEvents(m_enabledSaveEvents = value);
         }
 
         /// <summary>
@@ -59,10 +53,7 @@ namespace SaveSystem {
         /// <seealso cref="LogLevel"/>
         public static LogLevel EnabledLogs {
             get => Logger.EnabledLogs;
-            set {
-                Logger.EnabledLogs = value;
-                Logger.Log(nameof(SaveSystemCore), $"Set enabled logs: {value}");
-            }
+            set => Logger.EnabledLogs = value;
         }
 
         /// <summary>
@@ -80,20 +71,13 @@ namespace SaveSystem {
                 }
 
                 m_savePeriod = value;
-                Logger.Log(nameof(SaveSystemCore), $"Set save period: {value}");
             }
         }
 
         /// <summary>
         /// Configure it to set parallel saving handlers
         /// </summary>
-        public static bool IsParallel {
-            get => m_isParallel;
-            set {
-                m_isParallel = value;
-                Logger.Log(nameof(SaveSystemCore), "Parallel saving: " + (value ? "enable" : "disable"));
-            }
-        }
+        public static bool IsParallel { get; set; }
 
         /// <summary>
         /// Set the global data path
@@ -106,7 +90,6 @@ namespace SaveSystem {
                     throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
 
                 m_dataPath = Storage.PrepareBeforeUsing(value, false);
-                Logger.Log(nameof(SaveSystemCore), $"Set data path: {value}");
             }
         }
 
@@ -120,35 +103,21 @@ namespace SaveSystem {
             set {
                 if (string.IsNullOrEmpty(value)) {
                     throw new ArgumentNullException(
-                        nameof(PlayerTag), "Player tag cannot be null or empty."
+                        nameof(PlayerTag), "Player tag cannot be null or empty"
                     );
                 }
 
                 m_playerTag = value;
-                Logger.Log(nameof(SaveSystemCore), $"Set player tag: {value}");
-            }
-        }
-
-        /// <summary>
-        /// Enable/disable a file encryption
-        /// </summary>
-        public static bool Encrypt {
-            get => m_encrypt;
-            set {
-                m_encrypt = value;
-                Logger.Log(nameof(SaveSystemCore), $"Encrypt: {(value ? "enable" : "disable")}");
             }
         }
 
         /// <summary>
         /// Cryptographer used to encrypt/decrypt serializable data
         /// </summary>
+        [NotNull]
         public static Cryptographer Cryptographer {
-            get => m_cryptographer;
-            set {
-                m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
-                Logger.Log(nameof(SaveSystemCore), $"Set cryptographer: {value}");
-            }
+            get => m_handler.Cryptographer;
+            set => m_handler.Cryptographer = value;
         }
 
         /// <summary>
@@ -158,20 +127,7 @@ namespace SaveSystem {
         /// Listeners that will be called when core will start saving.
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
-        public static event Action<SaveType> OnSaveStart {
-            add {
-                m_onSaveStart += value;
-                Logger.Log(nameof(SaveSystemCore),
-                    $"Listener {value.Method.Name} subscribe to {nameof(OnSaveStart)} event"
-                );
-            }
-            remove {
-                m_onSaveStart -= value;
-                Logger.Log(nameof(SaveSystemCore),
-                    $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveStart)} event"
-                );
-            }
-        }
+        public static event Action<SaveType> OnSaveStart;
 
         /// <summary>
         /// Event that is called after saving
@@ -180,37 +136,13 @@ namespace SaveSystem {
         /// Listeners that will be called when core will finish saving.
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
-        public static event Action<SaveType> OnSaveEnd {
-            add {
-                m_onSaveEnd += value;
-                Logger.Log(nameof(SaveSystemCore),
-                    $"Listener {value.Method.Name} subscribe to {nameof(OnSaveEnd)} event"
-                );
-            }
-            remove {
-                m_onSaveEnd -= value;
-                Logger.Log(nameof(SaveSystemCore),
-                    $"Listener {value.Method.Name} unsubscribe from {nameof(OnSaveEnd)} event"
-                );
-            }
-        }
-
-
-        /// <summary>
-        /// Buffer to writing data in a global scope
-        /// </summary>
-        public static DataBuffer DataBuffer {
-            get {
-                if (!m_loaded)
-                    Logger.LogWarning(nameof(SaveSystemCore), Messages.TryingToReadNotLoadedData);
-                return m_dataBuffer;
-            }
-        }
+        public static event Action<SaveType> OnSaveEnd;
 
 
         /// <summary>
         /// Get all previously created saving profiles
         /// </summary>
+        [Pure]
         public static List<TProfile> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
             string[] paths = Directory.GetFileSystemEntries(
                 Storage.PersistentDataPath, $"*{ProfileMetadataExtension}", SearchOption.AllDirectories
@@ -261,83 +193,69 @@ namespace SaveSystem {
                 return;
 
             File.Delete(path);
-            Directory.Delete(profile.ProfileDataFolder, true);
+            Directory.Delete(profile.DataFolder, true);
             Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was deleted");
         }
 
 
-        /// <summary>
-        /// Registers an serializable object to automatic save, quick-save, save at checkpoit and others
-        /// </summary>
-        public static void RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
-            if (m_registrationClosed) {
-                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
-                return;
-            }
+        public static void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
 
-            if (serializable == null)
-                throw new ArgumentNullException(nameof(serializable));
-
-            SerializableObjects.Add(serializable);
-            DiagnosticService.AddObject(serializable);
-            Logger.Log(nameof(SaveSystemCore), $"Serializable object {serializable} was registered");
+            m_globalScope.WriteData(key, value);
         }
 
 
-        /// <summary>
-        /// Registers an async serializable object to automatic save, quick-save, save at checkpoit and others
-        /// </summary>
-        public static void RegisterSerializable ([NotNull] IAsyncRuntimeSerializable serializable) {
-            if (m_registrationClosed) {
-                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
-                return;
-            }
+        [Pure]
+        public static TValue ReadData<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
 
-            if (serializable == null)
-                throw new ArgumentNullException(nameof(serializable));
-
-            AsyncSerializableObjects.Add(serializable);
-            DiagnosticService.AddObject(serializable);
-            Logger.Log(nameof(SaveSystemCore), $"Serializable object {serializable} was registered");
+            return m_globalScope.ReadData<TValue>(key);
         }
 
 
-        /// <summary>
-        /// Registers some serializable objects to automatic save, quick-save, save at checkpoit and others
-        /// </summary>
-        public static void RegisterSerializables ([NotNull] IEnumerable<IRuntimeSerializable> serializables) {
-            if (m_registrationClosed) {
-                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
-                return;
-            }
-
-            if (serializables == null)
-                throw new ArgumentNullException(nameof(serializables));
-
-            IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
-            SerializableObjects.AddRange(objects);
-            DiagnosticService.AddObjects(objects);
-            Logger.Log(nameof(SaveSystemCore), "Serializable objects was registered");
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
+        public static void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
+            m_globalScope.RegisterSerializable(key, serializable);
         }
 
 
-        /// <summary>
-        /// Registers some async serializable objects to automatic save, quick-save, save at checkpoit and others
-        /// </summary>
-        public static void RegisterSerializables ([NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables) {
-            if (m_registrationClosed) {
-                Logger.LogError(nameof(SaveSystemCore), Messages.RegistrationClosed);
-                return;
-            }
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IAsyncRuntimeSerializable)"/>
+        public static void RegisterSerializable (
+            [NotNull] string key, [NotNull] IAsyncRuntimeSerializable serializable
+        ) {
+            m_globalScope.RegisterSerializable(key, serializable);
+        }
 
-            if (serializables == null)
-                throw new ArgumentNullException(nameof(serializables));
 
-            IAsyncRuntimeSerializable[] objects =
-                serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
-            AsyncSerializableObjects.AddRange(objects);
-            DiagnosticService.AddObjects(objects);
-            Logger.Log(nameof(SaveSystemCore), "Serializable objects was registered");
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
+        public static void RegisterSerializables (
+            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
+        ) {
+            m_globalScope.RegisterSerializables(key, serializables);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IAsyncRuntimeSerializable})"/>
+        public static void RegisterSerializables (
+            [NotNull] string key, [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
+        ) {
+            m_globalScope.RegisterSerializables(key, serializables);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float})"/>
+        public static void ObserveProgress ([NotNull] IProgress<float> progress) {
+            m_globalScope.ObserveProgress(progress);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float}, IProgress{float})"/>
+        public static void ObserveProgress (
+            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
+        ) {
+            m_globalScope.ObserveProgress(saveProgress, loadProgress);
         }
 
 
@@ -348,30 +266,6 @@ namespace SaveSystem {
         public static void ConfigureSettings (SaveSystemSettings settings) {
             SetSettings(settings);
             Logger.Log(nameof(SaveSystemCore), $"Parameters was configured: {settings}");
-        }
-
-
-        /// <summary>
-        /// Pass <see cref="IProgress{T}"> IProgress</see> object to observe progress
-        /// when it'll be started
-        /// </summary>
-        public static void ObserveProgress ([NotNull] IProgress<float> progress) {
-            m_saveProgress = progress ?? throw new ArgumentNullException(nameof(progress));
-            m_loadProgress = progress;
-            Logger.Log(nameof(SaveSystemCore), $"Progress observer {progress} was register");
-        }
-
-
-        /// <summary>
-        /// Pass two <see cref="IProgress{T}"> IProgress </see> objects to observe saving and loading progress
-        /// when it'll be started
-        /// </summary>
-        public static void ObserveProgress (
-            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
-        ) {
-            m_saveProgress = saveProgress ?? throw new ArgumentNullException(nameof(saveProgress));
-            m_loadProgress = loadProgress ?? throw new ArgumentNullException(nameof(loadProgress));
-            Logger.Log(nameof(SaveSystemCore), $"Progress observers {saveProgress} and {loadProgress} was registered");
         }
 
 
@@ -432,22 +326,9 @@ namespace SaveSystem {
 
 
         /// <summary>
-        /// Start saving immediately and pass any action to continue
-        /// </summary>
-        public static async void SaveAsync (Action<HandlingResult> continuation, CancellationToken token = default) {
-            try {
-                continuation(await SaveAsync(token));
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
-        }
-
-
-        /// <summary>
         /// Start saving immediately and wait it
         /// </summary>
-        public static async UniTask<HandlingResult> SaveAsync (CancellationToken token = default) {
+        public static async UniTask<HandlingResult> SaveAll (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
@@ -458,35 +339,70 @@ namespace SaveSystem {
         }
 
 
-        /// <summary>
-        /// Start loading of objects in the project scope and pass any action to continue
-        /// </summary>
-        public static async void LoadAsync (Action<HandlingResult> continuation, CancellationToken token = default) {
-            try {
-                continuation(await LoadAsync(token));
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
-        }
+        public static async UniTask<HandlingResult> SaveGlobalData (
+            [NotNull] string dataPath, CancellationToken token = default
+        ) {
+            if (string.IsNullOrEmpty(dataPath))
+                throw new ArgumentNullException(nameof(dataPath));
 
-
-        /// <summary>
-        /// Start loading of objects in the project scope and wait it
-        /// </summary>
-        public static async UniTask<HandlingResult> LoadAsync (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await LoadGlobalData(token));
+                return await m_handler.SaveData(dataPath, token);
             }
             catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
                 return HandlingResult.Canceled;
             }
         }
 
 
-        private static async UniTask ExecuteOnSceneLoadSaving (CancellationToken token) {
-            await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
+        [Pure]
+        public static async UniTask<(HandlingResult, byte[])> SaveGlobalData (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                return await m_handler.SaveData(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
+                return (HandlingResult.Canceled, Array.Empty<byte>());
+            }
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the global scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> LoadGlobalData (
+            [NotNull] byte[] data, CancellationToken token = default
+        ) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            try {
+                token.ThrowIfCancellationRequested();
+                return await m_handler.LoadData(data, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the global scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> LoadGlobalData (
+            string dataPath = null, CancellationToken token = default
+        ) {
+            try {
+                token.ThrowIfCancellationRequested();
+                return await m_handler.LoadData(dataPath ?? DataPath, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");
+                return HandlingResult.Canceled;
+            }
         }
 
     }

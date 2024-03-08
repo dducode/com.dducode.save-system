@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.InteropServices;
 using SaveSystem.BinaryHandlers;
@@ -76,6 +77,7 @@ namespace SaveSystem {
         }
 
 
+        [Pure]
         public TValue Get<TValue> ([NotNull] string key) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
@@ -84,6 +86,7 @@ namespace SaveSystem {
         }
 
 
+        [Pure]
         public TArray[] GetArray<TArray> ([NotNull] string key) where TArray : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
@@ -102,6 +105,7 @@ namespace SaveSystem {
         }
 
 
+        [Pure]
         public string GetString ([NotNull] string key) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
@@ -110,6 +114,7 @@ namespace SaveSystem {
         }
 
 
+        [Pure]
         public MeshData GetMeshData ([NotNull] string key) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));

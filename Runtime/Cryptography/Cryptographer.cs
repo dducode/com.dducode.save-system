@@ -48,9 +48,7 @@ namespace SaveSystem.Cryptography {
 
 
         public Cryptographer (EncryptionSettings settings) {
-            m_passwordProvider = new DefaultPasswordProvider(settings.password);
-            m_saltProvider = new DefaultSaltProvider(settings.saltKey);
-            m_generationParams = settings.keyGenerationParams;
+            SetSettings(settings);
         }
 
 
@@ -63,21 +61,27 @@ namespace SaveSystem.Cryptography {
         }
 
 
+        public void SetSettings (EncryptionSettings settings) {
+            if (!settings.useCustomProviders) {
+                m_passwordProvider = new DefaultKeyProvider(settings.password);
+                m_saltProvider = new DefaultKeyProvider(settings.saltKey);
+            }
+
+            m_generationParams = settings.keyGenerationParams;
+        }
+
+
         public virtual async UniTask<byte[]> Encrypt ([NotNull] byte[] value, CancellationToken token = default) {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            byte[] password = PasswordProvider.GetKey();
-            byte[] salt = SaltProvider.GetKey();
-            byte[] key = new Rfc2898DeriveBytes(
-                password, salt, GenerationParams.iterations, GenerationParams.hashAlgorithm.SelectAlgorithmName()
-            ).GetBytes((int)GenerationParams.keyLength);
-
-            var aes = Aes.Create();
             byte[] iv = GetIV();
 
             using var memoryStream = new MemoryStream();
             memoryStream.Write(iv);
+
+            var aes = Aes.Create();
+            byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
 
             await using var cryptoStream = new CryptoStream(
                 memoryStream, aes.CreateEncryptor(key, iv), CryptoStreamMode.Write
@@ -95,13 +99,8 @@ namespace SaveSystem.Cryptography {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
-            byte[] password = PasswordProvider.GetKey();
-            byte[] salt = SaltProvider.GetKey();
-            byte[] key = new Rfc2898DeriveBytes(
-                password, salt, GenerationParams.iterations, GenerationParams.hashAlgorithm.SelectAlgorithmName()
-            ).GetBytes((int)GenerationParams.keyLength);
-
             var aes = Aes.Create();
+            byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
             byte[] iv = value[..16];
 
             using var memoryStream = new MemoryStream(value[16..]);
@@ -116,6 +115,13 @@ namespace SaveSystem.Cryptography {
             cryptoStream.Close();
 
             return plainTextBytes;
+        }
+
+
+        private byte[] GetKey (byte[] password, byte[] salt, KeyGenerationParams generationParams) {
+            return new Rfc2898DeriveBytes(
+                password, salt, generationParams.iterations, generationParams.hashAlgorithm.SelectAlgorithmName()
+            ).GetBytes((int)generationParams.keyLength);
         }
 
 
