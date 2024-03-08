@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
 using SaveSystem.Cryptography;
-using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Internal.Templates;
+using SaveSystem.Internal;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -26,230 +24,157 @@ namespace SaveSystem {
         [SerializeField]
         private EncryptionSettings encryptionSettings;
 
-
-        public DataBuffer DataBuffer {
-            get {
-                if (!m_loaded)
-                    Logger.LogWarning(name, Messages.TryingToReadNotLoadedData);
-                return m_dataBuffer;
-            }
-        }
-
-        public bool Encrypt {
-            get => encrypt;
-            set {
-                encrypt = value;
-                Logger.Log(name, $"{(value ? "Enable" : "Disable")} encryption", this);
-            }
-        }
-
+        /// <summary>
+        /// Cryptographer used to encrypt/decrypt serializable data
+        /// </summary>
+        [NotNull]
         public Cryptographer Cryptographer {
-            get => m_cryptographer;
-            set {
-                m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
-                Logger.Log(name, $"Set cryptographer: {value}");
-            }
+            get => m_handler.Cryptographer;
+            set => m_handler.Cryptographer = value;
         }
 
-        private int ObjectsCount => m_serializables.Count + m_asyncSerializables.Count;
-        private string SceneName => gameObject.scene.name;
+        public string DataPath => Path.Combine(
+            SaveSystemCore.SelectedSaveProfile.DataFolder, $"{gameObject.scene.name}.scenedata"
+        );
 
-        private readonly List<IRuntimeSerializable> m_serializables = new();
-        private readonly List<IAsyncRuntimeSerializable> m_asyncSerializables = new();
-
-        private DataBuffer m_dataBuffer = new();
-        private bool m_loaded;
-        private bool m_registrationClosed;
-        private Cryptographer m_cryptographer;
+        private SaveDataHandler m_handler;
+        private SerializationScope m_serializationScope;
 
 
         private void Awake () {
-            m_cryptographer ??= new Cryptographer(encryptionSettings);
+            m_handler = new SaveDataHandler {
+                SerializationScope = m_serializationScope = new SerializationScope {
+                    Name = $"{name} scope"
+                }
+            };
+
+            if (encrypt)
+                Cryptographer = new Cryptographer(encryptionSettings);
         }
 
 
-        public SceneSerializationContext RegisterSerializable ([NotNull] IRuntimeSerializable serializable) {
-            if (m_registrationClosed) {
-                Logger.LogError(name, Messages.RegistrationClosed, this);
-                return this;
-            }
+        public void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
 
-            if (serializable == null)
-                throw new ArgumentNullException(nameof(serializable));
+            m_serializationScope.WriteData(key, value);
+        }
 
-            m_serializables.Add(serializable);
-            DiagnosticService.AddObject(serializable);
-            Logger.Log(name, $"Serializable object {serializable} was registered", this);
+
+        [Pure]
+        public TValue ReadData<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_serializationScope.ReadData<TValue>(key);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
+        public SceneSerializationContext RegisterSerializable (
+            [NotNull] string key, [NotNull] IRuntimeSerializable serializable
+        ) {
+            m_serializationScope.RegisterSerializable(key, serializable);
             return this;
         }
 
 
-        public SceneSerializationContext RegisterSerializable ([NotNull] IAsyncRuntimeSerializable serializable) {
-            if (m_registrationClosed) {
-                Logger.LogError(name, Messages.RegistrationClosed, this);
-                return this;
-            }
-
-            if (serializable == null)
-                throw new ArgumentNullException(nameof(serializable));
-
-            m_asyncSerializables.Add(serializable);
-            DiagnosticService.AddObject(serializable);
-            Logger.Log(name, $"Serializable object {serializable} was registered", this);
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IAsyncRuntimeSerializable)"/>
+        public SceneSerializationContext RegisterSerializable (
+            [NotNull] string key, [NotNull] IAsyncRuntimeSerializable serializable
+        ) {
+            m_serializationScope.RegisterSerializable(key, serializable);
             return this;
         }
 
 
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
         public SceneSerializationContext RegisterSerializables (
-            [NotNull] IEnumerable<IRuntimeSerializable> serializables
+            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
-            if (m_registrationClosed) {
-                Logger.LogError(name, Messages.RegistrationClosed, this);
-                return this;
-            }
-
-            if (serializables == null)
-                throw new ArgumentNullException(nameof(serializables));
-
-            IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
-            m_serializables.AddRange(objects);
-            DiagnosticService.AddObjects(objects);
-            Logger.Log(name, $"Serializable objects was registered", this);
+            m_serializationScope.RegisterSerializables(key, serializables);
             return this;
         }
 
 
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IAsyncRuntimeSerializable})"/>
         public SceneSerializationContext RegisterSerializables (
-            [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
+            [NotNull] string key, [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
         ) {
-            if (m_registrationClosed) {
-                Logger.LogError(name, Messages.RegistrationClosed, this);
-                return this;
-            }
-
-            if (serializables == null)
-                throw new ArgumentNullException(nameof(serializables));
-
-            IAsyncRuntimeSerializable[] array = serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
-            m_asyncSerializables.AddRange(array);
-            DiagnosticService.AddObjects(array);
-            Logger.Log(name, $"Serializable objects was registered", this);
+            m_serializationScope.RegisterSerializables(key, serializables);
             return this;
         }
 
 
-        public async void LoadSceneData (
-            Action<HandlingResult> continuation, CancellationToken token = default
-        ) {
-            try {
-                continuation(await LoadSceneData(token));
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
+        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float})"/>
+        public void ObserveProgress ([NotNull] IProgress<float> progress) {
+            m_serializationScope.ObserveProgress(progress);
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData (CancellationToken token = default) {
-            if (m_loaded) {
-                Logger.LogWarning(name, "All objects already loaded", this);
-                return HandlingResult.Canceled;
-            }
+        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float}, IProgress{float})"/>
+        public void ObserveProgress (
+            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
+        ) {
+            m_serializationScope.ObserveProgress(saveProgress, loadProgress);
+        }
 
-            string dataPath = GetPathFromProfile();
 
-            if (!File.Exists(dataPath)) {
-                m_registrationClosed = true;
-                SetDefaults();
-                m_loaded = true;
-                return HandlingResult.FileNotExists;
-            }
-
-            m_registrationClosed = true;
+        public async UniTask<HandlingResult> SaveSceneData (
+            [NotNull] string dataPath, CancellationToken token = default
+        ) {
+            if (string.IsNullOrEmpty(dataPath))
+                throw new ArgumentNullException(nameof(dataPath));
 
             try {
-                return await TryLoadSceneData(token, dataPath);
+                return await m_handler.SaveData(dataPath, token);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(name, $"{SceneName} data loading was canceled", this);
+                Logger.LogWarning(name, "Scene data saving canceled", this);
                 return HandlingResult.Canceled;
             }
         }
 
 
-        internal async UniTask SaveSceneData (CancellationToken token) {
-            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
-                return;
-            if (!m_loaded)
-                Logger.LogWarning(name, "Start saving when data not loaded", this);
-
-            m_registrationClosed = true;
-
-            token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
-            await using var writer = new SaveWriter(memoryStream);
-
-            writer.Write(m_dataBuffer);
-            await SerializeObjects(writer, token);
-
-            byte[] data = memoryStream.ToArray();
-
-            if (Encrypt)
-                data = await m_cryptographer.Encrypt(data, token);
-
-            await File.WriteAllBytesAsync(GetPathFromProfile(), data, token);
-            Logger.Log(name, $"{SceneName} data saved");
+        [Pure]
+        public async UniTask<(HandlingResult, byte[])> SaveSceneData (CancellationToken token = default) {
+            try {
+                return await m_handler.SaveData(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(name, "Scene data saving canceled", this);
+                return (HandlingResult.Canceled, Array.Empty<byte>());
+            }
         }
 
 
-        private async UniTask<HandlingResult> TryLoadSceneData (CancellationToken token, string dataPath) {
-            token.ThrowIfCancellationRequested();
-            byte[] data = await File.ReadAllBytesAsync(dataPath, token);
+        public async UniTask<HandlingResult> LoadSceneData (
+            [NotNull] string dataPath, CancellationToken token = default
+        ) {
+            if (string.IsNullOrEmpty(dataPath))
+                throw new ArgumentNullException(nameof(dataPath));
 
-            if (Encrypt)
-                data = await m_cryptographer.Decrypt(data, token);
-
-            var memoryStream = new MemoryStream(data);
-            await using var reader = new SaveReader(memoryStream);
-
-            m_dataBuffer = reader.ReadDataBuffer();
-            await DeserializeObjects(reader, token);
-
-            Logger.Log(name, $"{SceneName} data loaded", this);
-            m_loaded = true;
-            return HandlingResult.Success;
+            try {
+                return await m_handler.LoadData(dataPath, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(name, "Scene data loading canceled", this);
+                return HandlingResult.Canceled;
+            }
         }
 
 
-        private async UniTask SerializeObjects (SaveWriter writer, CancellationToken token) {
-            foreach (IRuntimeSerializable serializable in m_serializables)
-                serializable.Serialize(writer);
+        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
 
-            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                await serializable.Serialize(writer, token);
-        }
-
-
-        private async UniTask DeserializeObjects (SaveReader reader, CancellationToken token) {
-            foreach (IRuntimeSerializable serializable in m_serializables)
-                serializable.Deserialize(reader);
-
-            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                await serializable.Deserialize(reader, token);
-        }
-
-
-        private void SetDefaults () {
-            foreach (IDefault serializable in m_serializables.Select(serializable => serializable as IDefault))
-                serializable?.SetDefaults();
-
-            foreach (IDefault serializable in m_asyncSerializables.Select(serializable => serializable as IDefault))
-                serializable?.SetDefaults();
-        }
-
-
-        private string GetPathFromProfile () {
-            return Path.Combine(SaveSystemCore.SelectedSaveProfile.ProfileDataFolder, $"{SceneName}.scenedata");
+            try {
+                return await m_handler.LoadData(data, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(name, "Scene data loading canceled", this);
+                return HandlingResult.Canceled;
+            }
         }
 
     }

@@ -16,10 +16,8 @@
 
             private static void ResetOnExit () {
                 ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
-                m_onSaveStart = null;
-                m_onSaveEnd = null;
-                SerializableObjects.Clear();
-                AsyncSerializableObjects.Clear();
+                OnSaveStart = null;
+                OnSaveEnd = null;
 
             #if ENABLE_LEGACY_INPUT_MANAGER
                 m_quickSaveKey = default;
@@ -31,9 +29,7 @@
 
                 m_autoSaveLastTime = 0;
                 m_savedBeforeExit = false;
-                m_loaded = false;
-                m_registrationClosed = false;
-                m_cryptographer = null;
+                m_globalScope = null;
 
                 Application.quitting -= ResetOnExit;
             }

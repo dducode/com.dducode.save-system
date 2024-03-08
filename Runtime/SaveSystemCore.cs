@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
 using SaveSystem.Cryptography;
 using SaveSystem.Internal;
-using SaveSystem.Internal.Cryptography;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 using UnityEngine.LowLevel;
@@ -39,26 +35,16 @@ namespace SaveSystem {
         private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
-        private static bool m_isParallel;
         private static string m_dataPath;
 
         // Checkpoints settings
         private static string m_playerTag;
 
-        // Encryption settings
-        private static bool m_encrypt;
-
-        private static Action<SaveType> m_onSaveStart;
-        private static Action<SaveType> m_onSaveEnd;
-
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
-        private static DataBuffer m_dataBuffer = new();
-
-        private static readonly List<IRuntimeSerializable> SerializableObjects = new();
-        private static readonly List<IAsyncRuntimeSerializable> AsyncSerializableObjects = new();
-        private static int ObjectsCount => SerializableObjects.Count + AsyncSerializableObjects.Count;
+        private static SerializationScope m_globalScope;
+        private static SaveDataHandler m_handler;
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -68,27 +54,27 @@ namespace SaveSystem {
         private static InputAction m_quickSaveAction;
     #endif
 
+        private static readonly SynchronizationPoint SynchronizationPoint = new();
+
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
-
-        private static Cryptographer m_cryptographer;
-
-        private static IProgress<float> m_saveProgress;
-        private static IProgress<float> m_loadProgress;
-        private static readonly SynchronizationPoint SynchronizationPoint = new();
         private static bool m_savedBeforeExit;
-        private static bool m_loaded;
-        private static bool m_registrationClosed;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Initialize () {
+            m_handler = new SaveDataHandler {
+                SerializationScope = m_globalScope = new SerializationScope {
+                    Name = "Global scope"
+                }
+            };
+            m_selectedSaveProfile = new DefaultSaveProfile();
+
             SetPlayerLoop();
             SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
             SetInternalSavedPaths();
             SetOnExitPlayModeCallback();
 
-            m_selectedSaveProfile = SaveProfile.Default;
             m_exitCancellation = new CancellationTokenSource();
             Logger.Log(nameof(SaveSystemCore), "Initialized");
         }
@@ -117,24 +103,26 @@ namespace SaveSystem {
             }
 
             // Core settings
-            SetupEvents(m_enabledSaveEvents = settings.enabledSaveEvents);
+            SetupEvents(EnabledSaveEvents = settings.enabledSaveEvents);
             Logger.EnabledLogs = settings.enabledLogs;
-            m_savePeriod = settings.savePeriod;
-            m_isParallel = settings.isParallel;
-            m_dataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
+            SavePeriod = settings.savePeriod;
+            IsParallel = settings.isParallel;
+            DataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
 
             // Checkpoints settings
-            m_playerTag = settings.playerTag;
+            PlayerTag = settings.playerTag;
 
             // Encryption settings
-            m_encrypt = settings.encryption;
-            m_selectedSaveProfile.Encrypt = settings.encryption;
-            m_cryptographer ??= new Cryptographer(settings.encryptionSettings);
-            m_selectedSaveProfile.Cryptographer ??= m_cryptographer;
+            if (settings.encryption) {
+                if (Cryptographer == null)
+                    Cryptographer = new Cryptographer(settings.encryptionSettings);
+                else
+                    Cryptographer.SetSettings(settings.encryptionSettings);
 
-            if (m_encrypt && !settings.encryptionSettings.useCustomProviders) {
-                m_cryptographer.PasswordProvider = new DefaultPasswordProvider(settings.encryptionSettings.password);
-                m_cryptographer.SaltProvider = new DefaultSaltProvider(settings.encryptionSettings.saltKey);
+                if (SelectedSaveProfile.Cryptographer == null)
+                    SelectedSaveProfile.Cryptographer = Cryptographer;
+                else
+                    SelectedSaveProfile.Cryptographer.SetSettings(settings.encryptionSettings);
             }
         }
 
@@ -234,13 +222,13 @@ namespace SaveSystem {
                 return m_savedBeforeExit = true;
             }
             else {
-                m_onSaveStart?.Invoke(SaveType.OnExit);
-                SaveObjects(OnSaveEnd);
+                OnSaveStart?.Invoke(SaveType.OnExit);
+                SaveObjects().ContinueWith(Continuation).Forget();
                 return false;
             }
 
-            void OnSaveEnd (HandlingResult result) {
-                m_onSaveEnd?.Invoke(SaveType.OnExit);
+            void Continuation (HandlingResult result) {
+                OnSaveEnd?.Invoke(SaveType.OnExit);
                 m_savedBeforeExit = true;
                 if (result is HandlingResult.Success)
                     Logger.Log(nameof(SaveSystemCore), "Successful saving before the quitting");
@@ -270,36 +258,30 @@ namespace SaveSystem {
 
 
         private static async UniTask<HandlingResult> CommonSavingTask (SaveType saveType, CancellationToken token) {
-            m_onSaveStart?.Invoke(saveType);
+            OnSaveStart?.Invoke(saveType);
             HandlingResult result = await SaveObjects(token);
-            m_onSaveEnd?.Invoke(saveType);
+            OnSaveEnd?.Invoke(saveType);
 
+            LogResult(saveType, result);
+            return result;
+        }
+
+
+        private static void LogResult (SaveType saveType, HandlingResult result) {
             if (result is HandlingResult.Success)
                 Logger.Log(nameof(SaveSystemCore), $"{saveType}: success");
             else if (result is HandlingResult.Canceled)
                 Logger.LogWarning(nameof(SaveSystemCore), $"{saveType}: canceled");
             else if (result is HandlingResult.Error)
                 Logger.LogError(nameof(SaveSystemCore), $"{saveType}: error");
-
-            return result;
         }
 
 
-        private static async void SaveObjects (Action<HandlingResult> continuation) {
-            try {
-                continuation(await SaveObjects(CancellationToken.None));
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
-        }
-
-
-        private static async UniTask<HandlingResult> SaveObjects (CancellationToken token) {
+        private static async UniTask<HandlingResult> SaveObjects (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SaveGlobalData(token);
-                await m_selectedSaveProfile.SaveProfileData(token);
+                await SaveGlobalData(DataPath, token);
+                await m_selectedSaveProfile.SaveProfileData(m_selectedSaveProfile.DataPath, token);
 
                 SceneSerializationContext[] contexts =
                     Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
@@ -308,12 +290,12 @@ namespace SaveSystem {
                     if (IsParallel && contexts.Length > 1) {
                         await ParallelLoop.ForEachAsync(
                             contexts,
-                            async sceneLoader => await sceneLoader.SaveSceneData(token)
+                            async sceneLoader => await sceneLoader.SaveSceneData(sceneLoader.DataPath, token)
                         );
                     }
                     else {
                         foreach (SceneSerializationContext sceneLoader in contexts)
-                            await sceneLoader.SaveSceneData(token);
+                            await sceneLoader.SaveSceneData(sceneLoader.DataPath, token);
                     }
                 }
 
@@ -326,120 +308,8 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask SaveGlobalData (CancellationToken token) {
-            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
-                return;
-            if (!m_loaded)
-                Logger.LogWarning(nameof(SaveSystemCore), "Start saving when objects not loaded");
-
-            m_registrationClosed = true;
-
-            token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
-            await using var writer = new SaveWriter(memoryStream);
-
-            writer.Write(m_dataBuffer);
-            await SerializeObjects(writer, token);
-
-            byte[] data = memoryStream.ToArray();
-
-            if (Encrypt)
-                data = await m_cryptographer.Encrypt(data, token);
-
-            await File.WriteAllBytesAsync(DataPath, data, token);
-            Logger.Log(nameof(SaveSystemCore), "Saved");
-        }
-
-
-        private static async UniTask<HandlingResult> LoadGlobalData (CancellationToken token) {
-            if (m_loaded) {
-                Logger.LogWarning(nameof(SaveSystemCore), "All objects already loaded");
-                return HandlingResult.Canceled;
-            }
-
-            if (!File.Exists(DataPath)) {
-                m_registrationClosed = true;
-                SetDefaults();
-                m_loaded = true;
-                return HandlingResult.FileNotExists;
-            }
-
-            m_registrationClosed = true;
-
-            try {
-                return await TryLoadGlobalData(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
-                return HandlingResult.Canceled;
-            }
-        }
-
-
-        private static async UniTask<HandlingResult> TryLoadGlobalData (CancellationToken token) {
-            token.ThrowIfCancellationRequested();
-            byte[] data = await File.ReadAllBytesAsync(DataPath, token).AsUniTask();
-
-            if (Encrypt)
-                data = await m_cryptographer.Decrypt(data, token);
-
-            var memoryStream = new MemoryStream(data);
-            await using var reader = new SaveReader(memoryStream);
-
-            m_dataBuffer = reader.ReadDataBuffer();
-            await DeserializeObjects(reader, token);
-
-            Logger.Log(nameof(SaveSystemCore), "Loaded");
-            m_loaded = true;
-            return HandlingResult.Success;
-        }
-
-
-        private static async UniTask SerializeObjects (SaveWriter writer, CancellationToken token) {
-            var completedTasks = 0;
-
-            foreach (IRuntimeSerializable obj in SerializableObjects) {
-                obj.Serialize(writer);
-                ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
-            }
-
-            foreach (IAsyncRuntimeSerializable obj in AsyncSerializableObjects) {
-                await obj.Serialize(writer, token);
-                ReportProgress(ref completedTasks, ObjectsCount, m_saveProgress);
-            }
-        }
-
-
-        private static async UniTask DeserializeObjects (SaveReader reader, CancellationToken token) {
-            var completedTasks = 0;
-
-            foreach (IRuntimeSerializable serializable in SerializableObjects) {
-                serializable.Deserialize(reader);
-                ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
-            }
-
-            foreach (IAsyncRuntimeSerializable serializable in AsyncSerializableObjects) {
-                await serializable.Deserialize(reader, token);
-                ReportProgress(ref completedTasks, ObjectsCount, m_loadProgress);
-            }
-        }
-
-
-        private static void SetDefaults () {
-            IEnumerable<IDefault> serializables =
-                SerializableObjects.Select(serializable => serializable as IDefault);
-            foreach (IDefault serializable in serializables)
-                serializable?.SetDefaults();
-
-            IEnumerable<IDefault> asyncSerializables =
-                AsyncSerializableObjects.Select(serializable => serializable as IDefault);
-            foreach (IDefault serializable in asyncSerializables)
-                serializable?.SetDefaults();
-        }
-
-
-        private static void ReportProgress (ref int completedTasks, int tasksCount, IProgress<float> progress) {
-            progress?.Report((float)++completedTasks / tasksCount);
+        private static async UniTask ExecuteOnSceneLoadSaving (CancellationToken token) {
+            await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
         }
 
     }
