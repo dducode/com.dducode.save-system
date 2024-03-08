@@ -127,6 +127,7 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(dataPath));
 
             try {
+                token.ThrowIfCancellationRequested();
                 return await m_handler.SaveData(dataPath, token);
             }
             catch (OperationCanceledException) {
@@ -139,6 +140,7 @@ namespace SaveSystem {
         [Pure]
         public async UniTask<(HandlingResult, byte[])> SaveSceneData (CancellationToken token = default) {
             try {
+                token.ThrowIfCancellationRequested();
                 return await m_handler.SaveData(token);
             }
             catch (OperationCanceledException) {
@@ -148,14 +150,13 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData (
-            [NotNull] string dataPath, CancellationToken token = default
-        ) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
+        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
 
             try {
-                return await m_handler.LoadData(dataPath, token);
+                token.ThrowIfCancellationRequested();
+                return await m_handler.LoadData(data, token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, "Scene data loading canceled", this);
@@ -164,12 +165,12 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
+        public async UniTask<HandlingResult> LoadSceneData (
+            string dataPath = null, CancellationToken token = default
+        ) {
             try {
-                return await m_handler.LoadData(data, token);
+                token.ThrowIfCancellationRequested();
+                return await m_handler.LoadData(dataPath ?? DataPath, token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, "Scene data loading canceled", this);

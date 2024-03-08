@@ -379,6 +379,7 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(data));
 
             try {
+                token.ThrowIfCancellationRequested();
                 return await m_handler.LoadData(data, token);
             }
             catch (OperationCanceledException) {
@@ -392,13 +393,11 @@ namespace SaveSystem {
         /// Start loading of objects in the global scope and wait it
         /// </summary>
         public static async UniTask<HandlingResult> LoadGlobalData (
-            [NotNull] string dataPath, CancellationToken token = default
+            string dataPath = null, CancellationToken token = default
         ) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
-
             try {
-                return await m_handler.LoadData(dataPath, token);
+                token.ThrowIfCancellationRequested();
+                return await m_handler.LoadData(dataPath ?? DataPath, token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");

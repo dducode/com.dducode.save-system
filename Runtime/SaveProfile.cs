@@ -164,14 +164,14 @@ namespace SaveSystem {
 
 
         public async UniTask<HandlingResult> LoadProfileData (
-            [NotNull] string dataPath, CancellationToken token = default
+            [NotNull] byte[] data, CancellationToken token = default
         ) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
 
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath, token);
+                return await m_handler.LoadData(data, token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile loading canceled");
@@ -181,14 +181,11 @@ namespace SaveSystem {
 
 
         public async UniTask<HandlingResult> LoadProfileData (
-            [NotNull] byte[] data, CancellationToken token = default
+            string dataPath = null, CancellationToken token = default
         ) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
+                return await m_handler.LoadData(dataPath ?? DataPath, token);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile loading canceled");
