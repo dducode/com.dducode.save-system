@@ -15,7 +15,7 @@ namespace SaveSystem.Internal.Cryptography {
 
 
         public byte[] GetKey () {
-            return new SHA1Cng().ComputeHash(Encoding.UTF8.GetBytes(m_key));
+            return SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(m_key));
         }
 
     }
