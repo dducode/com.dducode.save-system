@@ -22,11 +22,11 @@ namespace SaveSystem.Tests {
 
         public static bool[] parallelConfig = {true, false};
 
-        private static readonly HashAlgorithm[] HashAlgorithm = {
-            Cryptography.HashAlgorithm.SHA1,
-            Cryptography.HashAlgorithm.SHA256,
-            Cryptography.HashAlgorithm.SHA384,
-            Cryptography.HashAlgorithm.SHA512
+        private static readonly HashAlgorithmName[] HashAlgorithm = {
+            Cryptography.HashAlgorithmName.SHA1,
+            Cryptography.HashAlgorithmName.SHA256,
+            Cryptography.HashAlgorithmName.SHA384,
+            Cryptography.HashAlgorithmName.SHA512
         };
 
         private const string Password = "password";
@@ -200,7 +200,7 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithm hashAlgorithm) {
+        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm) {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
@@ -221,7 +221,7 @@ namespace SaveSystem.Tests {
 
         [Test]
         public async Task DeserializeWithDecryption (
-            [ValueSource(nameof(HashAlgorithm))] HashAlgorithm hashAlgorithm
+            [ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
         ) {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()

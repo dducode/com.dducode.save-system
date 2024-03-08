@@ -111,6 +111,11 @@ namespace SaveSystem {
             }
         }
 
+        public static bool Encrypt {
+            get => m_handler.Encrypt;
+            set => m_handler.Encrypt = value;
+        }
+
         /// <summary>
         /// Cryptographer used to encrypt/decrypt serializable data
         /// </summary>
@@ -118,6 +123,16 @@ namespace SaveSystem {
         public static Cryptographer Cryptographer {
             get => m_handler.Cryptographer;
             set => m_handler.Cryptographer = value;
+        }
+
+        public static bool Authentication {
+            get => m_handler.Authentication;
+            set => m_handler.Authentication = value;
+        }
+
+        public static HashAlgorithmName AlgorithmName {
+            get => m_handler.AlgorithmName;
+            set => m_handler.AlgorithmName = value;
         }
 
         /// <summary>

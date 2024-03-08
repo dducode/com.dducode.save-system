@@ -10,6 +10,10 @@
         public const string SettingsNotFound =
             "Save system settings not found. Use default instead.\nTo create settings, select \"Assets/Create/Save System/Save System Settings\"";
 
+        public const string DataIsCorrupted =
+            "Data is corrupted. If you are sure of the authenticity of the data, make sure that you delete player prefs with data files. " +
+            "Separately deleting may cause inconsistency";
+
     }
 
 }

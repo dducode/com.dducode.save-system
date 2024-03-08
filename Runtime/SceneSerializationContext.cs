@@ -24,6 +24,17 @@ namespace SaveSystem {
         [SerializeField]
         private EncryptionSettings encryptionSettings;
 
+        [SerializeField]
+        private bool authentication;
+
+        [SerializeField]
+        private HashAlgorithmName algorithmName;
+
+        public bool Encrypt {
+            get => m_handler.Encrypt;
+            set => m_handler.Encrypt = value;
+        }
+
         /// <summary>
         /// Cryptographer used to encrypt/decrypt serializable data
         /// </summary>
@@ -31,6 +42,16 @@ namespace SaveSystem {
         public Cryptographer Cryptographer {
             get => m_handler.Cryptographer;
             set => m_handler.Cryptographer = value;
+        }
+
+        public bool Authentication {
+            get => m_handler.Authentication;
+            set => m_handler.Authentication = value;
+        }
+
+        public HashAlgorithmName AlgorithmName {
+            get => m_handler.AlgorithmName;
+            set => m_handler.AlgorithmName = value;
         }
 
         public string DataPath => Path.Combine(
@@ -45,11 +66,17 @@ namespace SaveSystem {
             m_handler = new SaveDataHandler {
                 SerializationScope = m_serializationScope = new SerializationScope {
                     Name = $"{name} scope"
-                }
+                },
+                Authentication = authentication,
+                AlgorithmName = algorithmName,
+                AuthHashKey = $"{name} key",
+                Encrypt = encrypt
             };
 
-            if (encrypt)
+            if (encryptionSettings != null)
                 Cryptographer = new Cryptographer(encryptionSettings);
+            else if (Encrypt)
+                Logger.LogError(name, "Encryption enabled but settings not set");
         }
 
 

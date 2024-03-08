@@ -9,7 +9,7 @@ namespace SaveSystem.Editor {
         internal static void DrawKeyProperty (SerializedProperty keyProperty, string buttonTitle) {
             using var scope = new GUILayout.HorizontalScope();
 
-            EditorGUILayout.PropertyField(keyProperty);    
+            EditorGUILayout.PropertyField(keyProperty);
             bool isNullOrEmpty = string.IsNullOrEmpty(keyProperty.stringValue);
             bool buttonIsPressed = GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false));
 

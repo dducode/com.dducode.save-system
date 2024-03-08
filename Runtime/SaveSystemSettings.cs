@@ -25,9 +25,22 @@ namespace SaveSystem {
         public bool encryption;
         public EncryptionSettings encryptionSettings;
 
+        public bool authentication;
+        public HashAlgorithmName hashAlgorithm;
+
 
         public override string ToString () {
             var result = new StringBuilder();
+
+            AppendCommonSettings(result);
+            AppendEncryptionSettings(result);
+            AppendAuthSettings(result);
+
+            return result.ToString();
+        }
+
+
+        private void AppendCommonSettings (StringBuilder result) {
             result.Append($"\nEnabled Save Events: {enabledSaveEvents}");
             result.Append($"\nEnabled Logs: {enabledLogs}");
             if (enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
@@ -35,10 +48,20 @@ namespace SaveSystem {
             result.Append($"\nParallel saving: {(isParallel ? "Enable" : "Disable")}");
             result.Append($"\nData Path: {dataPath}");
             result.Append($"\nPlayer Tag: {playerTag}");
+        }
+
+
+        private void AppendEncryptionSettings (StringBuilder result) {
             result.Append($"\nEncryption: {(encryption ? "Enable" : "Disable")}");
             if (encryption)
                 result.Append($"\nEncryption Settings: {{{encryptionSettings}}}");
-            return result.ToString();
+        }
+
+
+        private void AppendAuthSettings (StringBuilder result) {
+            result.Append($"\nAuthentication: {(authentication ? "Enable" : "Disable")}");
+            if (authentication)
+                result.Append($"\nHash algorithm name: {hashAlgorithm}");
         }
 
     }

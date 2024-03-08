@@ -10,6 +10,9 @@ namespace SaveSystem.Editor {
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
 
+        private SerializedProperty m_authenticationProperty;
+        private SerializedProperty m_algorithmNameProperty;
+
 
         private void OnEnable () {
             var sceneContext = (SceneSerializationContext)target;
@@ -18,20 +21,42 @@ namespace SaveSystem.Editor {
             if (sameObjects > 1)
                 Debug.LogError("More than one scene serialization contexts. It's not supported");
 
-            m_encryptProperty = serializedObject.FindProperty("encrypt");
-            m_encryptionSettingsProperty = serializedObject.FindProperty("encryptionSettings");
+            InitializeEncryptionProperties();
+            InitializeAuthProperties();
         }
 
 
         public override void OnInspectorGUI () {
             serializedObject.Update();
+            DrawEncryptionProperties();
+            DrawAuthProperties();
+            serializedObject.ApplyModifiedProperties();
+        }
 
+
+        private void InitializeEncryptionProperties () {
+            m_encryptProperty = serializedObject.FindProperty("encrypt");
+            m_encryptionSettingsProperty = serializedObject.FindProperty("encryptionSettings");
+        }
+
+
+        private void InitializeAuthProperties () {
+            m_authenticationProperty = serializedObject.FindProperty("authentication");
+            m_algorithmNameProperty = serializedObject.FindProperty("algorithmName");
+        }
+
+
+        private void DrawEncryptionProperties () {
             EditorGUILayout.PropertyField(m_encryptProperty);
-
             if (m_encryptProperty.boolValue)
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty);
+        }
 
-            serializedObject.ApplyModifiedProperties();
+
+        private void DrawAuthProperties () {
+            EditorGUILayout.PropertyField(m_authenticationProperty);
+            if (m_authenticationProperty.boolValue)
+                EditorGUILayout.PropertyField(m_algorithmNameProperty);
         }
 
     }

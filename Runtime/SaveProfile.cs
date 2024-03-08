@@ -26,6 +26,7 @@ namespace SaveSystem {
 
                 m_name = value;
                 m_serializationScope.Name = $"{value} scope";
+                m_handler.AuthHashKey = $"{value} key";
             }
         }
 
@@ -42,11 +43,25 @@ namespace SaveSystem {
 
         public string DataPath => Path.Combine(m_dataFolder, $"{m_name}.profiledata");
 
+        public bool Encrypt {
+            get => m_handler.Encrypt;
+            set => m_handler.Encrypt = value;
+        }
 
         [NotNull]
         public Cryptographer Cryptographer {
             get => m_handler.Cryptographer;
             set => m_handler.Cryptographer = value;
+        }
+
+        public bool Authentication {
+            get => m_handler.Authentication;
+            set => m_handler.Authentication = value;
+        }
+
+        public HashAlgorithmName AlgorithmName {
+            get => m_handler.AlgorithmName;
+            set => m_handler.AlgorithmName = value;
         }
 
         private string m_name;

@@ -1,6 +1,6 @@
 ﻿namespace SaveSystem.Cryptography {
 
-    public enum HashAlgorithm {
+    public enum HashAlgorithmName {
 
         SHA1,
         SHA256,

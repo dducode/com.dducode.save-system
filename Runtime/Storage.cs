@@ -1,6 +1,4 @@
 ﻿using System.IO;
-using System.Threading;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 // ReSharper disable UnusedMember.Global
@@ -10,7 +8,7 @@ namespace SaveSystem {
     /// <summary>
     /// Use this class to get information about data
     /// </summary>
-    public static class Storage {
+    public static partial class Storage {
 
         internal static readonly string PersistentDataPath = Application.persistentDataPath;
 
@@ -33,11 +31,6 @@ namespace SaveSystem {
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
             return GetDataSize(PersistentDataPath) > 0;
-        }
-
-
-        public static async UniTask<byte[]> GetRawData (string localPath, CancellationToken token = default) {
-            return await File.ReadAllBytesAsync(GetFullPath(localPath), token);
         }
 
 
@@ -97,11 +90,14 @@ namespace SaveSystem {
             string[] data = Directory.GetFileSystemEntries(PersistentDataPath);
 
             foreach (string filePath in data) {
-                if (File.Exists(filePath))
-                    File.Delete(filePath);
-                else if (Directory.Exists(filePath))
+                if (File.GetAttributes(filePath).HasFlag(FileAttributes.Directory))
                     Directory.Delete(filePath, true);
+                else
+                    File.Delete(filePath);
             }
+
+            foreach (string key in m_storedKeys)
+                PlayerPrefs.DeleteKey(key);
         }
 
 

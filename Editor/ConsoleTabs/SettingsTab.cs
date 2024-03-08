@@ -23,6 +23,9 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
+        
+        private SerializedProperty m_authenticationProperty;
+        private SerializedProperty m_algorithmNameProperty;
 
 
         public SettingsTab () {
@@ -42,9 +45,10 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_serializedSettings.Update();
 
-            DrawCoreSettings();
+            DrawCommonSettings();
             DrawCheckpointsSettings();
             DrawEncryptionSettings();
+            DrawAuthenticationSettings();
 
             m_serializedSettings.ApplyModifiedProperties();
         }
@@ -72,23 +76,42 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_serializedSettings = new SerializedObject(settings);
 
-            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
-            m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
-
-            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
-            m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
-            m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
-
-            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
-
-            m_encryptProperty = m_serializedSettings.FindProperty("encryption");
-            m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
+            InitializeCommonSettings();
+            InitializeCheckpointsSettings();
+            InitializeEncryptionSettings();
+            InitializeAuthSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
 
 
-        private void DrawCoreSettings () {
+        private void InitializeCommonSettings () {
+            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
+            m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
+            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
+            m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
+            m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
+        }
+
+
+        private void InitializeCheckpointsSettings () {
+            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
+        }
+
+
+        private void InitializeEncryptionSettings () {
+            m_encryptProperty = m_serializedSettings.FindProperty("encryption");
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
+        }
+
+
+        private void InitializeAuthSettings () {
+            m_authenticationProperty = m_serializedSettings.FindProperty("authentication");
+            m_algorithmNameProperty = m_serializedSettings.FindProperty("hashAlgorithm");
+        }
+
+
+        private void DrawCommonSettings () {
             EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_enabledSaveEventsProperty, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
@@ -121,6 +144,17 @@ namespace SaveSystem.Editor.ConsoleTabs {
             if (m_encryptProperty.boolValue) 
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
 
+            EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawAuthenticationSettings () {
+            EditorGUILayout.LabelField("Authentication settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(m_authenticationProperty);
+
+            if (m_authenticationProperty.boolValue)
+                EditorGUILayout.PropertyField(m_algorithmNameProperty, GUILayout.MaxWidth(300));
+            
             EditorGUILayout.Space(15);
         }
 

@@ -66,7 +66,8 @@ namespace SaveSystem {
             m_handler = new SaveDataHandler {
                 SerializationScope = m_globalScope = new SerializationScope {
                     Name = "Global scope"
-                }
+                },
+                AuthHashKey = $"{nameof(SaveSystemCore)} key"
             };
             m_selectedSaveProfile = new DefaultSaveProfile();
 
@@ -102,28 +103,53 @@ namespace SaveSystem {
                 ));
             }
 
-            // Core settings
+            SetCommonSettings(settings);
+            SetCheckpointsSettings(settings);
+            SetEncryptionSettings(settings);
+            SetAuthSettings(settings);
+        }
+
+
+        private static void SetCommonSettings (SaveSystemSettings settings) {
             SetupEvents(EnabledSaveEvents = settings.enabledSaveEvents);
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
             IsParallel = settings.isParallel;
             DataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
+        }
 
-            // Checkpoints settings
+
+        private static void SetCheckpointsSettings (SaveSystemSettings settings) {
             PlayerTag = settings.playerTag;
+        }
 
-            // Encryption settings
-            if (settings.encryption) {
-                if (Cryptographer == null)
-                    Cryptographer = new Cryptographer(settings.encryptionSettings);
-                else
-                    Cryptographer.SetSettings(settings.encryptionSettings);
 
-                if (SelectedSaveProfile.Cryptographer == null)
-                    SelectedSaveProfile.Cryptographer = Cryptographer;
-                else
-                    SelectedSaveProfile.Cryptographer.SetSettings(settings.encryptionSettings);
+        private static void SetEncryptionSettings (SaveSystemSettings settings) {
+            Encrypt = settings.encryption;
+
+            if (settings.encryptionSettings == null) {
+                if (Encrypt)
+                    Logger.LogError(nameof(SaveSystemCore), "Encryption enabled but settings not set");
+                return;
             }
+
+            if (Cryptographer == null)
+                Cryptographer = new Cryptographer(settings.encryptionSettings);
+            else
+                Cryptographer.SetSettings(settings.encryptionSettings);
+
+            if (SelectedSaveProfile.Cryptographer == null)
+                SelectedSaveProfile.Cryptographer = Cryptographer;
+            else
+                SelectedSaveProfile.Cryptographer.SetSettings(settings.encryptionSettings);
+        }
+
+
+        private static void SetAuthSettings (SaveSystemSettings settings) {
+            Authentication = settings.authentication;
+            AlgorithmName = settings.hashAlgorithm;
+            SelectedSaveProfile.Authentication = settings.authentication;
+            SelectedSaveProfile.AlgorithmName = settings.hashAlgorithm;
         }
 
 

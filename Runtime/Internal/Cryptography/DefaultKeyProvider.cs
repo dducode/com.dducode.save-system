@@ -1,5 +1,5 @@
-﻿using System.Security.Cryptography;
-using System.Text;
+﻿using System;
+using System.Security.Cryptography;
 using SaveSystem.Cryptography;
 
 namespace SaveSystem.Internal.Cryptography {
@@ -15,7 +15,7 @@ namespace SaveSystem.Internal.Cryptography {
 
 
         public byte[] GetKey () {
-            return SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(m_key));
+            return SHA1.Create().ComputeHash(Convert.FromBase64String(m_key));
         }
 
     }
