@@ -96,8 +96,9 @@ namespace SaveSystem {
                     File.Delete(filePath);
             }
 
-            foreach (string key in m_storedKeys)
-                PlayerPrefs.DeleteKey(key);
+        #if UNITY_EDITOR
+            DeleteAuthKeys();
+        #endif
         }
 
 
