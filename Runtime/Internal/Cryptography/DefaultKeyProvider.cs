@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 using System.Text;
-using SaveSystem.Cryptography;
+using SaveSystem.Security;
 
 namespace SaveSystem.Internal.Cryptography {
 

@@ -1,6 +1,6 @@
 ﻿using System.Text;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal.Templates;
+using SaveSystem.Security;
 using UnityEngine;
 
 namespace SaveSystem {

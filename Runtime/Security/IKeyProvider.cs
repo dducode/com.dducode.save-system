@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Cryptography {
+﻿namespace SaveSystem.Security {
 
     public interface IKeyProvider {
 

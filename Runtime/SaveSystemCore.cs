@@ -2,9 +2,9 @@
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Templates;
+using SaveSystem.Security;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -145,19 +145,21 @@ namespace SaveSystem {
 
 
         private static void SetAuthSettings (SaveSystemSettings settings) {
-            if (settings.authenticationSettings == null) {
+            AuthenticationSettings authSettings = settings.authenticationSettings;
+
+            if (authSettings == null) {
                 if (settings.authentication)
                     Logger.LogError(nameof(SaveSystemCore), "Authentication enabled but settings not set");
                 return;
             }
 
             Authentication = settings.authentication;
-            AlgorithmName = settings.authenticationSettings.hashAlgorithm;
-            AuthHashKey = settings.authenticationSettings.globalAuthHashKey;
+            AuthManager = new AuthenticationManager(authSettings.globalAuthHashKey, authSettings.hashAlgorithm);
 
-            SelectedSaveProfile.Authentication = settings.authentication;
-            SelectedSaveProfile.AlgorithmName = settings.authenticationSettings.hashAlgorithm;
-            SelectedSaveProfile.AuthHashKey = settings.authenticationSettings.profileAuthHashKey;
+            SelectedSaveProfile.Authenticate = settings.authentication;
+            SelectedSaveProfile.AuthManager = new AuthenticationManager(
+                authSettings.profileAuthHashKey, authSettings.hashAlgorithm
+            );
         }
 
 

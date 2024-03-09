@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
+using SaveSystem.Security;
 using UnityEditor;
 using UnityEngine;
 

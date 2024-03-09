@@ -6,8 +6,8 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
+using SaveSystem.Security;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -126,19 +126,14 @@ namespace SaveSystem {
         }
 
         public static bool Authentication {
-            get => m_handler.Authentication;
-            set => m_handler.Authentication = value;
-        }
-
-        public static HashAlgorithmName AlgorithmName {
-            get => m_handler.AlgorithmName;
-            set => m_handler.AlgorithmName = value;
+            get => m_handler.Authenticate;
+            set => m_handler.Authenticate = value;
         }
 
         [NotNull]
-        public static string AuthHashKey {
-            get => m_handler.AuthHashKey;
-            set => m_handler.AuthHashKey = value;
+        public static AuthenticationManager AuthManager {
+            get => m_handler.AuthManager;
+            set => m_handler.AuthManager = value;
         }
 
         /// <summary>

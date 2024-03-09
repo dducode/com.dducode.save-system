@@ -2,15 +2,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
-using System.Security;
-using System.Security.Cryptography;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Cryptography;
-using SaveSystem.Internal.Extensions;
-using SaveSystem.Internal.Templates;
-using UnityEngine;
-using HashAlgorithmName = SaveSystem.Cryptography.HashAlgorithmName;
+using SaveSystem.Security;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -27,24 +21,13 @@ namespace SaveSystem.Internal {
             set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
         }
 
-        public bool Authentication { get; set; }
+        public bool Authenticate { get; set; }
 
         [NotNull]
-        public string AuthHashKey {
-            get => m_authHashKey;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(AuthHashKey));
-
-                m_authHashKey = value;
-            #if UNITY_EDITOR
-                Storage.AddPrefsKey(value);
-            #endif
-            }
+        public AuthenticationManager AuthManager {
+            get => m_authManager;
+            set => m_authManager = value ?? throw new ArgumentNullException(nameof(AuthManager));
         }
-
-        public HashAlgorithmName AlgorithmName { get; set; }
-
 
         [NotNull]
         public SerializationScope SerializationScope {
@@ -52,9 +35,8 @@ namespace SaveSystem.Internal {
             set => m_serializationScope = value ?? throw new ArgumentNullException(nameof(SerializationScope));
         }
 
-        private string m_dataPath;
         private Cryptographer m_cryptographer;
-        private string m_authHashKey;
+        private AuthenticationManager m_authManager;
         private SerializationScope m_serializationScope;
 
 
@@ -78,8 +60,8 @@ namespace SaveSystem.Internal {
             if (data.Length > 0 && Encrypt)
                 data = await Cryptographer.Encrypt(data, token);
 
-            if (Authentication)
-                SetAuthHash(data, AlgorithmName);
+            if (Authenticate)
+                AuthManager.SetAuthHash(data);
 
             return (HandlingResult.Success, data);
         }
@@ -106,30 +88,13 @@ namespace SaveSystem.Internal {
             if (Encrypt && Cryptographer == null)
                 throw new InvalidOperationException("Decryption enabled but cryptographer not sets");
 
-            if (Authentication && !DataAuthentication(data, AlgorithmName))
-                throw new SecurityException(Messages.DataIsCorrupted);
+            if (Authenticate)
+                AuthManager.AuthenticateData(data);
 
             if (Encrypt)
                 data = await Cryptographer.Decrypt(data, token);
 
             return await SerializationScope.LoadData(data, token);
-        }
-
-
-        private bool DataAuthentication (byte[] data, HashAlgorithmName algorithmName) {
-            return string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(data, algorithmName));
-        }
-
-
-        private void SetAuthHash (byte[] data, HashAlgorithmName algorithmName) {
-            PlayerPrefs.SetString(AuthHashKey, ComputeHash(data, algorithmName));
-            PlayerPrefs.Save();
-        }
-
-
-        private static string ComputeHash (byte[] data, HashAlgorithmName algorithmName) {
-            HashAlgorithm algorithm = algorithmName.SelectAlgorithm();
-            return Convert.ToBase64String(algorithm.ComputeHash(data));
         }
 
     }

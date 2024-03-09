@@ -12,7 +12,7 @@ using SaveSystem.Internal.Extensions;
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystem.Cryptography {
+namespace SaveSystem.Security {
 
     public class Cryptographer {
 

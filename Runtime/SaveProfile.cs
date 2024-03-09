@@ -6,8 +6,8 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
+using SaveSystem.Security;
 using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -26,7 +26,6 @@ namespace SaveSystem {
 
                 m_name = value;
                 m_serializationScope.Name = $"{value} scope";
-                m_handler.AuthHashKey = $"{value} key";
             }
         }
 
@@ -54,20 +53,15 @@ namespace SaveSystem {
             set => m_handler.Cryptographer = value;
         }
 
-        public bool Authentication {
-            get => m_handler.Authentication;
-            set => m_handler.Authentication = value;
-        }
-
-        public HashAlgorithmName AlgorithmName {
-            get => m_handler.AlgorithmName;
-            set => m_handler.AlgorithmName = value;
+        public bool Authenticate {
+            get => m_handler.Authenticate;
+            set => m_handler.Authenticate = value;
         }
 
         [NotNull]
-        public string AuthHashKey {
-            get => m_handler.AuthHashKey;
-            set => m_handler.AuthHashKey = value;
+        public AuthenticationManager AuthManager {
+            get => m_handler.AuthManager;
+            set => m_handler.AuthManager = value;
         }
 
         private string m_name;

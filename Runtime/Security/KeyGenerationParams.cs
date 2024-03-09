@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SaveSystem.Cryptography {
+namespace SaveSystem.Security {
 
     [Serializable]
     public struct KeyGenerationParams {

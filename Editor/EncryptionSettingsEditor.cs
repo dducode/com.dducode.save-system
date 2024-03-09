@@ -1,5 +1,5 @@
-﻿using SaveSystem.Cryptography;
-using SaveSystem.Internal.Cryptography;
+﻿using SaveSystem.Internal.Cryptography;
+using SaveSystem.Security;
 using UnityEditor;
 
 namespace SaveSystem.Editor {

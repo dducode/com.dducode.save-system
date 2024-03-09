@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SaveSystem.Cryptography {
+namespace SaveSystem.Security {
 
     [CreateAssetMenu(menuName = "Save System/Authentication Settings", fileName = nameof(AuthenticationSettings))]
     public class AuthenticationSettings : ScriptableObject {

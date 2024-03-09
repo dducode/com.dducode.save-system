@@ -1,7 +1,7 @@
 ﻿using SaveSystem.Internal.Cryptography;
 using UnityEngine;
 
-namespace SaveSystem.Cryptography {
+namespace SaveSystem.Security {
 
     [CreateAssetMenu(menuName = "Save System/Encryption Settings", fileName = nameof(EncryptionSettings))]
     public class EncryptionSettings : ScriptableObject {

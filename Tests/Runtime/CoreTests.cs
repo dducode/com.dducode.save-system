@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal.Cryptography;
+using SaveSystem.Security;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -256,8 +256,7 @@ namespace SaveSystem.Tests {
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.Authentication = true;
-            SaveSystemCore.AlgorithmName = hashAlgorithm;
-            SaveSystemCore.AuthHashKey = AuthHashKey;
+            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, hashAlgorithm);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.SaveAll();
@@ -274,8 +273,7 @@ namespace SaveSystem.Tests {
             );
 
             SaveSystemCore.Authentication = true;
-            SaveSystemCore.AlgorithmName = hashAlgorithm;
-            SaveSystemCore.AuthHashKey = AuthHashKey;
+            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, hashAlgorithm);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.LoadGlobalData();
