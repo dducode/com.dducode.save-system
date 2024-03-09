@@ -66,13 +66,12 @@ namespace SaveSystem {
             m_handler = new SaveDataHandler {
                 SerializationScope = m_globalScope = new SerializationScope {
                     Name = "Global scope"
-                },
-                AuthHashKey = $"{nameof(SaveSystemCore)} key"
+                }
             };
             m_selectedSaveProfile = new DefaultSaveProfile();
 
             SetPlayerLoop();
-            SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
             SetInternalSavedPaths();
             SetOnExitPlayModeCallback();
 
@@ -111,7 +110,7 @@ namespace SaveSystem {
 
 
         private static void SetCommonSettings (SaveSystemSettings settings) {
-            SetupEvents(EnabledSaveEvents = settings.enabledSaveEvents);
+            EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
             IsParallel = settings.isParallel;
@@ -125,19 +124,19 @@ namespace SaveSystem {
 
 
         private static void SetEncryptionSettings (SaveSystemSettings settings) {
-            Encrypt = settings.encryption;
-
             if (settings.encryptionSettings == null) {
-                if (Encrypt)
+                if (settings.encryption)
                     Logger.LogError(nameof(SaveSystemCore), "Encryption enabled but settings not set");
                 return;
             }
 
+            Encrypt = settings.encryption;
             if (Cryptographer == null)
                 Cryptographer = new Cryptographer(settings.encryptionSettings);
             else
                 Cryptographer.SetSettings(settings.encryptionSettings);
 
+            SelectedSaveProfile.Encrypt = settings.encryption;
             if (SelectedSaveProfile.Cryptographer == null)
                 SelectedSaveProfile.Cryptographer = Cryptographer;
             else
@@ -146,10 +145,19 @@ namespace SaveSystem {
 
 
         private static void SetAuthSettings (SaveSystemSettings settings) {
+            if (settings.authenticationSettings == null) {
+                if (settings.authentication)
+                    Logger.LogError(nameof(SaveSystemCore), "Authentication enabled but settings not set");
+                return;
+            }
+
             Authentication = settings.authentication;
-            AlgorithmName = settings.hashAlgorithm;
+            AlgorithmName = settings.authenticationSettings.hashAlgorithm;
+            AuthHashKey = settings.authenticationSettings.globalAuthHashKey;
+
             SelectedSaveProfile.Authentication = settings.authentication;
-            SelectedSaveProfile.AlgorithmName = settings.hashAlgorithm;
+            SelectedSaveProfile.AlgorithmName = settings.authenticationSettings.hashAlgorithm;
+            SelectedSaveProfile.AuthHashKey = settings.authenticationSettings.profileAuthHashKey;
         }
 
 

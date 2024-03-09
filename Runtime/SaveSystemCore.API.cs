@@ -135,6 +135,12 @@ namespace SaveSystem {
             set => m_handler.AlgorithmName = value;
         }
 
+        [NotNull]
+        public static string AuthHashKey {
+            get => m_handler.AuthHashKey;
+            set => m_handler.AuthHashKey = value;
+        }
+
         /// <summary>
         /// Event that is called before saving. It can be useful when you use async saving
         /// </summary>

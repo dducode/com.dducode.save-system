@@ -1,12 +1,14 @@
-﻿using SaveSystem.Internal.Cryptography;
+﻿using System;
 using UnityEditor;
 using UnityEngine;
 
 namespace SaveSystem.Editor {
 
-    internal class DrawingUtilities {
+    internal static class DrawingUtilities {
 
-        internal static void DrawKeyProperty (SerializedProperty keyProperty, string buttonTitle) {
+        internal static void DrawKeyProperty (
+            SerializedProperty keyProperty, string buttonTitle, Func<string> generateKeyAction
+        ) {
             using var scope = new GUILayout.HorizontalScope();
 
             EditorGUILayout.PropertyField(keyProperty);
@@ -14,7 +16,7 @@ namespace SaveSystem.Editor {
             bool buttonIsPressed = GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false));
 
             if (isNullOrEmpty || buttonIsPressed)
-                keyProperty.stringValue = CryptoUtilities.GenerateKey();
+                keyProperty.stringValue = generateKeyAction();
         }
 
     }

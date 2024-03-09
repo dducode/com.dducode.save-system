@@ -26,7 +26,7 @@ namespace SaveSystem {
         public EncryptionSettings encryptionSettings;
 
         public bool authentication;
-        public HashAlgorithmName hashAlgorithm;
+        public AuthenticationSettings authenticationSettings;
 
 
         public override string ToString () {
@@ -61,7 +61,7 @@ namespace SaveSystem {
         private void AppendAuthSettings (StringBuilder result) {
             result.Append($"\nAuthentication: {(authentication ? "Enable" : "Disable")}");
             if (authentication)
-                result.Append($"\nHash algorithm name: {hashAlgorithm}");
+                result.Append($"\nAuthentication settings: {authenticationSettings}");
         }
 
     }

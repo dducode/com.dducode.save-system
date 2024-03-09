@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using SaveSystem.Internal.Cryptography;
+using UnityEngine;
 
 namespace SaveSystem.Cryptography {
 
@@ -6,8 +7,8 @@ namespace SaveSystem.Cryptography {
     public class EncryptionSettings : ScriptableObject {
 
         public bool useCustomProviders;
-        public string password;
-        public string saltKey;
+        public string password = CryptoUtilities.GenerateKey();
+        public string saltKey = CryptoUtilities.GenerateKey();
         public KeyGenerationParams keyGenerationParams = KeyGenerationParams.Default;
 
 

@@ -1,4 +1,7 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using SaveSystem.Cryptography;
+using SaveSystem.Internal;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,6 +15,7 @@ namespace SaveSystem.Editor {
 
         private SerializedProperty m_authenticationProperty;
         private SerializedProperty m_algorithmNameProperty;
+        private SerializedProperty m_authHashKeyProperty;
 
 
         private void OnEnable () {
@@ -43,20 +47,30 @@ namespace SaveSystem.Editor {
         private void InitializeAuthProperties () {
             m_authenticationProperty = serializedObject.FindProperty("authentication");
             m_algorithmNameProperty = serializedObject.FindProperty("algorithmName");
+            m_authHashKeyProperty = serializedObject.FindProperty("authHashKey");
         }
 
 
         private void DrawEncryptionProperties () {
             EditorGUILayout.PropertyField(m_encryptProperty);
-            if (m_encryptProperty.boolValue)
+
+            if (m_encryptProperty.boolValue) {
+                m_encryptionSettingsProperty.boxedValue ??=
+                    ResourcesManager.CreateSettings<EncryptionSettings>();
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty);
+            }
         }
 
 
         private void DrawAuthProperties () {
             EditorGUILayout.PropertyField(m_authenticationProperty);
-            if (m_authenticationProperty.boolValue)
+
+            if (m_authenticationProperty.boolValue) {
                 EditorGUILayout.PropertyField(m_algorithmNameProperty);
+                DrawingUtilities.DrawKeyProperty(
+                    m_authHashKeyProperty, "Generate Auth Key", Guid.NewGuid().ToString
+                );
+            }
         }
 
     }

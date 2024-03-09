@@ -23,14 +23,15 @@ namespace SaveSystem.Tests {
         public static bool[] parallelConfig = {true, false};
 
         private static readonly HashAlgorithmName[] HashAlgorithm = {
-            Cryptography.HashAlgorithmName.SHA1,
-            Cryptography.HashAlgorithmName.SHA256,
-            Cryptography.HashAlgorithmName.SHA384,
-            Cryptography.HashAlgorithmName.SHA512
+            HashAlgorithmName.SHA1,
+            HashAlgorithmName.SHA256,
+            HashAlgorithmName.SHA384,
+            HashAlgorithmName.SHA512
         };
 
         private const string Password = "password";
         private const string SaltKey = "salt";
+        private const string AuthHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
 
 
         [SetUp]
@@ -200,7 +201,8 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm) {
+        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
+        ) {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
@@ -208,11 +210,13 @@ namespace SaveSystem.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = hashAlgorithm;
+            SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
             );
+
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.SaveAll();
             await UniTask.WaitForSeconds(1);
@@ -229,13 +233,52 @@ namespace SaveSystem.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = hashAlgorithm;
+            SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
             );
+
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.LoadGlobalData(SaveSystemCore.DataPath);
+            await SaveSystemCore.LoadGlobalData();
+            await UniTask.WaitForSeconds(1);
+        }
+
+
+        [Test]
+        public async Task SerializeWithAuthentication (
+            [ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
+        ) {
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
+            );
+            sphereFactory.CreateObjects(250);
+
+            SaveSystemCore.Authentication = true;
+            SaveSystemCore.AlgorithmName = hashAlgorithm;
+            SaveSystemCore.AuthHashKey = AuthHashKey;
+
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystemCore.SaveAll();
+            await UniTask.WaitForSeconds(1);
+        }
+
+
+        [Test]
+        public async Task DeserializeWithAuthentication (
+            [ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
+        ) {
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
+            );
+
+            SaveSystemCore.Authentication = true;
+            SaveSystemCore.AlgorithmName = hashAlgorithm;
+            SaveSystemCore.AuthHashKey = AuthHashKey;
+
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystemCore.LoadGlobalData();
             await UniTask.WaitForSeconds(1);
         }
 

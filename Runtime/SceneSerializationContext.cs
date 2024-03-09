@@ -30,6 +30,9 @@ namespace SaveSystem {
         [SerializeField]
         private HashAlgorithmName algorithmName;
 
+        [SerializeField]
+        private string authHashKey = Guid.NewGuid().ToString();
+
         public bool Encrypt {
             get => m_handler.Encrypt;
             set => m_handler.Encrypt = value;
@@ -54,6 +57,12 @@ namespace SaveSystem {
             set => m_handler.AlgorithmName = value;
         }
 
+        [NotNull]
+        public string AuthHashKey {
+            get => m_handler.AuthHashKey;
+            set => m_handler.AuthHashKey = value;
+        }
+
         public string DataPath => Path.Combine(
             SaveSystemCore.SelectedSaveProfile.DataFolder, $"{gameObject.scene.name}.scenedata"
         );
@@ -69,7 +78,7 @@ namespace SaveSystem {
                 },
                 Authentication = authentication,
                 AlgorithmName = algorithmName,
-                AuthHashKey = $"{name} key",
+                AuthHashKey = authHashKey,
                 Encrypt = encrypt
             };
 

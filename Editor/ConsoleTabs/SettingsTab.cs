@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using SaveSystem.Cryptography;
+using SaveSystem.Internal;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -23,19 +25,19 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
-        
+
         private SerializedProperty m_authenticationProperty;
-        private SerializedProperty m_algorithmNameProperty;
+        private SerializedProperty m_authenticationSettingsProperty;
 
 
         public SettingsTab () {
-            Initialize(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            Initialize(ResourcesManager.LoadSettings<SaveSystemSettings>());
         }
 
 
         public void Draw () {
             if (m_serializedSettings == null || m_serializedSettings.targetObject == null) {
-                if (TryLoadSettings(out SaveSystemSettings settings))
+                if (ResourcesManager.TryLoadSettings(out SaveSystemSettings settings))
                     Initialize(settings);
                 else
                     DrawFallbackWindow();
@@ -54,19 +56,13 @@ namespace SaveSystem.Editor.ConsoleTabs {
         }
 
 
-        private bool TryLoadSettings (out SaveSystemSettings settings) {
-            settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
-            return settings != null;
-        }
-
-
         private void DrawFallbackWindow () {
             EditorGUILayout.HelpBox(
                 "You are missing settings asset. Click button to restore it", MessageType.Warning
             );
 
             if (GUILayout.Button("Restore Settings Asset", GUILayout.ExpandWidth(false)))
-                Initialize(SaveSystemTools.CreateSettings());
+                Initialize(ResourcesManager.CreateSettings<SaveSystemSettings>());
         }
 
 
@@ -107,7 +103,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private void InitializeAuthSettings () {
             m_authenticationProperty = m_serializedSettings.FindProperty("authentication");
-            m_algorithmNameProperty = m_serializedSettings.FindProperty("hashAlgorithm");
+            m_authenticationSettingsProperty = m_serializedSettings.FindProperty("authenticationSettings");
         }
 
 
@@ -141,8 +137,11 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.LabelField("Encryption settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_encryptProperty);
 
-            if (m_encryptProperty.boolValue) 
+            if (m_encryptProperty.boolValue) {
+                m_encryptionSettingsProperty.boxedValue ??=
+                    ResourcesManager.CreateSettings<EncryptionSettings>();
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
+            }
 
             EditorGUILayout.Space(15);
         }
@@ -152,9 +151,12 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.LabelField("Authentication settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_authenticationProperty);
 
-            if (m_authenticationProperty.boolValue)
-                EditorGUILayout.PropertyField(m_algorithmNameProperty, GUILayout.MaxWidth(300));
-            
+            if (m_authenticationProperty.boolValue) {
+                m_authenticationSettingsProperty.boxedValue ??=
+                    ResourcesManager.CreateSettings<AuthenticationSettings>();
+                EditorGUILayout.PropertyField(m_authenticationSettingsProperty, GUILayout.MaxWidth(500));
+            }
+
             EditorGUILayout.Space(15);
         }
 

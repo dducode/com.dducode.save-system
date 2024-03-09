@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace SaveSystem.Internal.Cryptography {
 
-    internal class CryptoUtilities {
+    internal static class CryptoUtilities {
 
         internal static string GenerateKey () {
             var key = new byte[18];

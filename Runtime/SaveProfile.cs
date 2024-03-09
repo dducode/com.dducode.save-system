@@ -64,6 +64,12 @@ namespace SaveSystem {
             set => m_handler.AlgorithmName = value;
         }
 
+        [NotNull]
+        public string AuthHashKey {
+            get => m_handler.AuthHashKey;
+            set => m_handler.AuthHashKey = value;
+        }
+
         private string m_name;
         private string m_dataFolder;
         private readonly SerializationScope m_serializationScope;

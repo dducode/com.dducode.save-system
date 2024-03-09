@@ -29,9 +29,13 @@ namespace SaveSystem.Internal {
 
         public bool Authentication { get; set; }
 
+        [NotNull]
         public string AuthHashKey {
             get => m_authHashKey;
             set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(AuthHashKey));
+
                 m_authHashKey = value;
             #if UNITY_EDITOR
                 Storage.AddPrefsKey(value);
