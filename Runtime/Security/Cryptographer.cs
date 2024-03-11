@@ -71,50 +71,53 @@ namespace SaveSystem.Security {
         }
 
 
-        public virtual async UniTask<byte[]> Encrypt ([NotNull] byte[] value, CancellationToken token = default) {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
+        public virtual async UniTask<MemoryStream> Encrypt (
+            [NotNull] Stream stream, CancellationToken token = default
+        ) {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
             byte[] iv = GetIV();
 
-            using var memoryStream = new MemoryStream();
+            await using var memoryStream = new MemoryStream();
             memoryStream.Write(iv);
 
-            var aes = Aes.Create();
+            using var aes = Aes.Create();
             byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
 
             await using var cryptoStream = new CryptoStream(
                 memoryStream, aes.CreateEncryptor(key, iv), CryptoStreamMode.Write
             );
-            await cryptoStream.WriteAsync(value, token);
+            stream.Position = 0;
+            await stream.CopyToAsync(cryptoStream, token);
             cryptoStream.FlushFinalBlock();
-            cryptoStream.Close();
-            memoryStream.Close();
+            aes.Clear();
+            await stream.DisposeAsync();
 
-            return memoryStream.ToArray();
+            return new MemoryStream(memoryStream.ToArray(), false);
         }
 
 
-        public virtual async UniTask<byte[]> Decrypt ([NotNull] byte[] value, CancellationToken token = default) {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
+        public virtual async UniTask<MemoryStream> Decrypt (
+            [NotNull] Stream stream, CancellationToken token = default
+        ) {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
-            var aes = Aes.Create();
+            using var aes = Aes.Create();
             byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
-            byte[] iv = value[..16];
+            var iv = new byte[16];
+            // ReSharper disable once MustUseReturnValue
+            stream.Read(iv);
 
-            using var memoryStream = new MemoryStream(value[16..]);
             await using var cryptoStream = new CryptoStream(
-                memoryStream, aes.CreateDecryptor(key, iv), CryptoStreamMode.Read
+                stream, aes.CreateDecryptor(key, iv), CryptoStreamMode.Read
             );
+            await using var memoryStream = new MemoryStream();
+            await cryptoStream.CopyToAsync(memoryStream, token);
+            aes.Clear();
 
-            var decrypted = new byte[memoryStream.Length];
-            int unused = await cryptoStream.ReadAsync(decrypted, token);
-
-            memoryStream.Close();
-            cryptoStream.Close();
-
-            return decrypted;
+            return new MemoryStream(memoryStream.ToArray(), false);
         }
 
 

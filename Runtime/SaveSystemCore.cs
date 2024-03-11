@@ -348,6 +348,24 @@ namespace SaveSystem {
             await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
         }
 
+
+        private static async UniTask<HandlingResult> SaveGlobalData (
+            Func<UniTask<HandlingResult>> saving, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(
+                saving, nameof(SaveSystemCore), "Global data saving canceled", token: token
+            );
+        }
+
+
+        private static async UniTask<HandlingResult> LoadGlobalData (
+            Func<UniTask<HandlingResult>> loading, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(
+                loading, nameof(SaveSystemCore), "Global data loading canceled", token: token
+            );
+        }
+
     }
 
 }

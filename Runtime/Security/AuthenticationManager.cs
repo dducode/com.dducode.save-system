@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Security;
 using System.Security.Cryptography;
 using SaveSystem.Internal.Extensions;
@@ -37,23 +38,27 @@ namespace SaveSystem.Security {
         }
 
 
-        public void AuthenticateData (byte[] data) {
+        public void AuthenticateData (Stream stream) {
             if (!PlayerPrefs.HasKey(AuthHashKey))
                 throw new InvalidOperationException("There is no key for authenticate");
-            if (!string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(data)))
+            if (!string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(stream)))
                 throw new SecurityException(Messages.DataIsCorrupted);
         }
 
 
-        public void SetAuthHash (byte[] data) {
-            PlayerPrefs.SetString(AuthHashKey, ComputeHash(data));
+        public void SetAuthHash (Stream stream) {
+            PlayerPrefs.SetString(AuthHashKey, ComputeHash(stream));
             PlayerPrefs.Save();
         }
 
 
-        private string ComputeHash (byte[] data) {
+        private string ComputeHash (Stream stream) {
+            long oldPosition = stream.Position;
             HashAlgorithm algorithm = AlgorithmName.SelectAlgorithm();
-            return Convert.ToBase64String(algorithm.ComputeHash(data));
+            stream.Position = 0;
+            byte[] hash = algorithm.ComputeHash(stream);
+            stream.Position = oldPosition;
+            return Convert.ToBase64String(hash);
         }
 
     }

@@ -14,8 +14,11 @@
             private readonly string m_sourcePath =
                 Path.Combine(Application.dataPath, @"com.dducode.save-system\Tests\Runtime\TestResources\LoremIpsum.txt");
 
-            private readonly string m_encryptPath = Path.Combine(Application.temporaryCachePath, "LoremIpsum_encrypted.txt");
-            private readonly string m_decryptPath = Path.Combine(Application.temporaryCachePath, "LoremIpsum_decrypted.txt");
+            private readonly string m_encryptPath =
+                Path.Combine(Application.temporaryCachePath, "LoremIpsum_encrypted.txt");
+
+            private readonly string m_decryptPath =
+                Path.Combine(Application.temporaryCachePath, "LoremIpsum_decrypted.txt");
 
 
             [Test, Order(0)]
@@ -25,8 +28,10 @@
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
                 );
-                byte[] encrypted = await cryptographer.Encrypt(await File.ReadAllBytesAsync(m_sourcePath));
-                await File.WriteAllBytesAsync(m_encryptPath, encrypted);
+                await using MemoryStream encrypted = await cryptographer.Encrypt(
+                    new MemoryStream(await File.ReadAllBytesAsync(m_sourcePath))
+                );
+                await File.WriteAllBytesAsync(m_encryptPath, encrypted.ToArray());
 
                 EditorUtility.RevealInFinder(m_encryptPath);
             }
@@ -39,8 +44,10 @@
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
                 );
-                byte[] decrypted = await cryptographer.Decrypt(await File.ReadAllBytesAsync(m_encryptPath));
-                await File.WriteAllBytesAsync(m_decryptPath, decrypted);
+                await using MemoryStream decrypted = await cryptographer.Decrypt(
+                    new MemoryStream(await File.ReadAllBytesAsync(m_encryptPath))
+                );
+                await File.WriteAllBytesAsync(m_decryptPath, decrypted.ToArray());
 
                 EditorUtility.RevealInFinder(m_decryptPath);
             }

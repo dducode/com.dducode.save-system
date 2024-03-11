@@ -156,41 +156,30 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(dataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data saving canceled", this);
-                return HandlingResult.Canceled;
-            }
+            return await SaveSceneData(async () => await m_handler.SaveData(dataPath, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> SaveSceneData (
+            [NotNull] Stream destination, CancellationToken token = default
+        ) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            return await SaveSceneData(async () => await m_handler.SaveData(destination, token), token);
         }
 
 
         [Pure]
-        public async UniTask<(HandlingResult, byte[])> SaveSceneData (CancellationToken token = default) {
+        public async UniTask<(HandlingResult, MemoryStream)> SaveSceneData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(token);
+                MemoryStream stream = await m_handler.SaveData(token);
+                return (HandlingResult.Success, stream);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, "Scene data saving canceled", this);
-                return (HandlingResult.Canceled, Array.Empty<byte>());
-            }
-        }
-
-
-        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data loading canceled", this);
-                return HandlingResult.Canceled;
+                return (HandlingResult.Canceled, null);
             }
         }
 
@@ -198,14 +187,31 @@ namespace SaveSystem {
         public async UniTask<HandlingResult> LoadSceneData (
             string dataPath = null, CancellationToken token = default
         ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath ?? DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data loading canceled", this);
-                return HandlingResult.Canceled;
-            }
+            return await LoadSceneData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> LoadSceneData (
+            [NotNull] Stream source, CancellationToken token = default
+        ) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            return await LoadSceneData(async () => await m_handler.LoadData(source, token), token);
+        }
+
+
+        private async UniTask<HandlingResult> SaveSceneData (
+            Func<UniTask<HandlingResult>> saving, CancellationToken token = default
+        ) {
+            return await CancelableOperationsHandler.Execute(saving, name, "Scene data saving canceled", this, token);
+        }
+
+
+        private async UniTask<HandlingResult> LoadSceneData (
+            Func<UniTask<HandlingResult>> loading, CancellationToken token = default
+        ) {
+            return await CancelableOperationsHandler.Execute(loading, name, "Scene data loading canceled", this, token);
         }
 
     }

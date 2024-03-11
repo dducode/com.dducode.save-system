@@ -154,43 +154,30 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(dataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile saving canceled");
-                return HandlingResult.Canceled;
-            }
+            return await SaveProfileData(async () => await m_handler.SaveData(dataPath, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> SaveProfileData (
+            [NotNull] Stream destination, CancellationToken token = default
+        ) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            return await SaveProfileData(async () => await m_handler.SaveData(destination, token), token);
         }
 
 
         [Pure]
-        public async UniTask<(HandlingResult, byte[])> SaveProfileData (CancellationToken token = default) {
+        public async UniTask<(HandlingResult, MemoryStream)> SaveProfileData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(token);
+                MemoryStream stream = await m_handler.SaveData(token);
+                return (HandlingResult.Success, stream);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile saving canceled");
-                return (HandlingResult.Canceled, Array.Empty<byte>());
-            }
-        }
-
-
-        public async UniTask<HandlingResult> LoadProfileData (
-            [NotNull] byte[] data, CancellationToken token = default
-        ) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile loading canceled");
-                return HandlingResult.Canceled;
+                return (HandlingResult.Canceled, null);
             }
         }
 
@@ -198,19 +185,36 @@ namespace SaveSystem {
         public async UniTask<HandlingResult> LoadProfileData (
             string dataPath = null, CancellationToken token = default
         ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath ?? DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile loading canceled");
-                return HandlingResult.Canceled;
-            }
+            return await LoadProfileData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> LoadProfileData (
+            [NotNull] Stream source, CancellationToken token = default
+        ) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            return await LoadProfileData(async () => await m_handler.LoadData(source, token), token);
         }
 
 
         public override string ToString () {
             return $"name: {Name}, path: {Path.GetRelativePath(Storage.PersistentDataPath, m_dataFolder)}";
+        }
+
+
+        private async UniTask<HandlingResult> SaveProfileData (
+            Func<UniTask<HandlingResult>> saving, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(saving, Name, "Profile saving canceled", token: token);
+        }
+
+
+        private async UniTask<HandlingResult> LoadProfileData (
+            Func<UniTask<HandlingResult>> loading, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(loading, Name, "Profile loading canceled", token: token);
         }
 
     }

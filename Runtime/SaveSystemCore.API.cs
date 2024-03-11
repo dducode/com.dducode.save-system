@@ -361,46 +361,30 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(dataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
-                return HandlingResult.Canceled;
-            }
+            return await SaveGlobalData(async () => await m_handler.SaveData(dataPath, token), token);
+        }
+
+
+        public static async UniTask<HandlingResult> SaveGlobalData (
+            [NotNull] Stream destination, CancellationToken token = default
+        ) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            return await SaveGlobalData(async () => await m_handler.SaveData(destination, token), token);
         }
 
 
         [Pure]
-        public static async UniTask<(HandlingResult, byte[])> SaveGlobalData (CancellationToken token = default) {
+        public static async UniTask<(HandlingResult, MemoryStream)> SaveGlobalData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(token);
+                MemoryStream stream = await m_handler.SaveData(token);
+                return (HandlingResult.Success, stream);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
-                return (HandlingResult.Canceled, Array.Empty<byte>());
-            }
-        }
-
-
-        /// <summary>
-        /// Start loading of objects in the global scope and wait it
-        /// </summary>
-        public static async UniTask<HandlingResult> LoadGlobalData (
-            [NotNull] byte[] data, CancellationToken token = default
-        ) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");
-                return HandlingResult.Canceled;
+                return (HandlingResult.Canceled, null);
             }
         }
 
@@ -411,14 +395,20 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> LoadGlobalData (
             string dataPath = null, CancellationToken token = default
         ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath ?? DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");
-                return HandlingResult.Canceled;
-            }
+            return await LoadGlobalData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the global scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> LoadGlobalData (
+            [NotNull] Stream source, CancellationToken token = default
+        ) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            return await LoadGlobalData(async () => await m_handler.LoadData(source, token), token);
         }
 
     }

@@ -184,34 +184,33 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<byte[]> SaveData (CancellationToken token) {
+        public async UniTask<MemoryStream> SaveData (CancellationToken token) {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
-                return Array.Empty<byte>();
+                return null;
 
             m_registrationClosed = true;
 
             token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
+            await using var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
 
             writer.Write(m_dataBuffer);
             await SerializeObjects(writer, token);
 
             Logger.Log(Name, "Data saved");
-            return memoryStream.ToArray();
+            return new MemoryStream(memoryStream.GetBuffer(), false);
         }
 
 
-        public async UniTask<HandlingResult> LoadData ([NotNull] byte[] data, CancellationToken token = default) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
+        public async UniTask<HandlingResult> LoadData ([NotNull] Stream source, CancellationToken token = default) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
 
             m_registrationClosed = true;
 
             try {
                 token.ThrowIfCancellationRequested();
-                var memoryStream = new MemoryStream(data);
-                await using var reader = new SaveReader(memoryStream);
+                await using var reader = new SaveReader(source);
 
                 m_dataBuffer = reader.ReadDataBuffer();
                 await DeserializeObjects(reader, token);
