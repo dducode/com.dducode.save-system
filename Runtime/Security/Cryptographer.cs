@@ -108,13 +108,13 @@ namespace SaveSystem.Security {
                 memoryStream, aes.CreateDecryptor(key, iv), CryptoStreamMode.Read
             );
 
-            var plainTextBytes = new byte[memoryStream.Length];
-            int unused = await cryptoStream.ReadAsync(plainTextBytes, token);
+            var decrypted = new byte[memoryStream.Length];
+            int unused = await cryptoStream.ReadAsync(decrypted, token);
 
             memoryStream.Close();
             cryptoStream.Close();
 
-            return plainTextBytes;
+            return decrypted;
         }
 
 

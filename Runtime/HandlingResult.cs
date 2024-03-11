@@ -16,11 +16,6 @@
         Success,
 
         /// <summary>
-        /// The handling processed
-        /// </summary>
-        InProcess,
-
-        /// <summary>
         /// There aren't any files in the local storage at the specified path
         /// </summary>
         FileNotExists,

@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Tests {
+﻿namespace SaveSystem.Tests.TestObjects {
 
     internal class TestSaveProfile : SaveProfile {
 

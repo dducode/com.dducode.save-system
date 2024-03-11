@@ -13,7 +13,7 @@ namespace SaveSystem.Tests {
         private readonly string m_filePath = Storage.GetFullPath(nameof(DataBufferTests) + ".test");
 
 
-        [Test]
+        [Test, Order(0)]
         public void WriteArray () {
             var buffer = new DataBuffer();
             var positions = new Vector3[25];
@@ -32,7 +32,7 @@ namespace SaveSystem.Tests {
         }
 
 
-        [Test]
+        [Test, Order(1)]
         public void ReadArray () {
             using var reader = new SaveReader(File.Open(m_filePath, FileMode.Open));
             DataBuffer buffer = reader.ReadDataBuffer();

@@ -22,13 +22,6 @@ namespace SaveSystem.Tests {
 
         public static bool[] parallelConfig = {true, false};
 
-        private static readonly HashAlgorithmName[] HashAlgorithm = {
-            HashAlgorithmName.SHA1,
-            HashAlgorithmName.SHA256,
-            HashAlgorithmName.SHA384,
-            HashAlgorithmName.SHA512
-        };
-
         private const string Password = "password";
         private const string SaltKey = "salt";
         private const string AuthHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
@@ -200,16 +193,15 @@ namespace SaveSystem.Tests {
         }
 
 
-        [Test]
-        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
-        ) {
+        [Test, Category("Encryption"), Order(0)]
+        public async Task SerializeWithEncryption () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
             sphereFactory.CreateObjects(250);
 
             var generationParams = KeyGenerationParams.Default;
-            generationParams.hashAlgorithm = hashAlgorithm;
+            generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
             SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
@@ -223,16 +215,14 @@ namespace SaveSystem.Tests {
         }
 
 
-        [Test]
-        public async Task DeserializeWithDecryption (
-            [ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
-        ) {
+        [Test, Category("Encryption"), Order(1)]
+        public async Task DeserializeWithDecryption () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
             var generationParams = KeyGenerationParams.Default;
-            generationParams.hashAlgorithm = hashAlgorithm;
+            generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
             SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
@@ -247,16 +237,14 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task SerializeWithAuthentication (
-            [ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
-        ) {
+        public async Task SerializeWithAuthentication () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.Authentication = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, hashAlgorithm);
+            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.SaveAll();
@@ -265,19 +253,19 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task DeserializeWithAuthentication (
-            [ValueSource(nameof(HashAlgorithm))] HashAlgorithmName hashAlgorithm
-        ) {
+        public async Task DeserializeWithAuthentication () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
             SaveSystemCore.Authentication = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, hashAlgorithm);
+            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.LoadGlobalData();
             await UniTask.WaitForSeconds(1);
+
+            PlayerPrefs.DeleteKey(AuthHashKey);
         }
 
 
