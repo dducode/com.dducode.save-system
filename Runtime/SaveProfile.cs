@@ -169,15 +169,15 @@ namespace SaveSystem {
 
 
         [Pure]
-        public async UniTask<(HandlingResult, MemoryStream)> SaveProfileData (CancellationToken token = default) {
+        public async UniTask<(HandlingResult, byte[])> SaveProfileData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                MemoryStream stream = await m_handler.SaveData(token);
-                return (HandlingResult.Success, stream);
+                byte[] data = await m_handler.SaveData(token);
+                return (HandlingResult.Success, data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile saving canceled");
-                return (HandlingResult.Canceled, null);
+                return (HandlingResult.Canceled, Array.Empty<byte>());
             }
         }
 
@@ -196,6 +196,18 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(source));
 
             return await LoadProfileData(async () => await m_handler.LoadData(source, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> LoadProfileData (
+            [NotNull] byte[] data, CancellationToken token = default
+        ) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(data));
+
+            return await LoadProfileData(async () => await m_handler.LoadData(data, token), token);
         }
 
 

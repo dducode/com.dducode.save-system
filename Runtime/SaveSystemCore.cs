@@ -113,7 +113,6 @@ namespace SaveSystem {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            IsParallel = settings.isParallel;
             DataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
         }
 
@@ -322,18 +321,8 @@ namespace SaveSystem {
                 SceneSerializationContext[] contexts =
                     Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
 
-                if (contexts.Length > 0) {
-                    if (IsParallel && contexts.Length > 1) {
-                        await ParallelLoop.ForEachAsync(
-                            contexts,
-                            async sceneLoader => await sceneLoader.SaveSceneData(sceneLoader.DataPath, token)
-                        );
-                    }
-                    else {
-                        foreach (SceneSerializationContext sceneLoader in contexts)
-                            await sceneLoader.SaveSceneData(sceneLoader.DataPath, token);
-                    }
-                }
+                foreach (SceneSerializationContext sceneLoader in contexts)
+                    await sceneLoader.SaveSceneData(sceneLoader.DataPath, token);
 
                 return HandlingResult.Success;
             }

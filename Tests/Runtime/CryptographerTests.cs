@@ -28,10 +28,8 @@
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
                 );
-                await using MemoryStream encrypted = await cryptographer.Encrypt(
-                    new MemoryStream(await File.ReadAllBytesAsync(m_sourcePath))
-                );
-                await File.WriteAllBytesAsync(m_encryptPath, encrypted.ToArray());
+                byte[] encrypted = await cryptographer.Encrypt(await File.ReadAllBytesAsync(m_sourcePath));
+                await File.WriteAllBytesAsync(m_encryptPath, encrypted);
 
                 EditorUtility.RevealInFinder(m_encryptPath);
             }
@@ -44,10 +42,8 @@
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
                 );
-                await using MemoryStream decrypted = await cryptographer.Decrypt(
-                    new MemoryStream(await File.ReadAllBytesAsync(m_encryptPath))
-                );
-                await File.WriteAllBytesAsync(m_decryptPath, decrypted.ToArray());
+                byte[] decrypted = await cryptographer.Decrypt(await File.ReadAllBytesAsync(m_encryptPath));
+                await File.WriteAllBytesAsync(m_decryptPath, decrypted);
 
                 EditorUtility.RevealInFinder(m_decryptPath);
             }

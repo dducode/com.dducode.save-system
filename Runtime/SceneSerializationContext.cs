@@ -171,15 +171,15 @@ namespace SaveSystem {
 
 
         [Pure]
-        public async UniTask<(HandlingResult, MemoryStream)> SaveSceneData (CancellationToken token = default) {
+        public async UniTask<(HandlingResult, byte[])> SaveSceneData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                MemoryStream stream = await m_handler.SaveData(token);
-                return (HandlingResult.Success, stream);
+                byte[] data = await m_handler.SaveData(token);
+                return (HandlingResult.Success, data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, "Scene data saving canceled", this);
-                return (HandlingResult.Canceled, null);
+                return (HandlingResult.Canceled, Array.Empty<byte>());
             }
         }
 
@@ -201,15 +201,25 @@ namespace SaveSystem {
         }
 
 
+        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            return await LoadSceneData(async () => await m_handler.LoadData(data, token), token);
+        }
+
+
         private async UniTask<HandlingResult> SaveSceneData (
-            Func<UniTask<HandlingResult>> saving, CancellationToken token = default
+            Func<UniTask<HandlingResult>> saving, CancellationToken token
         ) {
             return await CancelableOperationsHandler.Execute(saving, name, "Scene data saving canceled", this, token);
         }
 
 
         private async UniTask<HandlingResult> LoadSceneData (
-            Func<UniTask<HandlingResult>> loading, CancellationToken token = default
+            Func<UniTask<HandlingResult>> loading, CancellationToken token
         ) {
             return await CancelableOperationsHandler.Execute(loading, name, "Scene data loading canceled", this, token);
         }

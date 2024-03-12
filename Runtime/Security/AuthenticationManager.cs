@@ -7,6 +7,7 @@ using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 using UnityEngine;
 
+// ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
@@ -38,7 +39,21 @@ namespace SaveSystem.Security {
         }
 
 
-        public void AuthenticateData (Stream stream) {
+        public void AuthenticateData ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            using var memoryStream = new MemoryStream(data);
+            AuthenticateData(memoryStream);
+        }
+
+
+        public void AuthenticateData ([NotNull] Stream stream) {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
             if (!PlayerPrefs.HasKey(AuthHashKey))
                 throw new InvalidOperationException("There is no key for authenticate");
             if (!string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(stream)))
@@ -46,7 +61,21 @@ namespace SaveSystem.Security {
         }
 
 
-        public void SetAuthHash (Stream stream) {
+        public void SetAuthHash ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            using var memoryStream = new MemoryStream(data);
+            SetAuthHash(memoryStream);
+        }
+
+
+        public void SetAuthHash ([NotNull] Stream stream) {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
             PlayerPrefs.SetString(AuthHashKey, ComputeHash(stream));
             PlayerPrefs.Save();
         }

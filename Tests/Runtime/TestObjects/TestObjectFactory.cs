@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Diagnostics.Contracts;
+using UnityEngine;
 
 namespace SaveSystem.Tests.TestObjects {
 
@@ -12,6 +13,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
+        [Pure]
         public TestObject CreateObject () {
             var gameObject = GameObject.CreatePrimitive(m_primitiveType);
             gameObject.AddComponent<TestObject>().SetRandomTransform().SetRandomColor();

@@ -74,10 +74,6 @@ namespace SaveSystem {
             }
         }
 
-        /// <summary>
-        /// Configure it to set parallel saving handlers
-        /// </summary>
-        public static bool IsParallel { get; set; }
 
         /// <summary>
         /// Set the global data path
@@ -355,6 +351,9 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
         public static async UniTask<HandlingResult> SaveGlobalData (
             [NotNull] string dataPath, CancellationToken token = default
         ) {
@@ -365,6 +364,9 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
         public static async UniTask<HandlingResult> SaveGlobalData (
             [NotNull] Stream destination, CancellationToken token = default
         ) {
@@ -375,16 +377,20 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
+        /// <returns> A tuple of a saving operation result and a saved data </returns>
         [Pure]
-        public static async UniTask<(HandlingResult, MemoryStream)> SaveGlobalData (CancellationToken token = default) {
+        public static async UniTask<(HandlingResult, byte[])> SaveGlobalData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                MemoryStream stream = await m_handler.SaveData(token);
+                byte[] stream = await m_handler.SaveData(token);
                 return (HandlingResult.Success, stream);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
-                return (HandlingResult.Canceled, null);
+                return (HandlingResult.Canceled, Array.Empty<byte>());
             }
         }
 
@@ -409,6 +415,21 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(source));
 
             return await LoadGlobalData(async () => await m_handler.LoadData(source, token), token);
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the global scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> LoadGlobalData (
+            [NotNull] byte[] data, CancellationToken token = default
+        ) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            return await LoadGlobalData(async () => await m_handler.LoadData(data, token), token);
         }
 
     }

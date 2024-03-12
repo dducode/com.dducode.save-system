@@ -14,9 +14,6 @@ namespace SaveSystem {
         [Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 15;
 
-        [Tooltip(Tooltips.IsParallel)]
-        public bool isParallel;
-
         [Tooltip(Tooltips.DataPath)]
         public string dataPath = "default_data_file.data";
 
@@ -45,7 +42,6 @@ namespace SaveSystem {
             result.Append($"\nEnabled Logs: {enabledLogs}");
             if (enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
                 result.Append($"\nSave Period: {savePeriod} sec");
-            result.Append($"\nParallel saving: {(isParallel ? "Enable" : "Disable")}");
             result.Append($"\nData Path: {dataPath}");
             result.Append($"\nPlayer Tag: {playerTag}");
         }

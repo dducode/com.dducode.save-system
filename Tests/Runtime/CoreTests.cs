@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
@@ -19,8 +18,6 @@ using UnityEngine.InputSystem;
 namespace SaveSystem.Tests {
 
     public class CoreTests {
-
-        public static bool[] parallelConfig = {true, false};
 
         private const string Password = "password";
         private const string SaltKey = "salt";
@@ -152,34 +149,6 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
-            var factory = new TestObjectFactory(PrimitiveType.Cube);
-
-            for (var i = 0; i < 5; i++) {
-                var meshes = new List<TestObjectAdapter>();
-
-                for (var j = 0; j < 50; j++)
-                    meshes.Add(new TestObjectAdapter(factory.CreateObject()));
-
-                SaveSystemCore.RegisterSerializables(nameof(meshes), meshes);
-                yield return new WaitForEndOfFrame();
-            }
-
-            var saveIsCompleted = false;
-
-            SaveSystemCore.IsParallel = isParallel;
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            SaveSystemCore.SaveAll().ContinueWith(_ => saveIsCompleted = true).Forget();
-            yield return new WaitWhile(() => !saveIsCompleted);
-            stopwatch.Stop();
-            Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
-            Assert.Greater(Storage.GetDataSize(), 0);
-        }
-
-
-        [UnityTest]
         public IEnumerator Quitting () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Cube), new TestObjectProvider()
@@ -269,8 +238,27 @@ namespace SaveSystem.Tests {
         }
 
 
-        // TODO: write test
-        public async Task WriteToDataBuffer () { }
+
+        public class DataBufferTests {
+
+            [Test, Order(0)]
+            public async Task WriteToDataBuffer () {
+                var factory = new TestObjectFactory(PrimitiveType.Sphere);
+                TestObject testObject = factory.CreateObject();
+                SaveSystemCore.WriteData("position", testObject.transform.position);
+                Debug.Log(testObject.transform.position);
+                await SaveSystemCore.SaveAll();
+            }
+
+
+            [Test, Order(1)]
+            public async Task ReadFromDataBuffer () {
+                await SaveSystemCore.LoadGlobalData();
+                Debug.Log(SaveSystemCore.ReadData<Vector3>("position"));
+            }
+
+        }
+
 
 
         [TearDown]
