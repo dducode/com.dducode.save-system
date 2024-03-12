@@ -6,8 +6,8 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
+using SaveSystem.Security;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -74,10 +74,6 @@ namespace SaveSystem {
             }
         }
 
-        /// <summary>
-        /// Configure it to set parallel saving handlers
-        /// </summary>
-        public static bool IsParallel { get; set; }
 
         /// <summary>
         /// Set the global data path
@@ -111,6 +107,11 @@ namespace SaveSystem {
             }
         }
 
+        public static bool Encrypt {
+            get => m_handler.Encrypt;
+            set => m_handler.Encrypt = value;
+        }
+
         /// <summary>
         /// Cryptographer used to encrypt/decrypt serializable data
         /// </summary>
@@ -118,6 +119,17 @@ namespace SaveSystem {
         public static Cryptographer Cryptographer {
             get => m_handler.Cryptographer;
             set => m_handler.Cryptographer = value;
+        }
+
+        public static bool Authentication {
+            get => m_handler.Authenticate;
+            set => m_handler.Authenticate = value;
+        }
+
+        [NotNull]
+        public static AuthenticationManager AuthManager {
+            get => m_handler.AuthManager;
+            set => m_handler.AuthManager = value;
         }
 
         /// <summary>
@@ -339,28 +351,42 @@ namespace SaveSystem {
         }
 
 
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
         public static async UniTask<HandlingResult> SaveGlobalData (
             [NotNull] string dataPath, CancellationToken token = default
         ) {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(dataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
-                return HandlingResult.Canceled;
-            }
+            return await SaveGlobalData(async () => await m_handler.SaveData(dataPath, token), token);
         }
 
 
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> SaveGlobalData (
+            [NotNull] Stream destination, CancellationToken token = default
+        ) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            return await SaveGlobalData(async () => await m_handler.SaveData(destination, token), token);
+        }
+
+
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
+        /// <returns> A tuple of a saving operation result and a saved data </returns>
         [Pure]
         public static async UniTask<(HandlingResult, byte[])> SaveGlobalData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(token);
+                byte[] stream = await m_handler.SaveData(token);
+                return (HandlingResult.Success, stream);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
@@ -373,19 +399,9 @@ namespace SaveSystem {
         /// Start loading of objects in the global scope and wait it
         /// </summary>
         public static async UniTask<HandlingResult> LoadGlobalData (
-            [NotNull] byte[] data, CancellationToken token = default
+            string dataPath = null, CancellationToken token = default
         ) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");
-                return HandlingResult.Canceled;
-            }
+            return await LoadGlobalData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
         }
 
 
@@ -393,16 +409,27 @@ namespace SaveSystem {
         /// Start loading of objects in the global scope and wait it
         /// </summary>
         public static async UniTask<HandlingResult> LoadGlobalData (
-            string dataPath = null, CancellationToken token = default
+            [NotNull] Stream source, CancellationToken token = default
         ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath ?? DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data loading canceled");
-                return HandlingResult.Canceled;
-            }
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            return await LoadGlobalData(async () => await m_handler.LoadData(source, token), token);
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the global scope and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> LoadGlobalData (
+            [NotNull] byte[] data, CancellationToken token = default
+        ) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            return await LoadGlobalData(async () => await m_handler.LoadData(data, token), token);
         }
 
     }

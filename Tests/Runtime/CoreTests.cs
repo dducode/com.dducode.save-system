@@ -1,12 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystem.CheckPoints;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal.Cryptography;
+using SaveSystem.Security;
 using SaveSystem.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -20,17 +19,9 @@ namespace SaveSystem.Tests {
 
     public class CoreTests {
 
-        public static bool[] parallelConfig = {true, false};
-
-        private static readonly HashAlgorithm[] HashAlgorithm = {
-            Cryptography.HashAlgorithm.SHA1,
-            Cryptography.HashAlgorithm.SHA256,
-            Cryptography.HashAlgorithm.SHA384,
-            Cryptography.HashAlgorithm.SHA512
-        };
-
         private const string Password = "password";
         private const string SaltKey = "salt";
+        private const string AuthHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
 
 
         [SetUp]
@@ -158,34 +149,6 @@ namespace SaveSystem.Tests {
 
 
         [UnityTest]
-        public IEnumerator ParallelSaving ([ValueSource(nameof(parallelConfig))] bool isParallel) {
-            var factory = new TestObjectFactory(PrimitiveType.Cube);
-
-            for (var i = 0; i < 5; i++) {
-                var meshes = new List<TestObjectAdapter>();
-
-                for (var j = 0; j < 50; j++)
-                    meshes.Add(new TestObjectAdapter(factory.CreateObject()));
-
-                SaveSystemCore.RegisterSerializables(nameof(meshes), meshes);
-                yield return new WaitForEndOfFrame();
-            }
-
-            var saveIsCompleted = false;
-
-            SaveSystemCore.IsParallel = isParallel;
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            SaveSystemCore.SaveAll().ContinueWith(_ => saveIsCompleted = true).Forget();
-            yield return new WaitWhile(() => !saveIsCompleted);
-            stopwatch.Stop();
-            Debug.Log($"<color=green>Saving took milliseconds: {stopwatch.ElapsedMilliseconds}</color>");
-            Assert.Greater(Storage.GetDataSize(), 0);
-        }
-
-
-        [UnityTest]
         public IEnumerator Quitting () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Cube), new TestObjectProvider()
@@ -199,20 +162,59 @@ namespace SaveSystem.Tests {
         }
 
 
-        [Test]
-        public async Task SerializeWithEncryption ([ValueSource(nameof(HashAlgorithm))] HashAlgorithm hashAlgorithm) {
+        [Test, Category("Encryption"), Order(0)]
+        public async Task SerializeWithEncryption () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
             sphereFactory.CreateObjects(250);
 
             var generationParams = KeyGenerationParams.Default;
-            generationParams.hashAlgorithm = hashAlgorithm;
+            generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
+            SaveSystemCore.Encrypt = true;
             SaveSystemCore.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
             );
+
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystemCore.SaveAll();
+            await UniTask.WaitForSeconds(1);
+        }
+
+
+        [Test, Category("Encryption"), Order(1)]
+        public async Task DeserializeWithDecryption () {
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
+            );
+
+            var generationParams = KeyGenerationParams.Default;
+            generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
+            SaveSystemCore.Encrypt = true;
+            SaveSystemCore.Cryptographer = new Cryptographer(
+                new DefaultKeyProvider(Password),
+                new DefaultKeyProvider(SaltKey),
+                generationParams
+            );
+
+            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystemCore.LoadGlobalData();
+            await UniTask.WaitForSeconds(1);
+        }
+
+
+        [Test]
+        public async Task SerializeWithAuthentication () {
+            var sphereFactory = new DynamicObjectGroup<TestObject>(
+                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
+            );
+            sphereFactory.CreateObjects(250);
+
+            SaveSystemCore.Authentication = true;
+            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.SaveAll();
             await UniTask.WaitForSeconds(1);
@@ -220,28 +222,43 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task DeserializeWithDecryption (
-            [ValueSource(nameof(HashAlgorithm))] HashAlgorithm hashAlgorithm
-        ) {
+        public async Task DeserializeWithAuthentication () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
-            var generationParams = KeyGenerationParams.Default;
-            generationParams.hashAlgorithm = hashAlgorithm;
-            SaveSystemCore.Cryptographer = new Cryptographer(
-                new DefaultKeyProvider(Password),
-                new DefaultKeyProvider(SaltKey),
-                generationParams
-            );
+            SaveSystemCore.Authentication = true;
+            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.LoadGlobalData(SaveSystemCore.DataPath);
+            await SaveSystemCore.LoadGlobalData();
             await UniTask.WaitForSeconds(1);
+
+            PlayerPrefs.DeleteKey(AuthHashKey);
         }
 
 
-        // TODO: write test
-        public async Task WriteToDataBuffer () { }
+
+        public class DataBufferTests {
+
+            [Test, Order(0)]
+            public async Task WriteToDataBuffer () {
+                var factory = new TestObjectFactory(PrimitiveType.Sphere);
+                TestObject testObject = factory.CreateObject();
+                SaveSystemCore.WriteData("position", testObject.transform.position);
+                Debug.Log(testObject.transform.position);
+                await SaveSystemCore.SaveAll();
+            }
+
+
+            [Test, Order(1)]
+            public async Task ReadFromDataBuffer () {
+                await SaveSystemCore.LoadGlobalData();
+                Debug.Log(SaveSystemCore.ReadData<Vector3>("position"));
+            }
+
+        }
+
 
 
         [TearDown]

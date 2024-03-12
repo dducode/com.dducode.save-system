@@ -1,6 +1,7 @@
-﻿using System.Security.Cryptography;
+﻿using System;
+using System.Security.Cryptography;
 using System.Text;
-using SaveSystem.Cryptography;
+using SaveSystem.Security;
 
 namespace SaveSystem.Internal.Cryptography {
 
@@ -10,12 +11,12 @@ namespace SaveSystem.Internal.Cryptography {
 
 
         internal DefaultKeyProvider (string key) {
-            m_key = key;
+            m_key = Convert.ToBase64String(SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(key)));
         }
 
 
         public byte[] GetKey () {
-            return SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(m_key));
+            return Convert.FromBase64String(m_key);
         }
 
     }

@@ -1,4 +1,5 @@
-﻿using SaveSystem.Cryptography;
+﻿using SaveSystem.Internal.Cryptography;
+using SaveSystem.Security;
 using UnityEditor;
 
 namespace SaveSystem.Editor {
@@ -22,16 +23,16 @@ namespace SaveSystem.Editor {
 
         public override void OnInspectorGUI () {
             serializedObject.Update();
-        
+
             EditorGUILayout.PropertyField(m_useCustomProvidersProperty);
-        
+
             if (!m_useCustomProvidersProperty.boolValue) {
-                DrawingUtilities.DrawKeyProperty(m_passwordProperty, "Generate Password");
-                DrawingUtilities.DrawKeyProperty(m_saltKeyProperty, "Generate Salt Key");
+                DrawingUtilities.DrawKeyProperty(m_passwordProperty, "Generate Password", CryptoUtilities.GenerateKey);
+                DrawingUtilities.DrawKeyProperty(m_saltKeyProperty, "Generate Salt Key", CryptoUtilities.GenerateKey);
             }
-        
+
             EditorGUILayout.PropertyField(m_keyGenerationParamsProperty);
-        
+
             serializedObject.ApplyModifiedProperties();
         }
 

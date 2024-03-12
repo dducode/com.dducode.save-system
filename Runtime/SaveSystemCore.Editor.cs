@@ -30,6 +30,7 @@
                 m_autoSaveLastTime = 0;
                 m_savedBeforeExit = false;
                 m_globalScope = null;
+                m_handler = null;
 
                 Application.quitting -= ResetOnExit;
             }

@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using SaveSystem.Internal;
+using SaveSystem.Security;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -16,7 +18,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_isParallelProperty;
         private SerializedProperty m_dataPathProperty;
 
         private SerializedProperty m_playerTagProperty;
@@ -24,15 +25,18 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
 
+        private SerializedProperty m_authenticationProperty;
+        private SerializedProperty m_authenticationSettingsProperty;
+
 
         public SettingsTab () {
-            Initialize(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            Initialize(ResourcesManager.LoadSettings<SaveSystemSettings>());
         }
 
 
         public void Draw () {
             if (m_serializedSettings == null || m_serializedSettings.targetObject == null) {
-                if (TryLoadSettings(out SaveSystemSettings settings))
+                if (ResourcesManager.TryLoadSettings(out SaveSystemSettings settings))
                     Initialize(settings);
                 else
                     DrawFallbackWindow();
@@ -42,17 +46,12 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_serializedSettings.Update();
 
-            DrawCoreSettings();
+            DrawCommonSettings();
             DrawCheckpointsSettings();
             DrawEncryptionSettings();
+            DrawAuthenticationSettings();
 
             m_serializedSettings.ApplyModifiedProperties();
-        }
-
-
-        private bool TryLoadSettings (out SaveSystemSettings settings) {
-            settings = Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings));
-            return settings != null;
         }
 
 
@@ -62,7 +61,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             );
 
             if (GUILayout.Button("Restore Settings Asset", GUILayout.ExpandWidth(false)))
-                Initialize(SaveSystemTools.CreateSettings());
+                Initialize(ResourcesManager.CreateSettings<SaveSystemSettings>());
         }
 
 
@@ -72,23 +71,41 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             m_serializedSettings = new SerializedObject(settings);
 
-            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
-            m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
-
-            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
-            m_isParallelProperty = m_serializedSettings.FindProperty("isParallel");
-            m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
-
-            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
-
-            m_encryptProperty = m_serializedSettings.FindProperty("encryption");
-            m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
+            InitializeCommonSettings();
+            InitializeCheckpointsSettings();
+            InitializeEncryptionSettings();
+            InitializeAuthSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
 
 
-        private void DrawCoreSettings () {
+        private void InitializeCommonSettings () {
+            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
+            m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
+            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
+            m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
+        }
+
+
+        private void InitializeCheckpointsSettings () {
+            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
+        }
+
+
+        private void InitializeEncryptionSettings () {
+            m_encryptProperty = m_serializedSettings.FindProperty("encryption");
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
+        }
+
+
+        private void InitializeAuthSettings () {
+            m_authenticationProperty = m_serializedSettings.FindProperty("authentication");
+            m_authenticationSettingsProperty = m_serializedSettings.FindProperty("authenticationSettings");
+        }
+
+
+        private void DrawCommonSettings () {
             EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_enabledSaveEventsProperty, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
@@ -97,7 +114,6 @@ namespace SaveSystem.Editor.ConsoleTabs {
             if (saveEvents.HasFlag(SaveEvents.AutoSave))
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
-            EditorGUILayout.PropertyField(m_isParallelProperty);
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
 
             EditorGUILayout.Space(15);
@@ -118,8 +134,25 @@ namespace SaveSystem.Editor.ConsoleTabs {
             EditorGUILayout.LabelField("Encryption settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_encryptProperty);
 
-            if (m_encryptProperty.boolValue) 
+            if (m_encryptProperty.boolValue) {
+                m_encryptionSettingsProperty.boxedValue ??=
+                    ResourcesManager.CreateSettings<EncryptionSettings>();
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
+            }
+
+            EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawAuthenticationSettings () {
+            EditorGUILayout.LabelField("Authentication settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(m_authenticationProperty);
+
+            if (m_authenticationProperty.boolValue) {
+                m_authenticationSettingsProperty.boxedValue ??=
+                    ResourcesManager.CreateSettings<AuthenticationSettings>();
+                EditorGUILayout.PropertyField(m_authenticationSettingsProperty, GUILayout.MaxWidth(500));
+            }
 
             EditorGUILayout.Space(15);
         }

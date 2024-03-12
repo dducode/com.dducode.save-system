@@ -1,21 +1,21 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SaveSystem.Cryptography {
+namespace SaveSystem.Security {
 
     [Serializable]
     public struct KeyGenerationParams {
 
-        public static KeyGenerationParams Default => new(AESKeyLength._128Bit, HashAlgorithm.SHA1, 10);
+        public static KeyGenerationParams Default => new(AESKeyLength._128Bit, HashAlgorithmName.SHA1, 10);
 
         public AESKeyLength keyLength;
-        public HashAlgorithm hashAlgorithm;
+        public HashAlgorithmName hashAlgorithm;
 
         [Min(1)]
         public int iterations;
 
 
-        public KeyGenerationParams (AESKeyLength keyLength, HashAlgorithm hashAlgorithm, int iterations) {
+        public KeyGenerationParams (AESKeyLength keyLength, HashAlgorithmName hashAlgorithm, int iterations) {
             this.hashAlgorithm = hashAlgorithm;
             this.keyLength = keyLength;
             this.iterations = iterations;

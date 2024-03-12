@@ -1,6 +1,6 @@
 ﻿using System.Text;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal.Templates;
+using SaveSystem.Security;
 using UnityEngine;
 
 namespace SaveSystem {
@@ -14,9 +14,6 @@ namespace SaveSystem {
         [Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 15;
 
-        [Tooltip(Tooltips.IsParallel)]
-        public bool isParallel;
-
         [Tooltip(Tooltips.DataPath)]
         public string dataPath = "default_data_file.data";
 
@@ -25,20 +22,42 @@ namespace SaveSystem {
         public bool encryption;
         public EncryptionSettings encryptionSettings;
 
+        public bool authentication;
+        public AuthenticationSettings authenticationSettings;
+
 
         public override string ToString () {
             var result = new StringBuilder();
+
+            AppendCommonSettings(result);
+            AppendEncryptionSettings(result);
+            AppendAuthSettings(result);
+
+            return result.ToString();
+        }
+
+
+        private void AppendCommonSettings (StringBuilder result) {
             result.Append($"\nEnabled Save Events: {enabledSaveEvents}");
             result.Append($"\nEnabled Logs: {enabledLogs}");
             if (enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
                 result.Append($"\nSave Period: {savePeriod} sec");
-            result.Append($"\nParallel saving: {(isParallel ? "Enable" : "Disable")}");
             result.Append($"\nData Path: {dataPath}");
             result.Append($"\nPlayer Tag: {playerTag}");
+        }
+
+
+        private void AppendEncryptionSettings (StringBuilder result) {
             result.Append($"\nEncryption: {(encryption ? "Enable" : "Disable")}");
             if (encryption)
                 result.Append($"\nEncryption Settings: {{{encryptionSettings}}}");
-            return result.ToString();
+        }
+
+
+        private void AppendAuthSettings (StringBuilder result) {
+            result.Append($"\nAuthentication: {(authentication ? "Enable" : "Disable")}");
+            if (authentication)
+                result.Append($"\nAuthentication settings: {authenticationSettings}");
         }
 
     }

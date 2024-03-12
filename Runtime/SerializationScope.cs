@@ -11,6 +11,8 @@ using SaveSystem.Internal.Diagnostic;
 using SaveSystem.Internal.Templates;
 using Logger = SaveSystem.Internal.Logger;
 
+// ReSharper disable UnusedMember.Global
+
 // ReSharper disable SuspiciousTypeConversion.Global
 
 namespace SaveSystem {
@@ -186,12 +188,12 @@ namespace SaveSystem {
 
         public async UniTask<byte[]> SaveData (CancellationToken token) {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
-                return Array.Empty<byte>();
+                return null;
 
             m_registrationClosed = true;
 
             token.ThrowIfCancellationRequested();
-            var memoryStream = new MemoryStream();
+            await using var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
 
             writer.Write(m_dataBuffer);
@@ -205,13 +207,22 @@ namespace SaveSystem {
         public async UniTask<HandlingResult> LoadData ([NotNull] byte[] data, CancellationToken token = default) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            return await LoadData(new MemoryStream(data), token);
+        }
+
+
+        public async UniTask<HandlingResult> LoadData ([NotNull] Stream stream, CancellationToken token = default) {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
             m_registrationClosed = true;
 
             try {
                 token.ThrowIfCancellationRequested();
-                var memoryStream = new MemoryStream(data);
-                await using var reader = new SaveReader(memoryStream);
+                await using var reader = new SaveReader(stream);
 
                 m_dataBuffer = reader.ReadDataBuffer();
                 await DeserializeObjects(reader, token);

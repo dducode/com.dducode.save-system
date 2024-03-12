@@ -2,9 +2,9 @@
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Templates;
+using SaveSystem.Security;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -71,7 +71,7 @@ namespace SaveSystem {
             m_selectedSaveProfile = new DefaultSaveProfile();
 
             SetPlayerLoop();
-            SetSettings(Resources.Load<SaveSystemSettings>(nameof(SaveSystemSettings)));
+            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
             SetInternalSavedPaths();
             SetOnExitPlayModeCallback();
 
@@ -102,28 +102,63 @@ namespace SaveSystem {
                 ));
             }
 
-            // Core settings
-            SetupEvents(EnabledSaveEvents = settings.enabledSaveEvents);
+            SetCommonSettings(settings);
+            SetCheckpointsSettings(settings);
+            SetEncryptionSettings(settings);
+            SetAuthSettings(settings);
+        }
+
+
+        private static void SetCommonSettings (SaveSystemSettings settings) {
+            EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            IsParallel = settings.isParallel;
             DataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
+        }
 
-            // Checkpoints settings
+
+        private static void SetCheckpointsSettings (SaveSystemSettings settings) {
             PlayerTag = settings.playerTag;
+        }
 
-            // Encryption settings
-            if (settings.encryption) {
-                if (Cryptographer == null)
-                    Cryptographer = new Cryptographer(settings.encryptionSettings);
-                else
-                    Cryptographer.SetSettings(settings.encryptionSettings);
 
-                if (SelectedSaveProfile.Cryptographer == null)
-                    SelectedSaveProfile.Cryptographer = Cryptographer;
-                else
-                    SelectedSaveProfile.Cryptographer.SetSettings(settings.encryptionSettings);
+        private static void SetEncryptionSettings (SaveSystemSettings settings) {
+            if (settings.encryptionSettings == null) {
+                if (settings.encryption)
+                    Logger.LogError(nameof(SaveSystemCore), "Encryption enabled but settings not set");
+                return;
             }
+
+            Encrypt = settings.encryption;
+            if (Cryptographer == null)
+                Cryptographer = new Cryptographer(settings.encryptionSettings);
+            else
+                Cryptographer.SetSettings(settings.encryptionSettings);
+
+            SelectedSaveProfile.Encrypt = settings.encryption;
+            if (SelectedSaveProfile.Cryptographer == null)
+                SelectedSaveProfile.Cryptographer = Cryptographer;
+            else
+                SelectedSaveProfile.Cryptographer.SetSettings(settings.encryptionSettings);
+        }
+
+
+        private static void SetAuthSettings (SaveSystemSettings settings) {
+            AuthenticationSettings authSettings = settings.authenticationSettings;
+
+            if (authSettings == null) {
+                if (settings.authentication)
+                    Logger.LogError(nameof(SaveSystemCore), "Authentication enabled but settings not set");
+                return;
+            }
+
+            Authentication = settings.authentication;
+            AuthManager = new AuthenticationManager(authSettings.globalAuthHashKey, authSettings.hashAlgorithm);
+
+            SelectedSaveProfile.Authenticate = settings.authentication;
+            SelectedSaveProfile.AuthManager = new AuthenticationManager(
+                authSettings.profileAuthHashKey, authSettings.hashAlgorithm
+            );
         }
 
 
@@ -286,18 +321,8 @@ namespace SaveSystem {
                 SceneSerializationContext[] contexts =
                     Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
 
-                if (contexts.Length > 0) {
-                    if (IsParallel && contexts.Length > 1) {
-                        await ParallelLoop.ForEachAsync(
-                            contexts,
-                            async sceneLoader => await sceneLoader.SaveSceneData(sceneLoader.DataPath, token)
-                        );
-                    }
-                    else {
-                        foreach (SceneSerializationContext sceneLoader in contexts)
-                            await sceneLoader.SaveSceneData(sceneLoader.DataPath, token);
-                    }
-                }
+                foreach (SceneSerializationContext sceneLoader in contexts)
+                    await sceneLoader.SaveSceneData(sceneLoader.DataPath, token);
 
                 return HandlingResult.Success;
             }
@@ -310,6 +335,24 @@ namespace SaveSystem {
 
         private static async UniTask ExecuteOnSceneLoadSaving (CancellationToken token) {
             await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
+        }
+
+
+        private static async UniTask<HandlingResult> SaveGlobalData (
+            Func<UniTask<HandlingResult>> saving, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(
+                saving, nameof(SaveSystemCore), "Global data saving canceled", token: token
+            );
+        }
+
+
+        private static async UniTask<HandlingResult> LoadGlobalData (
+            Func<UniTask<HandlingResult>> loading, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(
+                loading, nameof(SaveSystemCore), "Global data loading canceled", token: token
+            );
         }
 
     }

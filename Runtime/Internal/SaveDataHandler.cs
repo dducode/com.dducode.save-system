@@ -4,7 +4,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Cryptography;
+using SaveSystem.Security;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -13,10 +13,20 @@ namespace SaveSystem.Internal {
 
     internal class SaveDataHandler {
 
+        public bool Encrypt { get; set; }
+
         [NotNull]
         public Cryptographer Cryptographer {
             get => m_cryptographer;
             set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
+        }
+
+        public bool Authenticate { get; set; }
+
+        [NotNull]
+        public AuthenticationManager AuthManager {
+            get => m_authManager;
+            set => m_authManager = value ?? throw new ArgumentNullException(nameof(AuthManager));
         }
 
         [NotNull]
@@ -25,8 +35,8 @@ namespace SaveSystem.Internal {
             set => m_serializationScope = value ?? throw new ArgumentNullException(nameof(SerializationScope));
         }
 
-        private string m_dataPath;
         private Cryptographer m_cryptographer;
+        private AuthenticationManager m_authManager;
         private SerializationScope m_serializationScope;
 
 
@@ -34,19 +44,41 @@ namespace SaveSystem.Internal {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            (HandlingResult result, byte[] data) = await SaveData(token);
-            if (result is HandlingResult.Success)
-                await File.WriteAllBytesAsync(dataPath, data, token);
-            return result;
+            await using FileStream fileStream = File.Open(dataPath, FileMode.OpenOrCreate);
+            return await SaveData(fileStream, token);
+        }
+
+
+        internal async UniTask<HandlingResult> SaveData ([NotNull] Stream destination, CancellationToken token) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            byte[] source = await SaveData(token);
+            if (source == null)
+                return HandlingResult.Canceled;
+
+            destination.Position = 0;
+            await destination.WriteAsync(source, token);
+            return HandlingResult.Success;
         }
 
 
         [Pure]
-        internal async UniTask<(HandlingResult, byte[])> SaveData (CancellationToken token) {
+        internal async UniTask<byte[]> SaveData (CancellationToken token) {
+            if (Encrypt && Cryptographer == null)
+                throw new InvalidOperationException("Encryption enabled but cryptographer not sets");
+
             byte[] data = await SerializationScope.SaveData(token);
-            if (data.Length > 0 && Cryptographer != null)
+            if (data == null)
+                return null;
+
+            if (Encrypt)
                 data = await Cryptographer.Encrypt(data, token);
-            return (HandlingResult.Success, data);
+
+            if (Authenticate)
+                AuthManager.SetAuthHash(data);
+
+            return data;
         }
 
 
@@ -59,18 +91,31 @@ namespace SaveSystem.Internal {
                 return HandlingResult.FileNotExists;
             }
 
-            return await LoadData(await File.ReadAllBytesAsync(dataPath, token), token);
+            return await LoadData(File.Open(dataPath, FileMode.OpenOrCreate), token);
         }
 
 
-        internal async UniTask<HandlingResult> LoadData (byte[] data, CancellationToken token) {
+        internal async UniTask<HandlingResult> LoadData ([NotNull] byte[] data, CancellationToken token = default) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            if (Cryptographer != null)
-                data = await Cryptographer.Decrypt(data, token);
+            return await LoadData(new MemoryStream(data), token);
+        }
 
-            return await SerializationScope.LoadData(data, token);
+
+        internal async UniTask<HandlingResult> LoadData (Stream source, CancellationToken token = default) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (Authenticate)
+                AuthManager.AuthenticateData(source);
+
+            if (Encrypt)
+                source = new MemoryStream(await Cryptographer.Decrypt(source, token));
+
+            return await SerializationScope.LoadData(source, token);
         }
 
     }

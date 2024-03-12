@@ -5,8 +5,8 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
+using SaveSystem.Security;
 using UnityEngine;
 using Logger = SaveSystem.Internal.Logger;
 
@@ -24,6 +24,20 @@ namespace SaveSystem {
         [SerializeField]
         private EncryptionSettings encryptionSettings;
 
+        [SerializeField]
+        private bool authentication;
+
+        [SerializeField]
+        private HashAlgorithmName algorithmName;
+
+        [SerializeField]
+        private string authHashKey = Guid.NewGuid().ToString();
+
+        public bool Encrypt {
+            get => m_handler.Encrypt;
+            set => m_handler.Encrypt = value;
+        }
+
         /// <summary>
         /// Cryptographer used to encrypt/decrypt serializable data
         /// </summary>
@@ -31,6 +45,17 @@ namespace SaveSystem {
         public Cryptographer Cryptographer {
             get => m_handler.Cryptographer;
             set => m_handler.Cryptographer = value;
+        }
+
+        public bool Authenticate {
+            get => m_handler.Authenticate;
+            set => m_handler.Authenticate = value;
+        }
+
+        [NotNull]
+        public AuthenticationManager AuthManager {
+            get => m_handler.AuthManager;
+            set => m_handler.AuthManager = value;
         }
 
         public string DataPath => Path.Combine(
@@ -45,11 +70,16 @@ namespace SaveSystem {
             m_handler = new SaveDataHandler {
                 SerializationScope = m_serializationScope = new SerializationScope {
                     Name = $"{name} scope"
-                }
+                },
+                Authenticate = authentication,
+                AuthManager = new AuthenticationManager(authHashKey, algorithmName),
+                Encrypt = encrypt
             };
 
-            if (encrypt)
+            if (encryptionSettings != null)
                 Cryptographer = new Cryptographer(encryptionSettings);
+            else if (Encrypt)
+                Logger.LogError(name, "Encryption enabled but settings not set");
         }
 
 
@@ -126,14 +156,17 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(dataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data saving canceled", this);
-                return HandlingResult.Canceled;
-            }
+            return await SaveSceneData(async () => await m_handler.SaveData(dataPath, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> SaveSceneData (
+            [NotNull] Stream destination, CancellationToken token = default
+        ) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            return await SaveSceneData(async () => await m_handler.SaveData(destination, token), token);
         }
 
 
@@ -141,7 +174,8 @@ namespace SaveSystem {
         public async UniTask<(HandlingResult, byte[])> SaveSceneData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(token);
+                byte[] data = await m_handler.SaveData(token);
+                return (HandlingResult.Success, data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(name, "Scene data saving canceled", this);
@@ -150,32 +184,44 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data loading canceled", this);
-                return HandlingResult.Canceled;
-            }
+        public async UniTask<HandlingResult> LoadSceneData (
+            string dataPath = null, CancellationToken token = default
+        ) {
+            return await LoadSceneData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
         }
 
 
         public async UniTask<HandlingResult> LoadSceneData (
-            string dataPath = null, CancellationToken token = default
+            [NotNull] Stream source, CancellationToken token = default
         ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath ?? DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data loading canceled", this);
-                return HandlingResult.Canceled;
-            }
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            return await LoadSceneData(async () => await m_handler.LoadData(source, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            return await LoadSceneData(async () => await m_handler.LoadData(data, token), token);
+        }
+
+
+        private async UniTask<HandlingResult> SaveSceneData (
+            Func<UniTask<HandlingResult>> saving, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(saving, name, "Scene data saving canceled", this, token);
+        }
+
+
+        private async UniTask<HandlingResult> LoadSceneData (
+            Func<UniTask<HandlingResult>> loading, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(loading, name, "Scene data loading canceled", this, token);
         }
 
     }

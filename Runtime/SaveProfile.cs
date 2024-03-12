@@ -6,8 +6,8 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
-using SaveSystem.Cryptography;
 using SaveSystem.Internal;
+using SaveSystem.Security;
 using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -42,11 +42,26 @@ namespace SaveSystem {
 
         public string DataPath => Path.Combine(m_dataFolder, $"{m_name}.profiledata");
 
+        public bool Encrypt {
+            get => m_handler.Encrypt;
+            set => m_handler.Encrypt = value;
+        }
 
         [NotNull]
         public Cryptographer Cryptographer {
             get => m_handler.Cryptographer;
             set => m_handler.Cryptographer = value;
+        }
+
+        public bool Authenticate {
+            get => m_handler.Authenticate;
+            set => m_handler.Authenticate = value;
+        }
+
+        [NotNull]
+        public AuthenticationManager AuthManager {
+            get => m_handler.AuthManager;
+            set => m_handler.AuthManager = value;
         }
 
         private string m_name;
@@ -139,14 +154,17 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(dataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile saving canceled");
-                return HandlingResult.Canceled;
-            }
+            return await SaveProfileData(async () => await m_handler.SaveData(dataPath, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> SaveProfileData (
+            [NotNull] Stream destination, CancellationToken token = default
+        ) {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            return await SaveProfileData(async () => await m_handler.SaveData(destination, token), token);
         }
 
 
@@ -154,7 +172,8 @@ namespace SaveSystem {
         public async UniTask<(HandlingResult, byte[])> SaveProfileData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await m_handler.SaveData(token);
+                byte[] data = await m_handler.SaveData(token);
+                return (HandlingResult.Success, data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Profile saving canceled");
@@ -164,38 +183,50 @@ namespace SaveSystem {
 
 
         public async UniTask<HandlingResult> LoadProfileData (
-            [NotNull] byte[] data, CancellationToken token = default
+            string dataPath = null, CancellationToken token = default
         ) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(data, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile loading canceled");
-                return HandlingResult.Canceled;
-            }
+            return await LoadProfileData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
         }
 
 
         public async UniTask<HandlingResult> LoadProfileData (
-            string dataPath = null, CancellationToken token = default
+            [NotNull] Stream source, CancellationToken token = default
         ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await m_handler.LoadData(dataPath ?? DataPath, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile loading canceled");
-                return HandlingResult.Canceled;
-            }
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            return await LoadProfileData(async () => await m_handler.LoadData(source, token), token);
+        }
+
+
+        public async UniTask<HandlingResult> LoadProfileData (
+            [NotNull] byte[] data, CancellationToken token = default
+        ) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection.", nameof(data));
+
+            return await LoadProfileData(async () => await m_handler.LoadData(data, token), token);
         }
 
 
         public override string ToString () {
             return $"name: {Name}, path: {Path.GetRelativePath(Storage.PersistentDataPath, m_dataFolder)}";
+        }
+
+
+        private async UniTask<HandlingResult> SaveProfileData (
+            Func<UniTask<HandlingResult>> saving, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(saving, Name, "Profile saving canceled", token: token);
+        }
+
+
+        private async UniTask<HandlingResult> LoadProfileData (
+            Func<UniTask<HandlingResult>> loading, CancellationToken token
+        ) {
+            return await CancelableOperationsHandler.Execute(loading, Name, "Profile loading canceled", token: token);
         }
 
     }
