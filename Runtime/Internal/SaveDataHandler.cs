@@ -91,7 +91,8 @@ namespace SaveSystem.Internal {
                 return HandlingResult.FileNotExists;
             }
 
-            return await LoadData(File.Open(dataPath, FileMode.OpenOrCreate), token);
+            await using FileStream fileStream = File.Open(dataPath, FileMode.Open);
+            return await LoadData(fileStream, token);
         }
 
 
@@ -101,7 +102,8 @@ namespace SaveSystem.Internal {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return await LoadData(new MemoryStream(data), token);
+            await using var memoryStream = new MemoryStream(data);
+            return await LoadData(memoryStream, token);
         }
 
 
