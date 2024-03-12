@@ -2,11 +2,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
-using System.Threading;
-using Cysharp.Threading.Tasks;
-using SaveSystem.Internal;
 using SaveSystem.Internal.Cryptography;
 using SaveSystem.Internal.Extensions;
+using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
@@ -75,42 +73,24 @@ namespace SaveSystem.Security {
         /// Encrypts any data from a byte array
         /// </summary>
         /// <param name="data"> Data to be encrypted </param>
-        /// <param name="token"></param>
-        /// <returns> Ecnrypted data </returns>
-        public virtual async UniTask<byte[]> Encrypt ([NotNull] byte[] data, CancellationToken token = default) {
+        /// <returns> Encrypted data </returns>
+        public virtual byte[] Encrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
-
-            await using var memoryStream = new MemoryStream(data);
-            return await Encrypt(memoryStream, token);
-        }
-
-
-        /// <summary>
-        /// Encrypts any data from a stream
-        /// </summary>
-        /// <param name="stream"> Stream to be encrypted </param>
-        /// <param name="token"></param>
-        /// <returns> Encrypted data </returns>
-        public virtual async UniTask<byte[]> Encrypt ([NotNull] Stream stream, CancellationToken token = default) {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
 
             byte[] iv = GetIV();
 
-            await using var memoryStream = new MemoryStream();
+            using var memoryStream = new MemoryStream();
             memoryStream.Write(iv);
 
             using var aes = Aes.Create();
             byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
 
-            await using var cryptoStream = new CryptoStream(
+            using var cryptoStream = new CryptoStream(
                 memoryStream, aes.CreateEncryptor(key, iv), CryptoStreamMode.Write
             );
 
-            await stream.CopyToAsync(cryptoStream, token);
+            cryptoStream.Write(data);
             cryptoStream.FlushFinalBlock();
             aes.Clear();
 
@@ -121,42 +101,23 @@ namespace SaveSystem.Security {
         /// <summary>
         /// Decrypts any data from a byte array
         /// </summary>
-        /// <param name="data"> Encrypted data </param>
-        /// <param name="token"></param>
+        /// <param name="data"> Data containing encrypted data </param>
         /// <returns> Decrypted data </returns>
-        public virtual async UniTask<byte[]> Decrypt ([NotNull] byte[] data, CancellationToken token = default) {
+        public virtual byte[] Decrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
-
-            await using var memoryStream = new MemoryStream(data);
-            return await Decrypt(memoryStream, token);
-        }
-
-
-        /// <summary>
-        /// Decrypts any data from a stream
-        /// </summary>
-        /// <param name="stream"> Stream containing encrypted data </param>
-        /// <param name="token"></param>
-        /// <returns> Decrypted data </returns>
-        public virtual async UniTask<byte[]> Decrypt ([NotNull] Stream stream, CancellationToken token = default) {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
 
             using var aes = Aes.Create();
             byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
-            var iv = new byte[16];
-            int readBytes = stream.Read(iv);
+            byte[] iv = data[..16];
 
-            await using var cryptoStream = new CryptoStream(
-                stream, aes.CreateDecryptor(key, iv), CryptoStreamMode.Read, true
+            using var cryptoStream = new CryptoStream(
+                new MemoryStream(data[16..]), aes.CreateDecryptor(key, iv), CryptoStreamMode.Read
             );
 
-            var buffer = new byte[stream.Length - readBytes];
+            var buffer = new byte[data.Length - 16];
             // ReSharper disable once MustUseReturnValue
-            await cryptoStream.ReadAsync(buffer, token);
+            cryptoStream.Read(buffer);
             aes.Clear();
 
             return buffer;

@@ -109,44 +109,12 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IAsyncRuntimeSerializable)"/>
-        public SceneSerializationContext RegisterSerializable (
-            [NotNull] string key, [NotNull] IAsyncRuntimeSerializable serializable
-        ) {
-            m_serializationScope.RegisterSerializable(key, serializable);
-            return this;
-        }
-
-
         /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
         public SceneSerializationContext RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
             m_serializationScope.RegisterSerializables(key, serializables);
             return this;
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IAsyncRuntimeSerializable})"/>
-        public SceneSerializationContext RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
-        ) {
-            m_serializationScope.RegisterSerializables(key, serializables);
-            return this;
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float})"/>
-        public void ObserveProgress ([NotNull] IProgress<float> progress) {
-            m_serializationScope.ObserveProgress(progress);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float}, IProgress{float})"/>
-        public void ObserveProgress (
-            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
-        ) {
-            m_serializationScope.ObserveProgress(saveProgress, loadProgress);
         }
 
 
@@ -171,16 +139,8 @@ namespace SaveSystem {
 
 
         [Pure]
-        public async UniTask<(HandlingResult, byte[])> SaveSceneData (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                byte[] data = await m_handler.SaveData(token);
-                return (HandlingResult.Success, data);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(name, "Scene data saving canceled", this);
-                return (HandlingResult.Canceled, Array.Empty<byte>());
-            }
+        public byte[] SaveSceneData () {
+            return m_handler.SaveData();
         }
 
 
@@ -201,13 +161,13 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData ([NotNull] byte[] data, CancellationToken token = default) {
+        public HandlingResult LoadSceneData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return await LoadSceneData(async () => await m_handler.LoadData(data, token), token);
+            return m_handler.LoadData(data);
         }
 
 

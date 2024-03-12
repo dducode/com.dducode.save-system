@@ -4,8 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal.Diagnostic;
 using SaveSystem.Internal.Templates;
@@ -34,12 +32,7 @@ namespace SaveSystem {
 
         private DataBuffer m_dataBuffer = new();
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
-        private readonly Dictionary<string, IAsyncRuntimeSerializable> m_asyncSerializables = new();
-        private int ObjectsCount => m_serializables.Count + m_asyncSerializables.Count;
-
-        private static IProgress<float> m_saveProgress;
-        private static IProgress<float> m_loadProgress;
-
+        private int ObjectsCount => m_serializables.Count;
         private bool m_registrationClosed;
 
 
@@ -87,27 +80,6 @@ namespace SaveSystem {
 
 
         /// <summary>
-        /// Registers an async serializable object to save
-        /// </summary>
-        public void RegisterSerializable ([NotNull] string key, [NotNull] IAsyncRuntimeSerializable serializable) {
-            if (m_registrationClosed) {
-                Logger.LogError(Name, Messages.RegistrationClosed);
-                return;
-            }
-
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            if (serializable == null)
-                throw new ArgumentNullException(nameof(serializable));
-
-            m_asyncSerializables.Add(key, serializable);
-            DiagnosticService.AddObject(serializable);
-            Logger.Log(Name, $"Serializable object {serializable} registered in {Name}");
-        }
-
-
-        /// <summary>
         /// Registers some serializable objects to save
         /// </summary>
         public void RegisterSerializables (
@@ -134,105 +106,38 @@ namespace SaveSystem {
         }
 
 
-        /// <summary>
-        /// Registers some async serializable objects to save
-        /// </summary>
-        public void RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
-        ) {
-            if (m_registrationClosed) {
-                Logger.LogError(Name, Messages.RegistrationClosed);
-                return;
-            }
-
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            if (serializables == null)
-                throw new ArgumentNullException(nameof(serializables));
-
-            IAsyncRuntimeSerializable[] objects =
-                serializables as IAsyncRuntimeSerializable[] ?? serializables.ToArray();
-
-            for (var i = 0; i < objects.Length; i++)
-                m_asyncSerializables.Add($"{key}_{i}", objects[i]);
-
-            DiagnosticService.AddObjects(objects);
-            Logger.Log(Name, $"Serializable objects was registered in {Name}");
-        }
-
-
-        /// <summary>
-        /// Pass <see cref="IProgress{T}"> IProgress</see> object to observe progress
-        /// when it'll be started
-        /// </summary>
-        public void ObserveProgress ([NotNull] IProgress<float> progress) {
-            m_saveProgress = progress ?? throw new ArgumentNullException(nameof(progress));
-            m_loadProgress = progress;
-            Logger.Log(Name, $"Progress observer {progress} was register");
-        }
-
-
-        /// <summary>
-        /// Pass two <see cref="IProgress{T}"> IProgress </see> objects to observe saving and loading progress
-        /// when it'll be started
-        /// </summary>
-        public void ObserveProgress (
-            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
-        ) {
-            m_saveProgress = saveProgress ?? throw new ArgumentNullException(nameof(saveProgress));
-            m_loadProgress = loadProgress ?? throw new ArgumentNullException(nameof(loadProgress));
-            Logger.Log(Name, $"Progress observers {saveProgress} and {loadProgress} was registered");
-        }
-
-
-        public async UniTask<byte[]> SaveData (CancellationToken token) {
+        public byte[] SaveData () {
             if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return null;
 
             m_registrationClosed = true;
 
-            token.ThrowIfCancellationRequested();
-            await using var memoryStream = new MemoryStream();
-            await using var writer = new SaveWriter(memoryStream);
+            using var memoryStream = new MemoryStream();
+            using var writer = new SaveWriter(memoryStream);
 
             writer.Write(m_dataBuffer);
-            await SerializeObjects(writer, token);
+            SerializeObjects(writer);
 
             Logger.Log(Name, "Data saved");
             return memoryStream.ToArray();
         }
 
 
-        public async UniTask<HandlingResult> LoadData ([NotNull] byte[] data, CancellationToken token = default) {
+        public HandlingResult LoadData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return await LoadData(new MemoryStream(data), token);
-        }
-
-
-        public async UniTask<HandlingResult> LoadData ([NotNull] Stream stream, CancellationToken token = default) {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-
             m_registrationClosed = true;
 
-            try {
-                token.ThrowIfCancellationRequested();
-                await using var reader = new SaveReader(stream);
+            using var reader = new SaveReader(new MemoryStream(data));
 
-                m_dataBuffer = reader.ReadDataBuffer();
-                await DeserializeObjects(reader, token);
+            m_dataBuffer = reader.ReadDataBuffer();
+            DeserializeObjects(reader);
 
-                Logger.Log(Name, "Data loaded");
-                return HandlingResult.Success;
-            }
-            catch (OperationCanceledException) {
-                return HandlingResult.Canceled;
-            }
+            Logger.Log(Name, "Data loaded");
+            return HandlingResult.Success;
         }
 
 
@@ -241,46 +146,20 @@ namespace SaveSystem {
 
             foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))
                 serializable?.SetDefaults();
-
-            foreach (IDefault serializable in m_asyncSerializables.Select(pair => pair.Value as IDefault))
-                serializable?.SetDefaults();
         }
 
 
-        private async UniTask SerializeObjects (SaveWriter writer, CancellationToken token) {
-            var progress = 0;
-
+        private void SerializeObjects (SaveWriter writer) {
             foreach ((string key, IRuntimeSerializable serializable) in m_serializables) {
                 writer.Write(key);
                 serializable.Serialize(writer);
-                ReportProgress(ref progress, ObjectsCount, m_saveProgress);
-            }
-
-            foreach ((string key, IAsyncRuntimeSerializable serializable) in m_asyncSerializables) {
-                writer.Write(key);
-                await serializable.Serialize(writer, token);
-                ReportProgress(ref progress, ObjectsCount, m_saveProgress);
             }
         }
 
 
-        private async UniTask DeserializeObjects (SaveReader reader, CancellationToken token) {
-            var progress = 0;
-
-            foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
+        private void DeserializeObjects (SaveReader reader) {
+            foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables)
                 m_serializables[reader.ReadString()].Deserialize(reader);
-                ReportProgress(ref progress, ObjectsCount, m_loadProgress);
-            }
-
-            foreach (KeyValuePair<string, IAsyncRuntimeSerializable> unused in m_asyncSerializables) {
-                await m_asyncSerializables[reader.ReadString()].Deserialize(reader, token);
-                ReportProgress(ref progress, ObjectsCount, m_loadProgress);
-            }
-        }
-
-
-        private static void ReportProgress (ref int completedTasks, int tasksCount, IProgress<float> progress) {
-            progress?.Report((float)++completedTasks / tasksCount);
         }
 
     }

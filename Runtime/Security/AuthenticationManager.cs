@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Security;
 using System.Security.Cryptography;
 using SaveSystem.Internal.Extensions;
@@ -45,18 +44,9 @@ namespace SaveSystem.Security {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            using var memoryStream = new MemoryStream(data);
-            AuthenticateData(memoryStream);
-        }
-
-
-        public void AuthenticateData ([NotNull] Stream stream) {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-
             if (!PlayerPrefs.HasKey(AuthHashKey))
                 throw new InvalidOperationException("There is no key for authenticate");
-            if (!string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(stream)))
+            if (!string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(data)))
                 throw new SecurityException(Messages.DataIsCorrupted);
         }
 
@@ -67,27 +57,14 @@ namespace SaveSystem.Security {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            using var memoryStream = new MemoryStream(data);
-            SetAuthHash(memoryStream);
-        }
-
-
-        public void SetAuthHash ([NotNull] Stream stream) {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-
-            PlayerPrefs.SetString(AuthHashKey, ComputeHash(stream));
+            PlayerPrefs.SetString(AuthHashKey, ComputeHash(data));
             PlayerPrefs.Save();
         }
 
 
-        private string ComputeHash (Stream stream) {
-            long oldPosition = stream.Position;
+        private string ComputeHash (byte[] data) {
             HashAlgorithm algorithm = AlgorithmName.SelectAlgorithm();
-            stream.Position = 0;
-            byte[] hash = algorithm.ComputeHash(stream);
-            stream.Position = oldPosition;
-            return Convert.ToBase64String(hash);
+            return Convert.ToBase64String(algorithm.ComputeHash(data));
         }
 
     }

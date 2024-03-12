@@ -6,13 +6,4 @@
 
     }
 
-
-
-    public interface IAsyncSerializationProvider<out TAdapter, in TTarget>
-        where TAdapter : IAsyncSerializationAdapter<TTarget> {
-
-        public TAdapter GetAdapter (TTarget target);
-
-    }
-
 }

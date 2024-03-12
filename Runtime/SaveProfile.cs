@@ -8,7 +8,6 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal;
 using SaveSystem.Security;
-using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -80,12 +79,28 @@ namespace SaveSystem {
         public virtual void Serialize (SaveWriter writer) {
             writer.Write(Name);
             writer.Write(DataFolder);
+            writer.Write(Encrypt);
+            writer.Write(Authenticate);
         }
 
 
         public virtual void Deserialize (SaveReader reader) {
             Name = reader.ReadString();
             DataFolder = reader.ReadString();
+
+            Encrypt = reader.Read<bool>();
+
+            if (Encrypt)
+                Cryptographer = new Cryptographer(ResourcesManager.LoadSettings<EncryptionSettings>());
+
+            Authenticate = reader.Read<bool>();
+
+            if (Authenticate) {
+                AuthManager = new AuthenticationManager(
+                    reader.ReadString(),
+                    reader.Read<HashAlgorithmName>()
+                );
+            }
         }
 
 
@@ -112,39 +127,11 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IAsyncRuntimeSerializable)"/>
-        public void RegisterSerializable ([NotNull] string key, [NotNull] IAsyncRuntimeSerializable serializable) {
-            m_serializationScope.RegisterSerializable(key, serializable);
-        }
-
-
         /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
         public void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
             m_serializationScope.RegisterSerializables(key, serializables);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IAsyncRuntimeSerializable})"/>
-        public void RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
-        ) {
-            m_serializationScope.RegisterSerializables(key, serializables);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float})"/>
-        public void ObserveProgress ([NotNull] IProgress<float> progress) {
-            m_serializationScope.ObserveProgress(progress);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float}, IProgress{float})"/>
-        public void ObserveProgress (
-            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
-        ) {
-            m_serializationScope.ObserveProgress(saveProgress, loadProgress);
         }
 
 
@@ -169,16 +156,8 @@ namespace SaveSystem {
 
 
         [Pure]
-        public async UniTask<(HandlingResult, byte[])> SaveProfileData (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                byte[] data = await m_handler.SaveData(token);
-                return (HandlingResult.Success, data);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Profile saving canceled");
-                return (HandlingResult.Canceled, Array.Empty<byte>());
-            }
+        public byte[] SaveProfileData () {
+            return m_handler.SaveData();
         }
 
 
@@ -199,15 +178,13 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> LoadProfileData (
-            [NotNull] byte[] data, CancellationToken token = default
-        ) {
+        public HandlingResult LoadProfileData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection.", nameof(data));
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return await LoadProfileData(async () => await m_handler.LoadData(data, token), token);
+            return m_handler.LoadData(data);
         }
 
 

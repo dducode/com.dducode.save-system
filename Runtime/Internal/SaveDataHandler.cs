@@ -44,8 +44,12 @@ namespace SaveSystem.Internal {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            await using FileStream fileStream = File.Open(dataPath, FileMode.OpenOrCreate);
-            return await SaveData(fileStream, token);
+            byte[] source = SaveData();
+            if (source == null)
+                return HandlingResult.Canceled;
+
+            await File.WriteAllBytesAsync(dataPath, source, token);
+            return HandlingResult.Success;
         }
 
 
@@ -53,7 +57,7 @@ namespace SaveSystem.Internal {
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            byte[] source = await SaveData(token);
+            byte[] source = SaveData();
             if (source == null)
                 return HandlingResult.Canceled;
 
@@ -64,16 +68,16 @@ namespace SaveSystem.Internal {
 
 
         [Pure]
-        internal async UniTask<byte[]> SaveData (CancellationToken token) {
+        internal byte[] SaveData () {
             if (Encrypt && Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer not sets");
 
-            byte[] data = await SerializationScope.SaveData(token);
+            byte[] data = SerializationScope.SaveData();
             if (data == null)
                 return null;
 
             if (Encrypt)
-                data = await Cryptographer.Encrypt(data, token);
+                data = Cryptographer.Encrypt(data);
 
             if (Authenticate)
                 AuthManager.SetAuthHash(data);
@@ -91,33 +95,34 @@ namespace SaveSystem.Internal {
                 return HandlingResult.FileNotExists;
             }
 
-            await using FileStream fileStream = File.Open(dataPath, FileMode.Open);
-            return await LoadData(fileStream, token);
+            return LoadData(await File.ReadAllBytesAsync(dataPath, token));
         }
 
 
-        internal async UniTask<HandlingResult> LoadData ([NotNull] byte[] data, CancellationToken token = default) {
+        internal async UniTask<HandlingResult> LoadData ([NotNull] Stream stream, CancellationToken token = default) {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            var buffer = new byte[stream.Length];
+            // ReSharper disable once MustUseReturnValue
+            await stream.ReadAsync(buffer, token);
+            return LoadData(buffer);
+        }
+
+
+        internal HandlingResult LoadData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            await using var memoryStream = new MemoryStream(data);
-            return await LoadData(memoryStream, token);
-        }
-
-
-        internal async UniTask<HandlingResult> LoadData (Stream source, CancellationToken token = default) {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
             if (Authenticate)
-                AuthManager.AuthenticateData(source);
+                AuthManager.AuthenticateData(data);
 
             if (Encrypt)
-                source = new MemoryStream(await Cryptographer.Decrypt(source, token));
+                data = Cryptographer.Decrypt(data);
 
-            return await SerializationScope.LoadData(source, token);
+            return SerializationScope.LoadData(data);
         }
 
     }

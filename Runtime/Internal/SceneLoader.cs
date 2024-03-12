@@ -11,37 +11,15 @@ namespace SaveSystem.Internal {
         private static UniTaskCompletionSource<Scene> m_tcs;
 
 
-        internal static async UniTask LoadSceneAsync (Action sceneLoading) {
-            try {
-                SetupTask();
-                ExecuteSceneHandling(await WaitForLoading(sceneLoading));
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
-        }
-
-
-        internal static async UniTask LoadSceneAsync<TData> (Action sceneLoading, TData data) {
-            try {
-                SetupTask();
-                ExecuteSceneHandling(await WaitForLoading(sceneLoading), data);
-            }
-            catch (Exception exception) {
-                Debug.LogException(exception);
-            }
-        }
-
-
         internal static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
             SetupTask();
-            ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading));
+            ExecuteSceneHandling(await WaitForLoading(asyncSceneLoading));
         }
 
 
         internal static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData data) {
             SetupTask();
-            ExecuteSceneHandling(await WaitForAsyncLoading(asyncSceneLoading), data);
+            ExecuteSceneHandling(await WaitForLoading(asyncSceneLoading), data);
         }
 
 
@@ -51,13 +29,7 @@ namespace SaveSystem.Internal {
         }
 
 
-        private static async UniTask<Scene> WaitForLoading (Action sceneLoading) {
-            sceneLoading();
-            return await m_tcs.Task;
-        }
-
-
-        private static async UniTask<Scene> WaitForAsyncLoading (Func<UniTask> asyncSceneLoading) {
+        private static async UniTask<Scene> WaitForLoading (Func<UniTask> asyncSceneLoading) {
             await asyncSceneLoading();
             return await m_tcs.Task;
         }

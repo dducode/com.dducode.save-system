@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using SaveSystem.Internal;
 using SaveSystem.Security;
 using UnityEditor;
 using UnityEngine;
@@ -56,7 +55,7 @@ namespace SaveSystem.Editor {
 
             if (m_encryptProperty.boolValue) {
                 m_encryptionSettingsProperty.boxedValue ??=
-                    ResourcesManager.CreateSettings<EncryptionSettings>();
+                    EditorResourcesManager.CreateSettings<EncryptionSettings>();
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty);
             }
         }

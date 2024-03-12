@@ -186,9 +186,16 @@ namespace SaveSystem {
             if (File.Exists(path))
                 return;
 
-            using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
+            var memoryStream = new MemoryStream();
+            using var writer = new SaveWriter(memoryStream);
             writer.Write(profile.GetType().ToString());
             profile.Serialize(writer);
+
+            byte[] data = memoryStream.ToArray();
+
+            // if (Encrypt) {
+            //     data = await Cryptographer.EncryptAsync(data);
+            // }
             Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was registered");
         }
 
@@ -233,41 +240,11 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IAsyncRuntimeSerializable)"/>
-        public static void RegisterSerializable (
-            [NotNull] string key, [NotNull] IAsyncRuntimeSerializable serializable
-        ) {
-            m_globalScope.RegisterSerializable(key, serializable);
-        }
-
-
         /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
         public static void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
             m_globalScope.RegisterSerializables(key, serializables);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IAsyncRuntimeSerializable})"/>
-        public static void RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IAsyncRuntimeSerializable> serializables
-        ) {
-            m_globalScope.RegisterSerializables(key, serializables);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float})"/>
-        public static void ObserveProgress ([NotNull] IProgress<float> progress) {
-            m_globalScope.ObserveProgress(progress);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.ObserveProgress(IProgress{float}, IProgress{float})"/>
-        public static void ObserveProgress (
-            [NotNull] IProgress<float> saveProgress, [NotNull] IProgress<float> loadProgress
-        ) {
-            m_globalScope.ObserveProgress(saveProgress, loadProgress);
         }
 
 
@@ -301,22 +278,6 @@ namespace SaveSystem {
             Logger.Log(nameof(SaveSystemCore), $"Action \"{action}\" was bind with quick save");
         }
     #endif
-
-
-        public static async UniTask LoadSceneAsync (Action sceneLoading, CancellationToken token = default) {
-            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
-                await ExecuteOnSceneLoadSaving(token);
-            await SceneLoader.LoadSceneAsync(sceneLoading);
-        }
-
-
-        public static async UniTask LoadSceneAsync<TData> (
-            Action sceneLoading, TData passedData, CancellationToken token = default
-        ) {
-            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
-                await ExecuteOnSceneLoadSaving(token);
-            await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
-        }
 
 
         public static async UniTask LoadSceneAsync (
@@ -382,16 +343,8 @@ namespace SaveSystem {
         /// </summary>
         /// <returns> A tuple of a saving operation result and a saved data </returns>
         [Pure]
-        public static async UniTask<(HandlingResult, byte[])> SaveGlobalData (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                byte[] stream = await m_handler.SaveData(token);
-                return (HandlingResult.Success, stream);
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Global data saving canceled");
-                return (HandlingResult.Canceled, Array.Empty<byte>());
-            }
+        public static byte[] SaveGlobalData () {
+            return m_handler.SaveData();
         }
 
 
@@ -421,15 +374,13 @@ namespace SaveSystem {
         /// <summary>
         /// Start loading of objects in the global scope and wait it
         /// </summary>
-        public static async UniTask<HandlingResult> LoadGlobalData (
-            [NotNull] byte[] data, CancellationToken token = default
-        ) {
+        public static HandlingResult LoadGlobalData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return await LoadGlobalData(async () => await m_handler.LoadData(data, token), token);
+            return m_handler.LoadData(data);
         }
 
     }

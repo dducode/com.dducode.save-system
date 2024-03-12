@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
@@ -34,7 +33,7 @@ namespace SaveSystem.Tests {
             objectGroup.CreateObjects(100);
 
             await using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
-                await objectGroup.Serialize(writer, CancellationToken.None);
+                objectGroup.Serialize(writer);
 
             await UniTask.WaitForSeconds(1);
             objectGroup.DoForAll(obj => Object.Destroy(obj.gameObject));
@@ -49,7 +48,7 @@ namespace SaveSystem.Tests {
             );
 
             await using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open)))
-                await objectGroup.Deserialize(reader, CancellationToken.None);
+                objectGroup.Deserialize(reader);
 
             await UniTask.WaitForSeconds(1);
         }

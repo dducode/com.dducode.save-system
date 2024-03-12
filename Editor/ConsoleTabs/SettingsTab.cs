@@ -61,7 +61,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             );
 
             if (GUILayout.Button("Restore Settings Asset", GUILayout.ExpandWidth(false)))
-                Initialize(ResourcesManager.CreateSettings<SaveSystemSettings>());
+                Initialize(EditorResourcesManager.CreateSettings<SaveSystemSettings>());
         }
 
 
@@ -136,7 +136,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             if (m_encryptProperty.boolValue) {
                 m_encryptionSettingsProperty.boxedValue ??=
-                    ResourcesManager.CreateSettings<EncryptionSettings>();
+                    EditorResourcesManager.CreateSettings<EncryptionSettings>();
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
             }
 
@@ -150,7 +150,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
             if (m_authenticationProperty.boolValue) {
                 m_authenticationSettingsProperty.boxedValue ??=
-                    ResourcesManager.CreateSettings<AuthenticationSettings>();
+                    EditorResourcesManager.CreateSettings<AuthenticationSettings>();
                 EditorGUILayout.PropertyField(m_authenticationSettingsProperty, GUILayout.MaxWidth(500));
             }
 

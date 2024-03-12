@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using Cysharp.Threading.Tasks;
 using SaveSystem.Attributes;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal.Diagnostic;
@@ -21,19 +19,15 @@ namespace SaveSystem {
     /// </summary>
     /// <seealso cref="DynamicObjectGroup{TDynamic}.CreateObject"/>
     /// <seealso cref="DynamicObjectGroup{TDynamic}.CreateObjects"/>
-    public sealed class DynamicObjectGroup<TDynamic> : IAsyncRuntimeSerializable {
+    public sealed class DynamicObjectGroup<TDynamic> : IRuntimeSerializable {
 
         public int Count => m_objects.Count;
 
         private readonly List<TDynamic> m_objects = new();
         private readonly List<IRuntimeSerializable> m_serializables = new();
-        private readonly List<IAsyncRuntimeSerializable> m_asyncSerializables = new();
 
         private readonly IObjectFactory<TDynamic> m_factory;
         private readonly ISerializationProvider<ISerializationAdapter<TDynamic>, TDynamic> m_serializationProvider;
-
-        private readonly IAsyncSerializationProvider<IAsyncSerializationAdapter<TDynamic>, TDynamic>
-            m_asyncSerializationProvider;
 
 
         /// <summary>
@@ -59,19 +53,6 @@ namespace SaveSystem {
             [NotNull] ISerializationProvider<ISerializationAdapter<TDynamic>, TDynamic> provider
         ) : this(factory) {
             m_serializationProvider = provider ?? throw new ArgumentNullException(nameof(provider));
-        }
-
-
-        /// <summary>
-        /// Creates a group and spawn, saving and loading dynamic objects using it
-        /// </summary>
-        /// <param name="factory"> A factory for an objects spawn. This is necessary to load dynamic objects </param>
-        /// <param name="provider"> A provider to get object serialization adapter </param>
-        public DynamicObjectGroup (
-            [NotNull] IObjectFactory<TDynamic> factory,
-            [NotNull] IAsyncSerializationProvider<IAsyncSerializationAdapter<TDynamic>, TDynamic> provider
-        ) : this(factory) {
-            m_asyncSerializationProvider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
 
@@ -123,14 +104,13 @@ namespace SaveSystem {
         public void ForgetAllObjects () {
             m_objects.Clear();
             m_serializables.Clear();
-            m_asyncSerializables.Clear();
         }
 
 
-        public async UniTask Serialize (SaveWriter writer, CancellationToken token) {
+        public void Serialize (SaveWriter writer) {
             ClearNullObjects();
 
-            if (m_objects.Count != m_serializables.Count + m_asyncSerializables.Count)
+            if (m_objects.Count != m_serializables.Count)
                 throw new InvalidOperationException("Number of objects does not match serializable components");
 
             writer.Write(m_objects.Count);
@@ -139,13 +119,10 @@ namespace SaveSystem {
 
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Serialize(writer);
-
-            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                await serializable.Serialize(writer, token);
         }
 
 
-        public async UniTask Deserialize (SaveReader reader, CancellationToken token) {
+        public void Deserialize (SaveReader reader) {
             var count = reader.Read<int>();
             if (count == 0)
                 return;
@@ -155,9 +132,6 @@ namespace SaveSystem {
 
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Deserialize(reader);
-
-            foreach (IAsyncRuntimeSerializable serializable in m_asyncSerializables)
-                await serializable.Deserialize(reader, token);
         }
 
 
@@ -174,9 +148,6 @@ namespace SaveSystem {
 
             if (TryGetSerializable(obj, out IRuntimeSerializable serializable)) {
                 m_serializables.Add(serializable);
-            }
-            else if (TryGetAsyncSerializable(obj, out IAsyncRuntimeSerializable asyncSerializable)) {
-                m_asyncSerializables.Add(asyncSerializable);
             }
             else {
                 var errorMessage =
@@ -202,9 +173,6 @@ namespace SaveSystem {
             m_serializables.RemoveAll(serializable =>
                 serializable is Object unityObject && unityObject == null
             );
-            m_asyncSerializables.RemoveAll(serializable =>
-                serializable is Object unityObject && unityObject == null
-            );
         }
 
 
@@ -218,26 +186,6 @@ namespace SaveSystem {
                 return true;
             }
             else if (obj is ISerializationProvider<ISerializationAdapter<TDynamic>, TDynamic> provider) {
-                result = provider.GetAdapter(obj);
-                return true;
-            }
-            else {
-                result = null;
-                return false;
-            }
-        }
-
-
-        private bool TryGetAsyncSerializable (TDynamic obj, out IAsyncRuntimeSerializable result) {
-            if (obj is IAsyncRuntimeSerializable serializable) {
-                result = serializable;
-                return true;
-            }
-            else if (m_asyncSerializationProvider != null) {
-                result = m_asyncSerializationProvider.GetAdapter(obj);
-                return true;
-            }
-            else if (obj is IAsyncSerializationProvider<IAsyncSerializationAdapter<TDynamic>, TDynamic> provider) {
                 result = provider.GetAdapter(obj);
                 return true;
             }
