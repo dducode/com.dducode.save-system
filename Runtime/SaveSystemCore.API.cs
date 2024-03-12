@@ -121,7 +121,7 @@ namespace SaveSystem {
             set => m_handler.Cryptographer = value;
         }
 
-        public static bool Authentication {
+        public static bool Authenticate {
             get => m_handler.Authenticate;
             set => m_handler.Authenticate = value;
         }
@@ -155,17 +155,25 @@ namespace SaveSystem {
         /// Get all previously created saving profiles
         /// </summary>
         [Pure]
-        public static List<TProfile> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
+        public static async UniTask<List<TProfile>> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
             string[] paths = Directory.GetFileSystemEntries(
-                Storage.PersistentDataPath, $"*{ProfileMetadataExtension}", SearchOption.AllDirectories
+                m_profilesFolderPath, $"*{ProfileMetadataExtension}"
             );
             var profiles = new List<TProfile>();
 
             foreach (string path in paths) {
-                using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                if (typeof(TProfile).ToString() != reader.ReadString())
+                if (!path.Contains(typeof(TProfile).Name))
                     continue;
 
+                byte[] data = await File.ReadAllBytesAsync(path).AsUniTask();
+
+                if (Authenticate)
+                    AuthManager.AuthenticateData(data);
+
+                if (Encrypt)
+                    data = Cryptographer.Decrypt(data);
+
+                await using var reader = new SaveReader(new MemoryStream(data));
                 var profile = new TProfile();
                 profile.Deserialize(reader);
                 profiles.Add(profile);
@@ -182,20 +190,28 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileMetadataExtension}");
+            string path = Path.Combine(
+                m_profilesFolderPath, $"{profile.GetType().Name}_{profile.Name}{ProfileMetadataExtension}"
+            );
             if (File.Exists(path))
                 return;
 
             var memoryStream = new MemoryStream();
             using var writer = new SaveWriter(memoryStream);
-            writer.Write(profile.GetType().ToString());
             profile.Serialize(writer);
-
             byte[] data = memoryStream.ToArray();
 
-            // if (Encrypt) {
-            //     data = await Cryptographer.EncryptAsync(data);
-            // }
+            if (Encrypt)
+                data = Cryptographer.Encrypt(data);
+
+            if (Authenticate)
+                AuthManager.SetAuthHash(data);
+
+            SynchronizationPoint.ScheduleTask(
+                async token => await File.WriteAllBytesAsync(path, data, token).AsUniTask(),
+                true
+            );
+
             Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was registered");
         }
 

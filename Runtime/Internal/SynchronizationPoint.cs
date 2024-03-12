@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -10,20 +11,21 @@ namespace SaveSystem.Internal {
 
         internal bool IsPerformed { get; private set; }
 
-        private Func<CancellationToken, UniTask<HandlingResult>> m_scheduledTask;
+        private readonly Queue<Func<CancellationToken, UniTask>> m_queue = new();
 
 
-        internal void ScheduleTask (Func<CancellationToken, UniTask<HandlingResult>> task) {
-            m_scheduledTask ??= task;
+        internal void ScheduleTask (Func<CancellationToken, UniTask> task, bool priority = false) {
+            if (priority || m_queue.Count == 0)
+                m_queue.Enqueue(task);
         }
 
 
         internal async void ExecuteScheduledTask (CancellationToken token) {
-            if (m_scheduledTask == null || IsPerformed)
+            if (m_queue.Count == 0)
                 return;
 
             try {
-                await ExecuteTask(async () => await m_scheduledTask(token));
+                await ExecuteTask(async () => await m_queue.Dequeue().Invoke(token));
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SynchronizationPoint), "Scheduled task was canceled");
@@ -31,13 +33,24 @@ namespace SaveSystem.Internal {
             catch (Exception exception) {
                 Debug.LogException(exception);
             }
+        }
+
+
+        internal async UniTask ExecuteTask (Func<UniTask> task) {
+            await WaitCurrentExecution();
+
+            IsPerformed = true;
+
+            try {
+                await task();
+            }
             finally {
-                m_scheduledTask = null;
+                IsPerformed = false;
             }
         }
 
 
-        internal async UniTask<HandlingResult> ExecuteTask (Func<UniTask<HandlingResult>> task) {
+        internal async UniTask<TResult> ExecuteTask<TResult> (Func<UniTask<TResult>> task) {
             await WaitCurrentExecution();
 
             IsPerformed = true;

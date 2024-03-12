@@ -152,7 +152,7 @@ namespace SaveSystem {
                 return;
             }
 
-            Authentication = settings.authentication;
+            Authenticate = settings.authentication;
             AuthManager = new AuthenticationManager(authSettings.globalAuthHashKey, authSettings.hashAlgorithm);
 
             SelectedSaveProfile.Authenticate = settings.authentication;
@@ -292,13 +292,12 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask<HandlingResult> CommonSavingTask (SaveType saveType, CancellationToken token) {
+        private static async UniTask CommonSavingTask (SaveType saveType, CancellationToken token) {
             OnSaveStart?.Invoke(saveType);
             HandlingResult result = await SaveObjects(token);
             OnSaveEnd?.Invoke(saveType);
 
             LogResult(saveType, result);
-            return result;
         }
 
 

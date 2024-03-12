@@ -48,7 +48,7 @@ namespace SaveSystem.Internal {
             if (source == null)
                 return HandlingResult.Canceled;
 
-            await File.WriteAllBytesAsync(dataPath, source, token);
+            await File.WriteAllBytesAsync(dataPath, source, token).AsUniTask();
             return HandlingResult.Success;
         }
 
@@ -62,7 +62,7 @@ namespace SaveSystem.Internal {
                 return HandlingResult.Canceled;
 
             destination.Position = 0;
-            await destination.WriteAsync(source, token);
+            await destination.WriteAsync(source, token).AsUniTask();
             return HandlingResult.Success;
         }
 
@@ -95,7 +95,7 @@ namespace SaveSystem.Internal {
                 return HandlingResult.FileNotExists;
             }
 
-            return LoadData(await File.ReadAllBytesAsync(dataPath, token));
+            return LoadData(await File.ReadAllBytesAsync(dataPath, token).AsUniTask());
         }
 
 
@@ -105,7 +105,7 @@ namespace SaveSystem.Internal {
 
             var buffer = new byte[stream.Length];
             // ReSharper disable once MustUseReturnValue
-            await stream.ReadAsync(buffer, token);
+            await stream.ReadAsync(buffer, token).AsUniTask();
             return LoadData(buffer);
         }
 
