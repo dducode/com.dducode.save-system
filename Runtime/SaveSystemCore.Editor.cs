@@ -19,6 +19,10 @@
                 OnSaveStart = null;
                 OnSaveEnd = null;
 
+                Application.wantsToQuit -= SaveBeforeExit;
+                Application.focusChanged -= OnFocusLost;
+                Application.lowMemory -= OnLowMemory;
+
             #if ENABLE_LEGACY_INPUT_MANAGER
                 m_quickSaveKey = default;
             #endif
