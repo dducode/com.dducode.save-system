@@ -61,20 +61,10 @@ namespace SaveSystem {
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void Initialize () {
-            m_handler = new SaveDataHandler {
-                SerializationScope = m_globalScope = new SerializationScope {
-                    Name = "Global scope"
-                }
-            };
-
-            SetPlayerLoop();
-            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
-            SetManagedFolders();
-            SetOnExitPlayModeCallback();
-
-            m_exitCancellation = new CancellationTokenSource();
-            Logger.Log(nameof(SaveSystemCore), "Initialized");
+        private static void AutoInit () {
+            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+            if (settings != null && settings.automaticInitialize)
+                Initialize();
         }
 
 

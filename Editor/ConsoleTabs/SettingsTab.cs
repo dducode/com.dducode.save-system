@@ -15,6 +15,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private SerializedObject m_serializedSettings;
 
+        private SerializedProperty m_automaticInitializeProperty;
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
@@ -81,6 +82,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void InitializeCommonSettings () {
+            m_automaticInitializeProperty = m_serializedSettings.FindProperty("automaticInitialize");
             m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
             m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
@@ -107,6 +109,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private void DrawCommonSettings () {
             EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(m_automaticInitializeProperty, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_enabledSaveEventsProperty, GUILayout.MaxWidth(300));
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
 

@@ -152,6 +152,23 @@ namespace SaveSystem {
         public static event Action<SaveType> OnSaveEnd;
 
 
+        public static void Initialize () {
+            m_handler = new SaveDataHandler {
+                SerializationScope = m_globalScope = new SerializationScope {
+                    Name = "Global scope"
+                }
+            };
+
+            SetPlayerLoop();
+            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
+            SetManagedFolders();
+            SetOnExitPlayModeCallback();
+
+            m_exitCancellation = new CancellationTokenSource();
+            Logger.Log(nameof(SaveSystemCore), "Initialized");
+        }
+
+
         /// <summary>
         /// Get all previously created saving profiles
         /// </summary>
