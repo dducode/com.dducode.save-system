@@ -373,12 +373,21 @@ namespace SaveSystem {
         private static async UniTask PullFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData globalData = await cloudStorage.Pull(StorageData.Type.Global);
+            StorageData globalData = await cloudStorage.Pull(new StorageData {
+                fileName = Path.GetFileName(DataPath),
+                type = StorageData.Type.Global
+            });
             await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
-            StorageData profileData = await cloudStorage.Pull(StorageData.Type.Profile);
-            if (m_selectedSaveProfile != null && profileData.rawData != null)
-                await m_selectedSaveProfile.ImportProfileData(profileData.rawData, token);
+            if (m_selectedSaveProfile != null) {
+                StorageData profileData = await cloudStorage.Pull(new StorageData {
+                    fileName = Path.GetFileName(m_selectedSaveProfile.DataPath),
+                    type = StorageData.Type.Profile
+                });
+
+                if (profileData.rawData != null)
+                    await m_selectedSaveProfile.ImportProfileData(profileData.rawData, token);
+            }
         }
 
 

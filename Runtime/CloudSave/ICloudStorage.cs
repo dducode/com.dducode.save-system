@@ -5,7 +5,7 @@ namespace SaveSystem.CloudSave {
     public interface ICloudStorage {
 
         public void Push (StorageData data);
-        public UniTask<StorageData> Pull (StorageData.Type type);
+        public UniTask<StorageData> Pull (StorageData data);
 
     }
 
