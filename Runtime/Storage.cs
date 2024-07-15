@@ -8,7 +8,7 @@ namespace SaveSystem {
     /// <summary>
     /// Use this class to get information about data
     /// </summary>
-    public static partial class Storage {
+    public static class Storage {
 
         internal static readonly string StorageDataPath = IniDataPath();
 
@@ -95,10 +95,6 @@ namespace SaveSystem {
                 else
                     File.Delete(filePath);
             }
-
-        #if UNITY_EDITOR
-            DeleteAuthKeys();
-        #endif
         }
 
 

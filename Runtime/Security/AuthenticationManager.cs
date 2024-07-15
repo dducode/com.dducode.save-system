@@ -22,9 +22,6 @@ namespace SaveSystem.Security {
                     throw new ArgumentNullException(nameof(AuthHashKey));
 
                 m_authHashKey = value;
-            #if UNITY_EDITOR
-                Storage.AddPrefsKey(value);
-            #endif
             }
         }
 
