@@ -157,7 +157,7 @@ namespace SaveSystem {
         /// </summary>
         [Pure]
         public static async UniTask<List<TProfile>> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
-            string[] paths = Directory.GetFileSystemEntries(internalFolder, "*.meta");
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.meta");
             var profiles = new List<TProfile>();
 
             foreach (string path in paths) {
@@ -181,7 +181,7 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(internalFolder, $"{profile.Name}.meta");
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.meta");
             if (File.Exists(path))
                 return;
 
@@ -206,7 +206,7 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(internalFolder, $"{profile.Name}.meta");
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.meta");
             if (!File.Exists(path))
                 return;
 
@@ -358,41 +358,6 @@ namespace SaveSystem {
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
             }
-        }
-
-
-        /// <summary>
-        /// Start saving of objects in the global scope and wait it
-        /// </summary>
-        public static async UniTask<byte[]> SaveGlobalData (CancellationToken token = default) {
-            return await CancelableOperationsHandler.Execute(
-                async () => await m_handler.SaveData(DataPath, token),
-                nameof(SaveSystemCore), "Global data saving canceled", token: token
-            );
-        }
-
-
-        /// <summary>
-        /// Start loading of objects in the global scope and wait it
-        /// </summary>
-        public static async UniTask LoadGlobalData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_handler.LoadData(DataPath, token),
-                nameof(SaveSystemCore), "Global data loading canceled", token: token
-            );
-        }
-
-
-        /// <summary>
-        /// Start loading of objects in the global scope and wait it
-        /// </summary>
-        public static void LoadGlobalData ([NotNull] byte[] data) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
-
-            m_handler.LoadData(data);
         }
 
     }

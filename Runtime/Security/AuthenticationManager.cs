@@ -56,7 +56,7 @@ namespace SaveSystem.Security {
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
             string path = Path.Combine(
-                SaveSystemCore.internalFolder, $"{AuthHashKey}.{AlgorithmName.ToString().ToLower()}"
+                SaveSystemCore.InternalFolder, $"{AuthHashKey}.{AlgorithmName.ToString().ToLower()}"
             );
 
             if (!File.Exists(path))
@@ -80,7 +80,7 @@ namespace SaveSystem.Security {
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
             string path = Path.Combine(
-                SaveSystemCore.internalFolder, $"{AuthHashKey}.{AlgorithmName.ToString().ToLower()}"
+                SaveSystemCore.InternalFolder, $"{AuthHashKey}.{AlgorithmName.ToString().ToLower()}"
             );
             File.WriteAllBytes(path, ComputeHash(data));
         }

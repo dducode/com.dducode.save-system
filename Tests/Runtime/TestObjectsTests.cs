@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
@@ -13,7 +12,7 @@ namespace SaveSystem.Tests {
 
     public class TestObjectsTests {
 
-        private readonly string m_filePath = Path.Combine(Application.temporaryCachePath, Guid.NewGuid().ToString());
+        private readonly string m_filePath = Path.Combine(Application.temporaryCachePath, "test-objects.data");
 
 
         [SetUp]

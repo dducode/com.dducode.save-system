@@ -53,7 +53,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void DrawFolderEntry (string openEntryLabel, string entryPath) {
-            if (!m_showInternal && entryPath == SaveSystemCore.internalFolder)
+            if (!m_showInternal && entryPath == SaveSystemCore.InternalFolder)
                 return;
 
             using (new EditorGUILayout.HorizontalScope()) {

@@ -131,7 +131,12 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<byte[]> SaveProfileData (CancellationToken token = default) {
+        public override string ToString () {
+            return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, m_dataFolder)}";
+        }
+
+
+        internal async UniTask<byte[]> SaveProfileData (CancellationToken token = default) {
             return await CancelableOperationsHandler.Execute(
                 async () => await m_handler.SaveData(DataPath, token),
                 Name, "Profile saving canceled", token: token
@@ -139,26 +144,11 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask LoadProfileData (CancellationToken token = default) {
+        internal async UniTask LoadProfileData (CancellationToken token = default) {
             await CancelableOperationsHandler.Execute(
                 async () => await m_handler.LoadData(DataPath, token), Name,
                 "Profile loading canceled", token: token
             );
-        }
-
-
-        public void LoadProfileData ([NotNull] byte[] data) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
-
-            m_handler.LoadData(data);
-        }
-
-
-        public override string ToString () {
-            return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, m_dataFolder)}";
         }
 
 

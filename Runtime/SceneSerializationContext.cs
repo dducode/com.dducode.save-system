@@ -58,10 +58,6 @@ namespace SaveSystem {
             set => m_handler.AuthManager = value;
         }
 
-        public string DataPath => Path.Combine(
-            SaveSystemCore.SelectedSaveProfile.DataFolder, $"{gameObject.scene.name}.scenedata"
-        );
-
         private SaveDataHandler m_handler;
         private SerializationScope m_serializationScope;
 
@@ -118,39 +114,31 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<byte[]> ExportSceneData (CancellationToken token = default) {
-            return await File.ReadAllBytesAsync(DataPath, token);
-        }
-
-
-        public async UniTask ImportSceneData (byte[] data, CancellationToken token = default) {
-            await File.WriteAllBytesAsync(DataPath, data, token);
-        }
-
-
-        public async UniTask<byte[]> SaveSceneData (CancellationToken token = default) {
+        public async UniTask<byte[]> SaveSceneData (SaveProfile profile = null, CancellationToken token = default) {
             return await CancelableOperationsHandler.Execute(
-                async () => await m_handler.SaveData(DataPath, token),
+                async () => {
+                    string dataPath = Path.Combine(
+                        profile == null ? SaveSystemCore.scenesFolder : profile.DataFolder,
+                        $"{gameObject.scene.name}.scenedata"
+                    );
+                    return await m_handler.SaveData(dataPath, token);
+                },
                 name, "Scene data saving canceled", this, token
             );
         }
 
 
-        public async UniTask LoadSceneData (CancellationToken token = default) {
+        public async UniTask LoadSceneData (SaveProfile profile = null, CancellationToken token = default) {
             await CancelableOperationsHandler.Execute(
-                async () => await m_handler.LoadData(DataPath, token),
+                async () => {
+                    string dataPath = Path.Combine(
+                        profile == null ? SaveSystemCore.scenesFolder : profile.DataFolder,
+                        $"{gameObject.scene.name}.scenedata"
+                    );
+                    await m_handler.LoadData(dataPath, token);
+                },
                 name, "Scene data loading canceled", this, token
             );
-        }
-
-
-        public void LoadSceneData ([NotNull] byte[] data) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
-
-            m_handler.LoadData(data);
         }
 
     }
