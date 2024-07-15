@@ -39,21 +39,6 @@ namespace SaveSystem.Tests {
 
 
         [Test]
-        public async Task WriteReadAsync () {
-            await using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
-                await writer.WriteAsync(GetData(25));
-
-            await using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open))) {
-                var message = new StringBuilder();
-                int[] data = await reader.ReadArrayAsync<int>();
-                foreach (int i in data)
-                    message.Append($"item: {i}\n");
-                Debug.Log(message);
-            }
-        }
-
-
-        [Test]
         public async Task WriteReadMesh () {
             const float duration = 1.5f;
 

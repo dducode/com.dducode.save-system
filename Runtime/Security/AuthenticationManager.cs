@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Security;
 using System.Security.Cryptography;
 using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
-using UnityEngine;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -32,9 +32,20 @@ namespace SaveSystem.Security {
         private string m_authHashKey;
 
 
+        public AuthenticationManager (AuthenticationSettings settings) {
+            SetSettings(settings);
+        }
+
+
         public AuthenticationManager (string authHashKey, HashAlgorithmName algorithmName) {
             AuthHashKey = authHashKey;
             AlgorithmName = algorithmName;
+        }
+
+
+        public void SetSettings (AuthenticationSettings settings) {
+            AuthHashKey = settings.profileAuthHashKey;
+            AlgorithmName = settings.hashAlgorithm;
         }
 
 
@@ -44,10 +55,21 @@ namespace SaveSystem.Security {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            if (!PlayerPrefs.HasKey(AuthHashKey))
+            string path = Path.Combine(
+                SaveSystemCore.internalFolder, $"{AuthHashKey}.{AlgorithmName.ToString().ToLower()}"
+            );
+
+            if (!File.Exists(path))
                 throw new InvalidOperationException("There is no key for authenticate");
-            if (!string.Equals(PlayerPrefs.GetString(AuthHashKey), ComputeHash(data)))
+
+            byte[] storedHash = File.ReadAllBytes(path);
+            byte[] computeHash = ComputeHash(data);
+            if (storedHash.Length != computeHash.Length)
                 throw new SecurityException(Messages.DataIsCorrupted);
+
+            for (var i = 0; i < storedHash.Length; i++)
+                if (storedHash[i] != computeHash[i])
+                    throw new SecurityException(Messages.DataIsCorrupted);
         }
 
 
@@ -57,14 +79,16 @@ namespace SaveSystem.Security {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            PlayerPrefs.SetString(AuthHashKey, ComputeHash(data));
-            PlayerPrefs.Save();
+            string path = Path.Combine(
+                SaveSystemCore.internalFolder, $"{AuthHashKey}.{AlgorithmName.ToString().ToLower()}"
+            );
+            File.WriteAllBytes(path, ComputeHash(data));
         }
 
 
-        private string ComputeHash (byte[] data) {
+        private byte[] ComputeHash (byte[] data) {
             HashAlgorithm algorithm = AlgorithmName.SelectAlgorithm();
-            return Convert.ToBase64String(algorithm.ComputeHash(data));
+            return algorithm.ComputeHash(data);
         }
 
     }

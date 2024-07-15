@@ -95,12 +95,8 @@ namespace SaveSystem {
 
             Authenticate = reader.Read<bool>();
 
-            if (Authenticate) {
-                AuthManager = new AuthenticationManager(
-                    reader.ReadString(),
-                    reader.Read<HashAlgorithmName>()
-                );
-            }
+            if (Authenticate)
+                AuthManager = new AuthenticationManager(ResourcesManager.LoadSettings<AuthenticationSettings>());
         }
 
 
@@ -135,75 +131,44 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> SaveProfileData (
-            [NotNull] string dataPath, CancellationToken token = default
-        ) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
-
-            return await SaveProfileData(async () => await m_handler.SaveData(dataPath, token), token);
+        public async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
+            return await File.ReadAllBytesAsync(DataPath, token);
         }
 
 
-        public async UniTask<HandlingResult> SaveProfileData (
-            [NotNull] Stream destination, CancellationToken token = default
-        ) {
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
-
-            return await SaveProfileData(async () => await m_handler.SaveData(destination, token), token);
+        public async UniTask ImportProfileData (byte[] data, CancellationToken token = default) {
+            await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
 
-        [Pure]
-        public byte[] SaveProfileData () {
-            return m_handler.SaveData();
+        public async UniTask<byte[]> SaveProfileData (CancellationToken token = default) {
+            return await CancelableOperationsHandler.Execute(
+                async () => await m_handler.SaveData(DataPath, token),
+                Name, "Profile saving canceled", token: token
+            );
         }
 
 
-        public async UniTask<HandlingResult> LoadProfileData (
-            string dataPath = null, CancellationToken token = default
-        ) {
-            return await LoadProfileData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
+        public async UniTask LoadProfileData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
+                async () => await m_handler.LoadData(DataPath, token), Name,
+                "Profile loading canceled", token: token
+            );
         }
 
 
-        public async UniTask<HandlingResult> LoadProfileData (
-            [NotNull] Stream source, CancellationToken token = default
-        ) {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            return await LoadProfileData(async () => await m_handler.LoadData(source, token), token);
-        }
-
-
-        public HandlingResult LoadProfileData ([NotNull] byte[] data) {
+        public void LoadProfileData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return m_handler.LoadData(data);
+            m_handler.LoadData(data);
         }
 
 
         public override string ToString () {
-            return $"name: {Name}, path: {Path.GetRelativePath(Storage.PersistentDataPath, m_dataFolder)}";
-        }
-
-
-        private async UniTask<HandlingResult> SaveProfileData (
-            Func<UniTask<HandlingResult>> saving, CancellationToken token
-        ) {
-            return await CancelableOperationsHandler.Execute(saving, Name, "Profile saving canceled", token: token);
-        }
-
-
-        private async UniTask<HandlingResult> LoadProfileData (
-            Func<UniTask<HandlingResult>> loading, CancellationToken token
-        ) {
-            return await CancelableOperationsHandler.Execute(loading, Name, "Profile loading canceled", token: token);
+            return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, m_dataFolder)}";
         }
 
     }

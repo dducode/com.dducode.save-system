@@ -16,7 +16,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
             DrawDataSizeLabel();
             DrawProperties();
             EditorGUILayout.Space(15);
-            DrawFileSystemEntries(Storage.PersistentDataPath);
+            DrawFileSystemEntries(Storage.StorageDataPath);
 
             if (Storage.HasAnyData())
                 DrawDeleteDataButton();
@@ -31,7 +31,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
         private void DrawProperties () {
             EditorGUI.BeginChangeCheck();
-            m_showInternal = EditorGUILayout.ToggleLeft("Show Internal Folders", m_showInternal);
+            m_showInternal = EditorGUILayout.ToggleLeft("Show Internal Folder", m_showInternal);
 
             if (EditorGUI.EndChangeCheck())
                 EditorPrefs.SetBool(ShowInternalKey, m_showInternal);
@@ -53,8 +53,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void DrawFolderEntry (string openEntryLabel, string entryPath) {
-            string internalFolder = Path.Combine(Storage.PersistentDataPath, SaveSystemCore.SaveSystemFolder);
-            if (!m_showInternal && entryPath == internalFolder)
+            if (!m_showInternal && entryPath == SaveSystemCore.internalFolder)
                 return;
 
             using (new EditorGUILayout.HorizontalScope()) {

@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using UnityEngine.Rendering;
 
 // ReSharper disable MemberCanBePrivate.Global
@@ -38,20 +37,6 @@ namespace SaveSystem.BinaryHandlers {
         public void Write<TValue> (ReadOnlySpan<TValue> span) where TValue : unmanaged {
             Write(span.Length);
             input.Write(MemoryMarshal.AsBytes(span));
-        }
-
-
-        public async UniTask WriteAsync<TValue> ([NotNull] TValue[] array) where TValue : unmanaged {
-            if (array == null)
-                throw new ArgumentNullException(nameof(array));
-
-            await WriteAsync((ReadOnlyMemory<TValue>)array);
-        }
-
-
-        public async UniTask WriteAsync<TValue> (ReadOnlyMemory<TValue> memory) where TValue : unmanaged {
-            Write(memory.Span.Length);
-            await input.WriteAsync(MemoryMarshal.AsBytes(memory.Span).ToArray());
         }
 
 
@@ -145,8 +130,10 @@ namespace SaveSystem.BinaryHandlers {
 
 
         public void Dispose () {
-            input?.SetLength(input.Position);
-            input?.Dispose();
+            if (input != null) {
+                input.SetLength(input.Position);
+                input.Dispose();
+            }
         }
 
 

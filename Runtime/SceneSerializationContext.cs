@@ -118,70 +118,39 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<HandlingResult> SaveSceneData (
-            [NotNull] string dataPath, CancellationToken token = default
-        ) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
-
-            return await SaveSceneData(async () => await m_handler.SaveData(dataPath, token), token);
+        public async UniTask<byte[]> ExportSceneData (CancellationToken token = default) {
+            return await File.ReadAllBytesAsync(DataPath, token);
         }
 
 
-        public async UniTask<HandlingResult> SaveSceneData (
-            [NotNull] Stream destination, CancellationToken token = default
-        ) {
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
-
-            return await SaveSceneData(async () => await m_handler.SaveData(destination, token), token);
+        public async UniTask ImportSceneData (byte[] data, CancellationToken token = default) {
+            await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
 
-        [Pure]
-        public byte[] SaveSceneData () {
-            return m_handler.SaveData();
+        public async UniTask<byte[]> SaveSceneData (CancellationToken token = default) {
+            return await CancelableOperationsHandler.Execute(
+                async () => await m_handler.SaveData(DataPath, token),
+                name, "Scene data saving canceled", this, token
+            );
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData (
-            string dataPath = null, CancellationToken token = default
-        ) {
-            return await LoadSceneData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
+        public async UniTask LoadSceneData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
+                async () => await m_handler.LoadData(DataPath, token),
+                name, "Scene data loading canceled", this, token
+            );
         }
 
 
-        public async UniTask<HandlingResult> LoadSceneData (
-            [NotNull] Stream source, CancellationToken token = default
-        ) {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            return await LoadSceneData(async () => await m_handler.LoadData(source, token), token);
-        }
-
-
-        public HandlingResult LoadSceneData ([NotNull] byte[] data) {
+        public void LoadSceneData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return m_handler.LoadData(data);
-        }
-
-
-        private async UniTask<HandlingResult> SaveSceneData (
-            Func<UniTask<HandlingResult>> saving, CancellationToken token
-        ) {
-            return await CancelableOperationsHandler.Execute(saving, name, "Scene data saving canceled", this, token);
-        }
-
-
-        private async UniTask<HandlingResult> LoadSceneData (
-            Func<UniTask<HandlingResult>> loading, CancellationToken token
-        ) {
-            return await CancelableOperationsHandler.Execute(loading, name, "Scene data loading canceled", this, token);
+            m_handler.LoadData(data);
         }
 
     }

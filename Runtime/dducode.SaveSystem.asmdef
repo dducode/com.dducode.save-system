@@ -3,7 +3,8 @@
     "rootNamespace": "SaveSystem",
     "references": [
         "GUID:f51ebe6a0ceec4240a699833d6309b23",
-        "GUID:75469ad4d38634e559750d17036d5f7c"
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:1ed07ff861e5f468287b0baef844706d"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

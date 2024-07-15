@@ -7,8 +7,22 @@ namespace SaveSystem.Internal {
 
     public class CancelableOperationsHandler {
 
-        public static async UniTask<HandlingResult> Execute (
-            Func<UniTask<HandlingResult>> task, string sender, string onCancelMessage,
+        public static async UniTask Execute (
+            Func<UniTask> task, string sender, string onCancelMessage,
+            Object context = null, CancellationToken token = default
+        ) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await task();
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(sender, onCancelMessage, context);
+            }
+        }
+
+
+        public static async UniTask<TResult> Execute<TResult> (
+            Func<UniTask<TResult>> task, string sender, string onCancelMessage,
             Object context = null, CancellationToken token = default
         ) {
             try {
@@ -17,7 +31,7 @@ namespace SaveSystem.Internal {
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(sender, onCancelMessage, context);
-                return HandlingResult.Canceled;
+                return default;
             }
         }
 

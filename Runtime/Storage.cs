@@ -10,12 +10,12 @@ namespace SaveSystem {
     /// </summary>
     public static partial class Storage {
 
-        internal static readonly string PersistentDataPath = Application.persistentDataPath;
+        internal static readonly string StorageDataPath = IniDataPath();
 
 
         /// <returns> Returns the size of the data in bytes </returns>
         public static long GetDataSize () {
-            return GetDataSize(PersistentDataPath);
+            return GetDataSize(StorageDataPath);
         }
 
 
@@ -30,12 +30,12 @@ namespace SaveSystem {
 
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
-            return GetDataSize(PersistentDataPath) > 0;
+            return GetDataSize(StorageDataPath) > 0;
         }
 
 
         internal static string GetFullPath (string filePath) {
-            return Path.IsPathRooted(filePath) ? filePath : Path.Combine(PersistentDataPath, filePath);
+            return Path.IsPathRooted(filePath) ? filePath : Path.Combine(StorageDataPath, filePath);
         }
 
 
@@ -87,7 +87,7 @@ namespace SaveSystem {
         /// It's unsafe calling. Make sure you want it
         /// </summary>
         internal static void DeleteAllData () {
-            string[] data = Directory.GetFileSystemEntries(PersistentDataPath);
+            string[] data = Directory.GetFileSystemEntries(StorageDataPath);
 
             foreach (string filePath in data) {
                 if (File.GetAttributes(filePath).HasFlag(FileAttributes.Directory))
@@ -99,6 +99,14 @@ namespace SaveSystem {
         #if UNITY_EDITOR
             DeleteAuthKeys();
         #endif
+        }
+
+
+        private static string IniDataPath () {
+            string storage = Path.Combine(Application.persistentDataPath, "save-system");
+            if (!Directory.Exists(storage))
+                Directory.CreateDirectory(storage);
+            return storage;
         }
 
 

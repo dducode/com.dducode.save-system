@@ -156,24 +156,14 @@ namespace SaveSystem {
         /// </summary>
         [Pure]
         public static async UniTask<List<TProfile>> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
-            string[] paths = Directory.GetFileSystemEntries(
-                m_profilesFolderPath, $"*{ProfileMetadataExtension}"
-            );
+            string[] paths = Directory.GetFileSystemEntries(internalFolder, "*.meta");
             var profiles = new List<TProfile>();
 
             foreach (string path in paths) {
-                if (!path.Contains(typeof(TProfile).Name))
+                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                if (reader.ReadString() != typeof(TProfile).Name)
                     continue;
 
-                byte[] data = await File.ReadAllBytesAsync(path).AsUniTask();
-
-                if (Authenticate)
-                    AuthManager.AuthenticateData(data);
-
-                if (Encrypt)
-                    data = Cryptographer.Decrypt(data);
-
-                await using var reader = new SaveReader(new MemoryStream(data));
                 var profile = new TProfile();
                 profile.Deserialize(reader);
                 profiles.Add(profile);
@@ -190,23 +180,15 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(
-                m_profilesFolderPath, $"{profile.GetType().Name}_{profile.Name}{ProfileMetadataExtension}"
-            );
+            string path = Path.Combine(internalFolder, $"{profile.Name}.meta");
             if (File.Exists(path))
                 return;
 
             var memoryStream = new MemoryStream();
             using var writer = new SaveWriter(memoryStream);
+            writer.Write(profile.GetType().Name);
             profile.Serialize(writer);
             byte[] data = memoryStream.ToArray();
-
-            if (Encrypt)
-                data = Cryptographer.Encrypt(data);
-
-            if (Authenticate)
-                AuthManager.SetAuthHash(data);
-
             SynchronizationPoint.ScheduleTask(
                 async token => await File.WriteAllBytesAsync(path, data, token).AsUniTask(),
                 true
@@ -223,7 +205,7 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(m_profilesFolderPath, $"{profile.Name}{ProfileMetadataExtension}");
+            string path = Path.Combine(internalFolder, $"{profile.Name}.meta");
             if (!File.Exists(path))
                 return;
 
@@ -328,75 +310,48 @@ namespace SaveSystem {
         }
 
 
-        /// <summary>
-        /// Start saving of objects in the global scope and wait it
-        /// </summary>
-        public static async UniTask<HandlingResult> SaveGlobalData (
-            [NotNull] string dataPath, CancellationToken token = default
-        ) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
+        public static async UniTask<byte[]> ExportGlobalData (CancellationToken token = default) {
+            return await File.ReadAllBytesAsync(DataPath, token);
+        }
 
-            return await SaveGlobalData(async () => await m_handler.SaveData(dataPath, token), token);
+
+        public static async UniTask ImportGlobalData (byte[] data, CancellationToken token = default) {
+            await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
 
         /// <summary>
         /// Start saving of objects in the global scope and wait it
         /// </summary>
-        public static async UniTask<HandlingResult> SaveGlobalData (
-            [NotNull] Stream destination, CancellationToken token = default
-        ) {
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
-
-            return await SaveGlobalData(async () => await m_handler.SaveData(destination, token), token);
-        }
-
-
-        /// <summary>
-        /// Start saving of objects in the global scope and wait it
-        /// </summary>
-        /// <returns> A tuple of a saving operation result and a saved data </returns>
-        [Pure]
-        public static byte[] SaveGlobalData () {
-            return m_handler.SaveData();
+        public static async UniTask<byte[]> SaveGlobalData (CancellationToken token = default) {
+            return await CancelableOperationsHandler.Execute(
+                async () => await m_handler.SaveData(DataPath, token),
+                nameof(SaveSystemCore), "Global data saving canceled", token: token
+            );
         }
 
 
         /// <summary>
         /// Start loading of objects in the global scope and wait it
         /// </summary>
-        public static async UniTask<HandlingResult> LoadGlobalData (
-            string dataPath = null, CancellationToken token = default
-        ) {
-            return await LoadGlobalData(async () => await m_handler.LoadData(dataPath ?? DataPath, token), token);
+        public static async UniTask LoadGlobalData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
+                async () => await m_handler.LoadData(DataPath, token),
+                nameof(SaveSystemCore), "Global data loading canceled", token: token
+            );
         }
 
 
         /// <summary>
         /// Start loading of objects in the global scope and wait it
         /// </summary>
-        public static async UniTask<HandlingResult> LoadGlobalData (
-            [NotNull] Stream source, CancellationToken token = default
-        ) {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            return await LoadGlobalData(async () => await m_handler.LoadData(source, token), token);
-        }
-
-
-        /// <summary>
-        /// Start loading of objects in the global scope and wait it
-        /// </summary>
-        public static HandlingResult LoadGlobalData ([NotNull] byte[] data) {
+        public static void LoadGlobalData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            return m_handler.LoadData(data);
+            m_handler.LoadData(data);
         }
 
     }
