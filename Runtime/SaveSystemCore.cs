@@ -141,6 +141,7 @@ namespace SaveSystem {
 
 
         private static void SetManagedFolders () {
+            SetInternalFolder();
             scenesFolder = Storage.PrepareBeforeUsing("scenes", true);
         }
 
