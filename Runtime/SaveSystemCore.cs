@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.CloudSave;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Templates;
 using SaveSystem.Security;
@@ -26,10 +27,7 @@ namespace SaveSystem {
     /// </summary>
     public static partial class SaveSystemCore {
 
-        internal const string SaveSystemFolder = "save_system_internal";
-        private const string ProfileMetadataExtension = ".profilemetadata";
-
-        private static string m_profilesFolderPath;
+        internal static string internalFolder;
 
         // Common settings
         private static SaveProfile m_selectedSaveProfile;
@@ -45,6 +43,7 @@ namespace SaveSystem {
 
         private static SerializationScope m_globalScope;
         private static SaveDataHandler m_handler;
+        private static ICloudStorage m_cloudStorage;
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -68,11 +67,10 @@ namespace SaveSystem {
                     Name = "Global scope"
                 }
             };
-            m_selectedSaveProfile = new DefaultSaveProfile();
 
             SetPlayerLoop();
             SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
-            SetInternalSavedPaths();
+            SetInternalFolder();
             SetOnExitPlayModeCallback();
 
             m_exitCancellation = new CancellationTokenSource();
@@ -134,38 +132,27 @@ namespace SaveSystem {
                 Cryptographer = new Cryptographer(settings.encryptionSettings);
             else
                 Cryptographer.SetSettings(settings.encryptionSettings);
-
-            SelectedSaveProfile.Encrypt = settings.encryption;
-            if (SelectedSaveProfile.Cryptographer == null)
-                SelectedSaveProfile.Cryptographer = Cryptographer;
-            else
-                SelectedSaveProfile.Cryptographer.SetSettings(settings.encryptionSettings);
         }
 
 
         private static void SetAuthSettings (SaveSystemSettings settings) {
-            AuthenticationSettings authSettings = settings.authenticationSettings;
-
-            if (authSettings == null) {
+            if (settings.authenticationSettings == null) {
                 if (settings.authentication)
                     Logger.LogError(nameof(SaveSystemCore), "Authentication enabled but settings not set");
                 return;
             }
 
             Authenticate = settings.authentication;
-            AuthManager = new AuthenticationManager(authSettings.globalAuthHashKey, authSettings.hashAlgorithm);
-
-            SelectedSaveProfile.Authenticate = settings.authentication;
-            SelectedSaveProfile.AuthManager = new AuthenticationManager(
-                authSettings.profileAuthHashKey, authSettings.hashAlgorithm
-            );
+            if (AuthManager == null)
+                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+            else
+                AuthManager.SetSettings(settings.authenticationSettings);
         }
 
 
-        private static void SetInternalSavedPaths () {
-            m_profilesFolderPath = Storage.PrepareBeforeUsing(
-                Path.Combine(SaveSystemFolder, "save_profiles"), true
-            );
+        private static void SetInternalFolder () {
+            internalFolder = Storage.PrepareBeforeUsing(".internal", true);
+            new DirectoryInfo(internalFolder).Attributes |= FileAttributes.Hidden;
         }
 
 
@@ -314,14 +301,17 @@ namespace SaveSystem {
         private static async UniTask<HandlingResult> SaveObjects (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SaveGlobalData(DataPath, token);
-                await m_selectedSaveProfile.SaveProfileData(m_selectedSaveProfile.DataPath, token);
+                await SaveGlobalData(token);
 
-                SceneSerializationContext[] contexts =
-                    Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
+                if (m_selectedSaveProfile != null) {
+                    await m_selectedSaveProfile.SaveProfileData(token);
 
-                foreach (SceneSerializationContext sceneLoader in contexts)
-                    await sceneLoader.SaveSceneData(sceneLoader.DataPath, token);
+                    SceneSerializationContext[] contexts =
+                        Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
+
+                    foreach (SceneSerializationContext sceneLoader in contexts)
+                        await sceneLoader.SaveSceneData(token);
+                }
 
                 return HandlingResult.Success;
             }
@@ -332,26 +322,63 @@ namespace SaveSystem {
         }
 
 
+        private static async UniTask<HandlingResult> LoadObjects (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await LoadGlobalData(token);
+
+                if (m_selectedSaveProfile != null) {
+                    await m_selectedSaveProfile.LoadProfileData(token);
+
+                    SceneSerializationContext[] contexts =
+                        Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
+
+                    foreach (SceneSerializationContext sceneLoader in contexts)
+                        await sceneLoader.LoadSceneData(token);
+                }
+
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        private static async UniTask PushToCloudStorage (
+            ICloudStorage cloudStorage, CancellationToken token = default
+        ) {
+            cloudStorage.Push(new StorageData {
+                rawData = await File.ReadAllBytesAsync(DataPath, token),
+                fileName = Path.GetFileName(DataPath),
+                type = StorageData.Type.Global
+            });
+
+            if (m_selectedSaveProfile != null) {
+                cloudStorage.Push(new StorageData {
+                    rawData = await m_selectedSaveProfile.ExportProfileData(token),
+                    fileName = Path.GetFileName(m_selectedSaveProfile.DataPath),
+                    type = StorageData.Type.Profile
+                });
+            }
+        }
+
+
+        private static async UniTask PullFromCloudStorage (
+            ICloudStorage cloudStorage, CancellationToken token = default
+        ) {
+            StorageData globalData = await cloudStorage.Pull(StorageData.Type.Global);
+            await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
+
+            StorageData profileData = await cloudStorage.Pull(StorageData.Type.Profile);
+            if (m_selectedSaveProfile != null && profileData.rawData != null)
+                await m_selectedSaveProfile.ImportProfileData(profileData.rawData, token);
+        }
+
+
         private static async UniTask ExecuteOnSceneLoadSaving (CancellationToken token) {
             await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
-        }
-
-
-        private static async UniTask<HandlingResult> SaveGlobalData (
-            Func<UniTask<HandlingResult>> saving, CancellationToken token
-        ) {
-            return await CancelableOperationsHandler.Execute(
-                saving, nameof(SaveSystemCore), "Global data saving canceled", token: token
-            );
-        }
-
-
-        private static async UniTask<HandlingResult> LoadGlobalData (
-            Func<UniTask<HandlingResult>> loading, CancellationToken token
-        ) {
-            return await CancelableOperationsHandler.Execute(
-                loading, nameof(SaveSystemCore), "Global data loading canceled", token: token
-            );
         }
 
     }

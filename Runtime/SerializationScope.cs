@@ -123,7 +123,7 @@ namespace SaveSystem {
         }
 
 
-        public HandlingResult LoadData ([NotNull] byte[] data) {
+        public void LoadData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
@@ -137,7 +137,6 @@ namespace SaveSystem {
             DeserializeObjects(reader);
 
             Logger.Log(Name, "Data loaded");
-            return HandlingResult.Success;
         }
 
 

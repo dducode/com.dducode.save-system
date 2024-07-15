@@ -2,7 +2,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -39,21 +38,6 @@ namespace SaveSystem.BinaryHandlers {
             var array = new TValue[Read<int>()];
             m_streamPosition += output.Read(MemoryMarshal.AsBytes((Span<TValue>)array));
             return array;
-        }
-
-
-        public async UniTask<TValue[]> ReadArrayAsync<TValue> () where TValue : unmanaged {
-            var array = new TValue[Read<int>()];
-            var memory = new Memory<byte>(new byte[array.Length * Marshal.SizeOf<TValue>()]);
-            m_streamPosition += await output.ReadAsync(memory);
-            WriteDataToArray(memory.Span, array);
-            return array;
-
-            void WriteDataToArray (Span<byte> bytes, TValue[] target) {
-                Span<byte> span = MemoryMarshal.AsBytes((Span<TValue>)target);
-                for (var i = 0; i < bytes.Length; i++)
-                    span[i] = bytes[i];
-            }
         }
 
 

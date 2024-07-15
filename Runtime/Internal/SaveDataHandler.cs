@@ -40,30 +40,16 @@ namespace SaveSystem.Internal {
         private SerializationScope m_serializationScope;
 
 
-        internal async UniTask<HandlingResult> SaveData ([NotNull] string dataPath, CancellationToken token) {
+        internal async UniTask<byte[]> SaveData ([NotNull] string dataPath, CancellationToken token) {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
             byte[] source = SaveData();
             if (source == null)
-                return HandlingResult.Canceled;
+                return null;
 
             await File.WriteAllBytesAsync(dataPath, source, token).AsUniTask();
-            return HandlingResult.Success;
-        }
-
-
-        internal async UniTask<HandlingResult> SaveData ([NotNull] Stream destination, CancellationToken token) {
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
-
-            byte[] source = SaveData();
-            if (source == null)
-                return HandlingResult.Canceled;
-
-            destination.Position = 0;
-            await destination.WriteAsync(source, token).AsUniTask();
-            return HandlingResult.Success;
+            return source;
         }
 
 
@@ -86,31 +72,20 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal async UniTask<HandlingResult> LoadData ([NotNull] string dataPath, CancellationToken token) {
+        internal async UniTask LoadData ([NotNull] string dataPath, CancellationToken token) {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
             if (!File.Exists(dataPath)) {
                 SerializationScope.SetDefaults();
-                return HandlingResult.FileNotExists;
+                return;
             }
 
-            return LoadData(await File.ReadAllBytesAsync(dataPath, token).AsUniTask());
+            LoadData(await File.ReadAllBytesAsync(dataPath, token).AsUniTask());
         }
 
 
-        internal async UniTask<HandlingResult> LoadData ([NotNull] Stream stream, CancellationToken token = default) {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-
-            var buffer = new byte[stream.Length];
-            // ReSharper disable once MustUseReturnValue
-            await stream.ReadAsync(buffer, token).AsUniTask();
-            return LoadData(buffer);
-        }
-
-
-        internal HandlingResult LoadData ([NotNull] byte[] data) {
+        internal void LoadData ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
@@ -122,7 +97,7 @@ namespace SaveSystem.Internal {
             if (Encrypt)
                 data = Cryptographer.Decrypt(data);
 
-            return SerializationScope.LoadData(data);
+            SerializationScope.LoadData(data);
         }
 
     }
