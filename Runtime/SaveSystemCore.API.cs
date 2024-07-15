@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
+using SaveSystem.CloudSave;
 using SaveSystem.Internal;
 using SaveSystem.Security;
 using UnityEngine;
@@ -296,10 +297,46 @@ namespace SaveSystem {
         }
 
 
+        public static async UniTask<HandlingResult> PushToCloud (
+            [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
+        ) {
+            if (cloudStorage == null)
+                throw new ArgumentNullException(nameof(cloudStorage));
+
+            try {
+                token.ThrowIfCancellationRequested();
+                await SynchronizationPoint.ExecuteTask(async () => await PushToCloudStorage(cloudStorage, token));
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Push to cloud canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        public static async UniTask<HandlingResult> PullFromCloud (
+            [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
+        ) {
+            if (cloudStorage == null)
+                throw new ArgumentNullException(nameof(cloudStorage));
+
+            try {
+                token.ThrowIfCancellationRequested();
+                await SynchronizationPoint.ExecuteTask(async () => await PullFromCloudStorage(cloudStorage, token));
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Pull from cloud canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
         /// <summary>
         /// Start saving immediately and wait it
         /// </summary>
-        public static async UniTask<HandlingResult> SaveAll (CancellationToken token = default) {
+        public static async UniTask<HandlingResult> Save (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
@@ -310,13 +347,17 @@ namespace SaveSystem {
         }
 
 
-        public static async UniTask<byte[]> ExportGlobalData (CancellationToken token = default) {
-            return await File.ReadAllBytesAsync(DataPath, token);
-        }
-
-
-        public static async UniTask ImportGlobalData (byte[] data, CancellationToken token = default) {
-            await File.WriteAllBytesAsync(DataPath, data, token);
+        /// <summary>
+        /// Start loading and wait it
+        /// </summary>
+        public static async UniTask<HandlingResult> Load (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                return await SynchronizationPoint.ExecuteTask(async () => await LoadObjects(token));
+            }
+            catch (OperationCanceledException) {
+                return HandlingResult.Canceled;
+            }
         }
 
 

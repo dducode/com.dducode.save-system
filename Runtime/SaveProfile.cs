@@ -131,16 +131,6 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
-            return await File.ReadAllBytesAsync(DataPath, token);
-        }
-
-
-        public async UniTask ImportProfileData (byte[] data, CancellationToken token = default) {
-            await File.WriteAllBytesAsync(DataPath, data, token);
-        }
-
-
         public async UniTask<byte[]> SaveProfileData (CancellationToken token = default) {
             return await CancelableOperationsHandler.Execute(
                 async () => await m_handler.SaveData(DataPath, token),
@@ -169,6 +159,16 @@ namespace SaveSystem {
 
         public override string ToString () {
             return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, m_dataFolder)}";
+        }
+
+
+        internal async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
+            return await File.ReadAllBytesAsync(DataPath, token);
+        }
+
+
+        internal async UniTask ImportProfileData (byte[] data, CancellationToken token = default) {
+            await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
     }

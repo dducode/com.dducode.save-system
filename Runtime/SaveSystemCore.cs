@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.CloudSave;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Templates;
 using SaveSystem.Security;
@@ -42,6 +43,7 @@ namespace SaveSystem {
 
         private static SerializationScope m_globalScope;
         private static SaveDataHandler m_handler;
+        private static ICloudStorage m_cloudStorage;
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -300,13 +302,16 @@ namespace SaveSystem {
             try {
                 token.ThrowIfCancellationRequested();
                 await SaveGlobalData(token);
-                await m_selectedSaveProfile.SaveProfileData(token);
 
-                SceneSerializationContext[] contexts =
-                    Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
+                if (m_selectedSaveProfile != null) {
+                    await m_selectedSaveProfile.SaveProfileData(token);
 
-                foreach (SceneSerializationContext sceneLoader in contexts)
-                    await sceneLoader.SaveSceneData(token);
+                    SceneSerializationContext[] contexts =
+                        Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
+
+                    foreach (SceneSerializationContext sceneLoader in contexts)
+                        await sceneLoader.SaveSceneData(token);
+                }
 
                 return HandlingResult.Success;
             }
@@ -314,6 +319,61 @@ namespace SaveSystem {
                 Logger.LogWarning(nameof(SaveSystemCore), "Saving operation canceled");
                 return HandlingResult.Canceled;
             }
+        }
+
+
+        private static async UniTask<HandlingResult> LoadObjects (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await LoadGlobalData(token);
+
+                if (m_selectedSaveProfile != null) {
+                    await m_selectedSaveProfile.LoadProfileData(token);
+
+                    SceneSerializationContext[] contexts =
+                        Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
+
+                    foreach (SceneSerializationContext sceneLoader in contexts)
+                        await sceneLoader.LoadSceneData(token);
+                }
+
+                return HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
+                return HandlingResult.Canceled;
+            }
+        }
+
+
+        private static async UniTask PushToCloudStorage (
+            ICloudStorage cloudStorage, CancellationToken token = default
+        ) {
+            cloudStorage.Push(new StorageData {
+                rawData = await File.ReadAllBytesAsync(DataPath, token),
+                fileName = Path.GetFileName(DataPath),
+                type = StorageData.Type.Global
+            });
+
+            if (m_selectedSaveProfile != null) {
+                cloudStorage.Push(new StorageData {
+                    rawData = await m_selectedSaveProfile.ExportProfileData(token),
+                    fileName = Path.GetFileName(m_selectedSaveProfile.DataPath),
+                    type = StorageData.Type.Profile
+                });
+            }
+        }
+
+
+        private static async UniTask PullFromCloudStorage (
+            ICloudStorage cloudStorage, CancellationToken token = default
+        ) {
+            StorageData globalData = await cloudStorage.Pull(StorageData.Type.Global);
+            await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
+
+            StorageData profileData = await cloudStorage.Pull(StorageData.Type.Profile);
+            if (m_selectedSaveProfile != null && profileData.rawData != null)
+                await m_selectedSaveProfile.ImportProfileData(profileData.rawData, token);
         }
 
 

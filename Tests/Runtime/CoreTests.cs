@@ -179,7 +179,7 @@ namespace SaveSystem.Tests {
             );
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.SaveAll();
+            await SaveSystemCore.Save();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -216,7 +216,7 @@ namespace SaveSystem.Tests {
             SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.SaveAll();
+            await SaveSystemCore.Save();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -247,7 +247,7 @@ namespace SaveSystem.Tests {
                 TestObject testObject = factory.CreateObject();
                 SaveSystemCore.WriteData("position", testObject.transform.position);
                 Debug.Log(testObject.transform.position);
-                await SaveSystemCore.SaveAll();
+                await SaveSystemCore.Save();
             }
 
 
