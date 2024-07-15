@@ -200,7 +200,7 @@ namespace SaveSystem.Tests {
             );
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.LoadGlobalData();
+            await SaveSystemCore.Load();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -231,7 +231,7 @@ namespace SaveSystem.Tests {
             SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.LoadGlobalData();
+            await SaveSystemCore.Load();
             await UniTask.WaitForSeconds(1);
 
             PlayerPrefs.DeleteKey(AuthHashKey);
@@ -253,7 +253,7 @@ namespace SaveSystem.Tests {
 
             [Test, Order(1)]
             public async Task ReadFromDataBuffer () {
-                await SaveSystemCore.LoadGlobalData();
+                await SaveSystemCore.Load();
                 Debug.Log(SaveSystemCore.ReadData<Vector3>("position"));
             }
 

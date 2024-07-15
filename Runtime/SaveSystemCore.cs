@@ -10,7 +10,6 @@ using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using Logger = SaveSystem.Internal.Logger;
-using Object = UnityEngine.Object;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -27,7 +26,8 @@ namespace SaveSystem {
     /// </summary>
     public static partial class SaveSystemCore {
 
-        internal static string internalFolder;
+        internal static readonly string InternalFolder = SetInternalFolder();
+        internal static string scenesFolder;
 
         // Common settings
         private static SaveProfile m_selectedSaveProfile;
@@ -61,20 +61,10 @@ namespace SaveSystem {
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void Initialize () {
-            m_handler = new SaveDataHandler {
-                SerializationScope = m_globalScope = new SerializationScope {
-                    Name = "Global scope"
-                }
-            };
-
-            SetPlayerLoop();
-            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
-            SetInternalFolder();
-            SetOnExitPlayModeCallback();
-
-            m_exitCancellation = new CancellationTokenSource();
-            Logger.Log(nameof(SaveSystemCore), "Initialized");
+        private static void AutoInit () {
+            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+            if (settings != null && settings.automaticInitialize)
+                Initialize();
         }
 
 
@@ -150,9 +140,15 @@ namespace SaveSystem {
         }
 
 
-        private static void SetInternalFolder () {
-            internalFolder = Storage.PrepareBeforeUsing(".internal", true);
-            new DirectoryInfo(internalFolder).Attributes |= FileAttributes.Hidden;
+        private static void SetManagedFolders () {
+            scenesFolder = Storage.PrepareBeforeUsing("scenes", true);
+        }
+
+
+        private static string SetInternalFolder () {
+            string folder = Storage.PrepareBeforeUsing(".internal", true);
+            new DirectoryInfo(folder).Attributes |= FileAttributes.Hidden;
+            return folder;
         }
 
 
@@ -303,15 +299,8 @@ namespace SaveSystem {
                 token.ThrowIfCancellationRequested();
                 await SaveGlobalData(token);
 
-                if (m_selectedSaveProfile != null) {
+                if (m_selectedSaveProfile != null)
                     await m_selectedSaveProfile.SaveProfileData(token);
-
-                    SceneSerializationContext[] contexts =
-                        Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
-
-                    foreach (SceneSerializationContext sceneLoader in contexts)
-                        await sceneLoader.SaveSceneData(token);
-                }
 
                 return HandlingResult.Success;
             }
@@ -327,15 +316,8 @@ namespace SaveSystem {
                 token.ThrowIfCancellationRequested();
                 await LoadGlobalData(token);
 
-                if (m_selectedSaveProfile != null) {
+                if (m_selectedSaveProfile != null)
                     await m_selectedSaveProfile.LoadProfileData(token);
-
-                    SceneSerializationContext[] contexts =
-                        Object.FindObjectsByType<SceneSerializationContext>(FindObjectsSortMode.None);
-
-                    foreach (SceneSerializationContext sceneLoader in contexts)
-                        await sceneLoader.LoadSceneData(token);
-                }
 
                 return HandlingResult.Success;
             }
@@ -343,6 +325,28 @@ namespace SaveSystem {
                 Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
                 return HandlingResult.Canceled;
             }
+        }
+
+
+        /// <summary>
+        /// Start saving of objects in the global scope and wait it
+        /// </summary>
+        private static async UniTask<byte[]> SaveGlobalData (CancellationToken token = default) {
+            return await CancelableOperationsHandler.Execute(
+                async () => await m_handler.SaveData(DataPath, token),
+                nameof(SaveSystemCore), "Global data saving canceled", token: token
+            );
+        }
+
+
+        /// <summary>
+        /// Start loading of objects in the global scope and wait it
+        /// </summary>
+        private static async UniTask LoadGlobalData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
+                async () => await m_handler.LoadData(DataPath, token),
+                nameof(SaveSystemCore), "Global data loading canceled", token: token
+            );
         }
 
 

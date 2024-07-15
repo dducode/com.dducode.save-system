@@ -7,6 +7,7 @@ namespace SaveSystem {
 
     public class SaveSystemSettings : ScriptableObject {
 
+        public bool automaticInitialize = true;
         public SaveEvents enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnSceneLoad | SaveEvents.OnExit;
         public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
 
