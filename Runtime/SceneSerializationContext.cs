@@ -91,11 +91,11 @@ namespace SaveSystem {
 
 
         [Pure]
-        public TValue ReadData<TValue> ([NotNull] string key) where TValue : unmanaged {
+        public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_serializationScope.ReadData<TValue>(key);
+            return m_serializationScope.ReadData(key, defaultValue);
         }
 
 

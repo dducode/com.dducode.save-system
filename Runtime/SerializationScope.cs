@@ -45,16 +45,11 @@ namespace SaveSystem {
 
 
         [Pure]
-        public TValue ReadData<TValue> ([NotNull] string key) where TValue : unmanaged {
-            if (m_dataBuffer.Count == 0) {
-                Logger.LogWarning(Name, "Data buffer is empty, return default value");
-                return default;
-            }
-
+        public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_dataBuffer.Get<TValue>(key);
+            return m_dataBuffer.Count == 0 ? defaultValue : m_dataBuffer.Get(key, defaultValue);
         }
 
 

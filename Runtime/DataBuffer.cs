@@ -78,11 +78,11 @@ namespace SaveSystem {
 
 
         [Pure]
-        public TValue Get<TValue> ([NotNull] string key) where TValue : unmanaged {
+        public TValue Get<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_commonBuffer.TryGetValue(key, out byte[] value) ? MemoryMarshal.Read<TValue>(value) : default;
+            return m_commonBuffer.TryGetValue(key, out byte[] value) ? MemoryMarshal.Read<TValue>(value) : defaultValue;
         }
 
 
@@ -106,11 +106,11 @@ namespace SaveSystem {
 
 
         [Pure]
-        public string GetString ([NotNull] string key) {
+        public string GetString ([NotNull] string key, string defaultValue) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_stringBuffer.GetValueOrDefault(key);
+            return m_stringBuffer.GetValueOrDefault(key, defaultValue);
         }
 
 

@@ -242,11 +242,13 @@ namespace SaveSystem {
 
 
         [Pure]
-        public static TValue ReadData<TValue> ([NotNull] string key) where TValue : unmanaged {
+        public static TValue ReadData<TValue> (
+            [NotNull] string key, TValue defaultValue = default
+        ) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_globalScope.ReadData<TValue>(key);
+            return m_globalScope.ReadData(key, defaultValue);
         }
 
 
