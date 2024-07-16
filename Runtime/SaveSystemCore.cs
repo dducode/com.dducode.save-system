@@ -377,7 +377,9 @@ namespace SaveSystem {
                 fileName = Path.GetFileName(DataPath),
                 type = StorageData.Type.Global
             });
-            await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
+
+            if (globalData.rawData is {Length: > 0})
+                await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
             if (m_selectedSaveProfile != null) {
                 StorageData profileData = await cloudStorage.Pull(new StorageData {
@@ -385,7 +387,7 @@ namespace SaveSystem {
                     type = StorageData.Type.Profile
                 });
 
-                if (profileData.rawData != null)
+                if (profileData.rawData is {Length: > 0})
                     await m_selectedSaveProfile.ImportProfileData(profileData.rawData, token);
             }
         }
