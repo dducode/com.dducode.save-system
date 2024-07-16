@@ -3,8 +3,7 @@
     internal enum ConsoleTabsNames {
 
         SavedFiles,
-        HandlersTracker,
-        Settings
+        HandlersTracker
 
     }
 

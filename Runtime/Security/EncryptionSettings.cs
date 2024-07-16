@@ -1,10 +1,10 @@
-﻿using SaveSystem.Internal.Cryptography;
-using UnityEngine;
+﻿using System;
+using SaveSystem.Internal.Cryptography;
 
 namespace SaveSystem.Security {
 
-    [CreateAssetMenu(menuName = "Save System/Encryption Settings", fileName = nameof(EncryptionSettings))]
-    public class EncryptionSettings : ScriptableObject {
+    [Serializable]
+    public class EncryptionSettings {
 
         public bool useCustomProviders;
         public string password = CryptoUtilities.GenerateKey();

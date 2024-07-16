@@ -1,36 +1,57 @@
 ﻿using System;
 using SaveSystem.Security;
 using UnityEditor;
+using UnityEngine;
 
 namespace SaveSystem.Editor {
 
-    [CustomEditor(typeof(AuthenticationSettings))]
-    public class AuthenticationSettingsEditor : UnityEditor.Editor {
+    [CustomPropertyDrawer(typeof(AuthenticationSettings))]
+    public class AuthenticationSettingsEditor : PropertyDrawer {
 
-        private SerializedProperty m_hashAlgorithmProperty;
-        private SerializedProperty m_globalAuthHashKeyProperty;
-        private SerializedProperty m_profileAuthHashKeyProperty;
+        private bool m_foldout;
+        private bool m_editProperties;
 
 
-        private void OnEnable () {
-            m_hashAlgorithmProperty = serializedObject.FindProperty("hashAlgorithm");
-            m_globalAuthHashKeyProperty = serializedObject.FindProperty("globalAuthHashKey");
-            m_profileAuthHashKeyProperty = serializedObject.FindProperty("profileAuthHashKey");
+        public override float GetPropertyHeight (SerializedProperty property, GUIContent label) {
+            return 0;
         }
 
 
-        public override void OnInspectorGUI () {
-            serializedObject.Update();
+        public override void OnGUI (Rect position, SerializedProperty property, GUIContent label) {
+            var settings = (AuthenticationSettings)property.boxedValue;
 
-            EditorGUILayout.PropertyField(m_hashAlgorithmProperty);
-            DrawingUtilities.DrawKeyProperty(
-                m_globalAuthHashKeyProperty, "Generate Global Auth Key", Guid.NewGuid().ToString
-            );
-            DrawingUtilities.DrawKeyProperty(
-                m_profileAuthHashKeyProperty, "Generate Profile Auth Key", Guid.NewGuid().ToString
-            );
+            m_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_foldout, "Authentication Settings");
 
-            serializedObject.ApplyModifiedProperties();
+            if (m_foldout) {
+                EditorGUI.indentLevel++;
+                m_editProperties = EditorGUILayout.ToggleLeft("Edit Properties", m_editProperties);
+                GUI.enabled = m_editProperties;
+
+                if (m_editProperties) {
+                    EditorGUILayout.HelpBox(
+                        "It's unsafe action. It can make it impossible to verify the checksum of existing save files",
+                        MessageType.Warning
+                    );
+                }
+
+                settings.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
+                    "Hash Algorithm", settings.hashAlgorithm
+                );
+                settings.globalAuthHashKey = DrawingUtilities.DrawKeyProperty(
+                    settings.globalAuthHashKey, "Global Auth Hash Key", "Generate Global Key", Guid.NewGuid().ToString
+                );
+                settings.profileAuthHashKey = DrawingUtilities.DrawKeyProperty(
+                    settings.profileAuthHashKey, "Profile Auth Hash Key",
+                    "Generate Profile Key", Guid.NewGuid().ToString
+                );
+
+                GUI.enabled = true;
+                EditorGUI.indentLevel--;
+            }
+
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
+            property.boxedValue = settings;
         }
 
     }

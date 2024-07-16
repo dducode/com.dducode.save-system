@@ -24,15 +24,10 @@ namespace SaveSystem.Editor {
                 text = "Objects Tracker",
                 tooltip = "Track data handlers at runtime"
             },
-            new() {
-                text = "Settings",
-                tooltip = "Configure save system settings"
-            }
         };
 
         private SavedFilesTab m_savedFilesTab;
         private TrackerTab m_trackerTab;
-        private SettingsTab m_settingsTab;
 
 
         [MenuItem("Window/" + WindowName)]
@@ -81,8 +76,6 @@ namespace SaveSystem.Editor {
                     return m_savedFilesTab ??= new SavedFilesTab();
                 case ConsoleTabsNames.HandlersTracker:
                     return m_trackerTab ??= new TrackerTab();
-                case ConsoleTabsNames.Settings:
-                    return m_settingsTab ??= new SettingsTab();
                 default:
                     throw new ArgumentOutOfRangeException();
             }

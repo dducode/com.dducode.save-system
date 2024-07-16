@@ -8,7 +8,6 @@ using Cysharp.Threading.Tasks;
 using SaveSystem.Internal;
 using SaveSystem.Security;
 using UnityEngine;
-using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
@@ -22,16 +21,7 @@ namespace SaveSystem {
         private bool encrypt;
 
         [SerializeField]
-        private EncryptionSettings encryptionSettings;
-
-        [SerializeField]
         private bool authentication;
-
-        [SerializeField]
-        private HashAlgorithmName algorithmName;
-
-        [SerializeField]
-        private string authHashKey = Guid.NewGuid().ToString();
 
         public bool Encrypt {
             get => m_handler.Encrypt;
@@ -76,16 +66,19 @@ namespace SaveSystem {
             m_handler = new SaveDataHandler {
                 SerializationScope = m_serializationScope = new SerializationScope {
                     Name = $"{name} scope"
-                },
-                Authenticate = authentication,
-                AuthManager = new AuthenticationManager(authHashKey, algorithmName),
-                Encrypt = encrypt
+                }
             };
 
-            if (encryptionSettings != null)
-                Cryptographer = new Cryptographer(encryptionSettings);
-            else if (Encrypt)
-                Logger.LogError(name, "Encryption enabled but settings not set");
+            Encrypt = encrypt;
+            Authenticate = authentication;
+
+            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+
+            if (Encrypt)
+                Cryptographer = new Cryptographer(settings.encryptionSettings);
+
+            if (Authenticate)
+                AuthManager = new AuthenticationManager(settings.authenticationSettings);
         }
 
 

@@ -1,10 +1,9 @@
 ﻿using System;
-using UnityEngine;
 
 namespace SaveSystem.Security {
 
-    [CreateAssetMenu(menuName = "Save System/Authentication Settings", fileName = nameof(AuthenticationSettings))]
-    public class AuthenticationSettings : ScriptableObject {
+    [Serializable]
+    public class AuthenticationSettings {
 
         public HashAlgorithmName hashAlgorithm;
         public string globalAuthHashKey = Guid.NewGuid().ToString();

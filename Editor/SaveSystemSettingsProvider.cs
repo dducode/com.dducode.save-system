@@ -1,12 +1,13 @@
 ﻿using SaveSystem.Internal;
-using SaveSystem.Security;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace SaveSystem.Editor.ConsoleTabs {
+namespace SaveSystem.Editor {
 
-    internal class SettingsTab : IConsoleTab {
+    internal class SaveSystemSettingsProvider {
+
+        public const string Path = "Project/Save System Settings";
 
         private readonly GUIContent m_playerTagContent = new() {
             text = "Player Tag",
@@ -30,12 +31,25 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private SerializedProperty m_authenticationSettingsProperty;
 
 
-        public SettingsTab () {
+        [SettingsProvider]
+        public static SettingsProvider CreateSaveSystemSettingsProvider () {
+            return new SettingsProvider(Path, SettingsScope.Project) {
+                label = "Save System",
+                guiHandler = _ => {
+                    var provider = new SaveSystemSettingsProvider();
+                    provider.Draw();
+                },
+                keywords = new[] {"Save System"}
+            };
+        }
+
+
+        private SaveSystemSettingsProvider () {
             Initialize(ResourcesManager.LoadSettings<SaveSystemSettings>());
         }
 
 
-        public void Draw () {
+        private void Draw () {
             if (m_serializedSettings == null || m_serializedSettings.targetObject == null) {
                 if (ResourcesManager.TryLoadSettings(out SaveSystemSettings settings))
                     Initialize(settings);
@@ -134,28 +148,20 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void DrawEncryptionSettings () {
-            EditorGUILayout.LabelField("Encryption settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_encryptProperty);
 
-            if (m_encryptProperty.boolValue) {
-                m_encryptionSettingsProperty.boxedValue ??=
-                    EditorResourcesManager.CreateSettings<EncryptionSettings>();
+            if (m_encryptProperty.boolValue)
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
-            }
 
             EditorGUILayout.Space(15);
         }
 
 
         private void DrawAuthenticationSettings () {
-            EditorGUILayout.LabelField("Authentication settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_authenticationProperty);
 
-            if (m_authenticationProperty.boolValue) {
-                m_authenticationSettingsProperty.boxedValue ??=
-                    EditorResourcesManager.CreateSettings<AuthenticationSettings>();
+            if (m_authenticationProperty.boolValue)
                 EditorGUILayout.PropertyField(m_authenticationSettingsProperty, GUILayout.MaxWidth(500));
-            }
 
             EditorGUILayout.Space(15);
         }

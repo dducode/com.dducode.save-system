@@ -88,15 +88,17 @@ namespace SaveSystem {
             Name = reader.ReadString();
             DataFolder = reader.ReadString();
 
+            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+
             Encrypt = reader.Read<bool>();
 
             if (Encrypt)
-                Cryptographer = new Cryptographer(ResourcesManager.LoadSettings<EncryptionSettings>());
+                Cryptographer = new Cryptographer(settings.encryptionSettings);
 
             Authenticate = reader.Read<bool>();
 
             if (Authenticate)
-                AuthManager = new AuthenticationManager(ResourcesManager.LoadSettings<AuthenticationSettings>());
+                AuthManager = new AuthenticationManager(settings.authenticationSettings);
         }
 
 

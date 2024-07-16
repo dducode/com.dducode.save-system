@@ -6,17 +6,19 @@ namespace SaveSystem.Editor {
 
     internal static class DrawingUtilities {
 
-        internal static void DrawKeyProperty (
-            SerializedProperty keyProperty, string buttonTitle, Func<string> generateKeyAction
+        internal static string DrawKeyProperty (
+            string key, string title, string buttonTitle, Func<string> generateKeyAction
         ) {
             using var scope = new GUILayout.HorizontalScope();
 
-            EditorGUILayout.PropertyField(keyProperty);
-            bool isNullOrEmpty = string.IsNullOrEmpty(keyProperty.stringValue);
+            key = EditorGUILayout.TextField(title, key);
+            bool isNullOrEmpty = string.IsNullOrEmpty(key);
             bool buttonIsPressed = GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false));
 
             if (isNullOrEmpty || buttonIsPressed)
-                keyProperty.stringValue = generateKeyAction();
+                return generateKeyAction();
+
+            return key;
         }
 
     }

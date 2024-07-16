@@ -20,10 +20,10 @@ namespace SaveSystem {
 
         public string playerTag = "Player";
 
-        public bool encryption;
+        public bool encryption = true;
         public EncryptionSettings encryptionSettings;
 
-        public bool authentication;
+        public bool authentication = true;
         public AuthenticationSettings authenticationSettings;
 
 
