@@ -16,16 +16,15 @@
 
             [Test, Order(0)]
             public void SetLoremIpsumAuthHash () {
-                var authManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+                var authManager = new AuthenticationManager(HashAlgorithmName.SHA1);
                 authManager.SetAuthHash(File.ReadAllBytes(m_sourcePath));
             }
 
 
             [Test, Order(1)]
             public void AuthenticateLoremIpsumData () {
-                var authManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+                var authManager = new AuthenticationManager(HashAlgorithmName.SHA1);
                 authManager.AuthenticateData(File.ReadAllBytes(m_sourcePath));
-                PlayerPrefs.DeleteKey(AuthHashKey);
             }
 
         }

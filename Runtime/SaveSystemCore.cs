@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystem.BinaryHandlers;
 using SaveSystem.CloudSave;
 using SaveSystem.Internal;
 using SaveSystem.Internal.Templates;
@@ -10,6 +11,7 @@ using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using Logger = SaveSystem.Internal.Logger;
+using MemoryStream = System.IO.MemoryStream;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -25,6 +27,8 @@ namespace SaveSystem {
     /// Also it starts the saving when the player exit the game
     /// </summary>
     public static partial class SaveSystemCore {
+
+        private const string AllProfilesFile = "all-profiles.data";
 
         internal static readonly string InternalFolder = SetInternalFolder();
         internal static string scenesFolder;
@@ -161,6 +165,24 @@ namespace SaveSystem {
                 return;
 
             ScheduleSave(SaveType.SaveAtCheckpoint);
+        }
+
+
+        internal static void UpdateProfile (SaveProfile profile, string oldName) {
+            var memoryStream = new MemoryStream();
+            using var writer = new SaveWriter(memoryStream);
+            writer.Write(profile.GetType().Name);
+            profile.Serialize(writer);
+            byte[] data = memoryStream.ToArray();
+
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
+            if (!string.IsNullOrEmpty(oldName))
+                File.Move(Path.Combine(InternalFolder, $"{oldName}.profile"), path);
+
+            SynchronizationPoint.ScheduleTask(
+                async token => await File.WriteAllBytesAsync(path, data, token).AsUniTask(),
+                true
+            );
         }
 
 
@@ -332,8 +354,8 @@ namespace SaveSystem {
         /// <summary>
         /// Start saving of objects in the global scope and wait it
         /// </summary>
-        private static async UniTask<byte[]> SaveGlobalData (CancellationToken token = default) {
-            return await CancelableOperationsHandler.Execute(
+        private static async UniTask SaveGlobalData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
                 async () => await m_handler.SaveData(DataPath, token),
                 nameof(SaveSystemCore), "Global data saving canceled", token: token
             );
@@ -354,41 +376,76 @@ namespace SaveSystem {
         private static async UniTask PushToCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            cloudStorage.Push(new StorageData {
-                rawData = await File.ReadAllBytesAsync(DataPath, token),
-                fileName = Path.GetFileName(DataPath),
-                type = StorageData.Type.Global
-            });
-
-            if (m_selectedSaveProfile != null) {
+            if (File.Exists(DataPath)) {
                 cloudStorage.Push(new StorageData {
-                    rawData = await m_selectedSaveProfile.ExportProfileData(token),
-                    fileName = Path.GetFileName(m_selectedSaveProfile.DataPath),
-                    type = StorageData.Type.Profile
+                    rawData = await File.ReadAllBytesAsync(DataPath, token),
+                    fileName = Path.GetFileName(DataPath)
                 });
             }
+
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
+            if (paths.Length == 0)
+                return;
+
+            await PushProfiles(cloudStorage, paths, token);
+        }
+
+
+        private static async UniTask PushProfiles (
+            ICloudStorage cloudStorage, string[] paths, CancellationToken token
+        ) {
+            var memoryStream = new MemoryStream();
+            await using var writer = new SaveWriter(memoryStream);
+            writer.Write(paths);
+
+            foreach (string path in paths) {
+                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                string type = reader.ReadString();
+                var profile = (SaveProfile)Activator.CreateInstance(
+                    Type.GetType(type) ?? throw new InvalidOperationException()
+                );
+                profile.Deserialize(reader);
+
+                writer.Write(type);
+                profile.Serialize(writer);
+                writer.Write(await profile.ExportProfileData(token));
+            }
+
+            cloudStorage.Push(new StorageData {
+                rawData = memoryStream.ToArray(),
+                fileName = AllProfilesFile
+            });
         }
 
 
         private static async UniTask PullFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData globalData = await cloudStorage.Pull(new StorageData {
-                fileName = Path.GetFileName(DataPath),
-                type = StorageData.Type.Global
-            });
+            StorageData globalData = await cloudStorage.Pull(DataPath);
 
             if (globalData.rawData is {Length: > 0})
                 await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
-            if (m_selectedSaveProfile != null) {
-                StorageData profileData = await cloudStorage.Pull(new StorageData {
-                    fileName = Path.GetFileName(m_selectedSaveProfile.DataPath),
-                    type = StorageData.Type.Profile
-                });
+            await PullProfiles(cloudStorage);
+        }
 
-                if (profileData.rawData is {Length: > 0})
-                    await m_selectedSaveProfile.ImportProfileData(profileData.rawData, token);
+
+        private static async UniTask PullProfiles (ICloudStorage cloudStorage) {
+            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
+            await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
+            string[] paths = reader.ReadStringArray();
+
+            foreach (string path in paths) {
+                await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
+                string type = reader.ReadString();
+                var profile = (SaveProfile)Activator.CreateInstance(
+                    Type.GetType(type) ?? throw new InvalidOperationException()
+                );
+                profile.Deserialize(reader);
+
+                writer.Write(type);
+                profile.Serialize(writer);
+                await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }
 

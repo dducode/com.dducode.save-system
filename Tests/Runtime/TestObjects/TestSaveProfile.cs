@@ -4,7 +4,6 @@
 
         public TestSaveProfile () {
             Name = "test_profile";
-            DataFolder = "test_profile";
         }
 
     }

@@ -23,6 +23,9 @@ namespace SaveSystem {
         [SerializeField]
         private bool authentication;
 
+        [SerializeField]
+        private string fileName;
+
         public bool Encrypt {
             get => m_handler.Encrypt;
             set => m_handler.Encrypt = value;
@@ -48,12 +51,11 @@ namespace SaveSystem {
             set => m_handler.AuthManager = value;
         }
 
-        public string DataPath {
+        private string DataPath {
             get {
                 SaveProfile profile = SaveSystemCore.SelectedSaveProfile;
                 return Path.Combine(
-                    profile == null ? SaveSystemCore.scenesFolder : profile.DataFolder,
-                    $"{gameObject.scene.name}.scenedata"
+                    profile == null ? SaveSystemCore.scenesFolder : profile.DataFolder, fileName
                 );
             }
         }
@@ -79,6 +81,12 @@ namespace SaveSystem {
 
             if (Authenticate)
                 AuthManager = new AuthenticationManager(settings.authenticationSettings);
+        }
+
+
+        private void OnValidate () {
+            if (string.IsNullOrEmpty(fileName))
+                fileName = $"{gameObject.scene.name}.scenedata";
         }
 
 
@@ -117,8 +125,8 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask<byte[]> SaveSceneData (CancellationToken token = default) {
-            return await CancelableOperationsHandler.Execute(
+        public async UniTask SaveSceneData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
                 async () => await m_handler.SaveData(DataPath, token),
                 name, "Scene data saving canceled", this, token
             );

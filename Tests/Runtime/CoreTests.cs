@@ -213,7 +213,7 @@ namespace SaveSystem.Tests {
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.Authenticate = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+            SaveSystemCore.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.Save();
@@ -228,7 +228,7 @@ namespace SaveSystem.Tests {
             );
 
             SaveSystemCore.Authenticate = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+            SaveSystemCore.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.Load();
