@@ -377,10 +377,9 @@ namespace SaveSystem {
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             if (File.Exists(DataPath)) {
-                cloudStorage.Push(new StorageData {
-                    rawData = await File.ReadAllBytesAsync(DataPath, token),
-                    fileName = Path.GetFileName(DataPath)
-                });
+                cloudStorage.Push(new StorageData(
+                    await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+                );
             }
 
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
@@ -411,10 +410,7 @@ namespace SaveSystem {
                 writer.Write(await profile.ExportProfileData(token));
             }
 
-            cloudStorage.Push(new StorageData {
-                rawData = memoryStream.ToArray(),
-                fileName = AllProfilesFile
-            });
+            cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllProfilesFile));
         }
 
 
@@ -422,16 +418,16 @@ namespace SaveSystem {
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             StorageData globalData = await cloudStorage.Pull(DataPath);
-
-            if (globalData.rawData is {Length: > 0})
+            if (globalData != null)
                 await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
-            await PullProfiles(cloudStorage);
+            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
+            if (profiles != null)
+                await PullProfiles(profiles);
         }
 
 
-        private static async UniTask PullProfiles (ICloudStorage cloudStorage) {
-            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
+        private static async UniTask PullProfiles (StorageData profiles) {
             await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
             string[] paths = reader.ReadStringArray();
 
