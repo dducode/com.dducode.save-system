@@ -150,20 +150,20 @@ namespace SaveSystem.Editor {
         private void DrawEncryptionSettings () {
             EditorGUILayout.PropertyField(m_encryptProperty);
 
-            if (m_encryptProperty.boolValue)
+            if (m_encryptProperty.boolValue) {
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
-
-            EditorGUILayout.Space(15);
+                EditorGUILayout.Space(15);
+            }
         }
 
 
         private void DrawAuthenticationSettings () {
             EditorGUILayout.PropertyField(m_authenticationProperty);
 
-            if (m_authenticationProperty.boolValue)
+            if (m_authenticationProperty.boolValue) {
                 EditorGUILayout.PropertyField(m_authenticationSettingsProperty, GUILayout.MaxWidth(500));
-
-            EditorGUILayout.Space(15);
+                EditorGUILayout.Space(15);
+            }
         }
 
     }

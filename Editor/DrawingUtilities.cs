@@ -11,7 +11,7 @@ namespace SaveSystem.Editor {
         ) {
             using var scope = new GUILayout.HorizontalScope();
 
-            key = EditorGUILayout.TextField(title, key);
+            key = EditorGUILayout.TextField(title, key, GUILayout.MaxWidth(500));
             bool isNullOrEmpty = string.IsNullOrEmpty(key);
             bool buttonIsPressed = GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false));
 
