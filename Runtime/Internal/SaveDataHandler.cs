@@ -13,7 +13,18 @@ namespace SaveSystem.Internal {
 
     internal class SaveDataHandler {
 
-        public bool Encrypt { get; set; }
+        public bool Encrypt {
+            get => m_encrypt;
+            set {
+                m_encrypt = value;
+
+                if (m_encrypt && Cryptographer == null) {
+                    Cryptographer = new Cryptographer(
+                        ResourcesManager.LoadSettings<SaveSystemSettings>().encryptionSettings
+                    );
+                }
+            }
+        }
 
         [NotNull]
         public Cryptographer Cryptographer {
@@ -21,7 +32,18 @@ namespace SaveSystem.Internal {
             set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
         }
 
-        public bool Authenticate { get; set; }
+        public bool Authenticate {
+            get => m_authenticate;
+            set {
+                m_authenticate = value;
+
+                if (m_authenticate && AuthManager == null) {
+                    AuthManager = new AuthenticationManager(
+                        ResourcesManager.LoadSettings<SaveSystemSettings>().authenticationSettings
+                    );
+                }
+            }
+        }
 
         [NotNull]
         public AuthenticationManager AuthManager {
@@ -38,18 +60,19 @@ namespace SaveSystem.Internal {
         private Cryptographer m_cryptographer;
         private AuthenticationManager m_authManager;
         private SerializationScope m_serializationScope;
+        private bool m_encrypt;
+        private bool m_authenticate;
 
 
-        internal async UniTask<byte[]> SaveData ([NotNull] string dataPath, CancellationToken token) {
+        internal async UniTask SaveData ([NotNull] string dataPath, CancellationToken token = default) {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
 
-            byte[] source = SaveData();
-            if (source == null)
-                return null;
+            byte[] data = SaveData();
+            if (data == null)
+                return;
 
-            await File.WriteAllBytesAsync(dataPath, source, token).AsUniTask();
-            return source;
+            await File.WriteAllBytesAsync(dataPath, data, token).AsUniTask();
         }
 
 
@@ -66,22 +89,22 @@ namespace SaveSystem.Internal {
                 data = Cryptographer.Encrypt(data);
 
             if (Authenticate)
-                AuthManager.SetAuthHash(data);
+                data = AuthManager.SetAuthHash(data);
 
             return data;
         }
 
 
-        internal async UniTask LoadData ([NotNull] string dataPath, CancellationToken token) {
-            if (string.IsNullOrEmpty(dataPath))
-                throw new ArgumentNullException(nameof(dataPath));
+        internal async UniTask LoadData ([NotNull] string filePath, CancellationToken token = default) {
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentNullException(nameof(filePath));
 
-            if (!File.Exists(dataPath)) {
+            if (!File.Exists(filePath)) {
                 SerializationScope.SetDefaults();
                 return;
             }
 
-            LoadData(await File.ReadAllBytesAsync(dataPath, token).AsUniTask());
+            LoadData(await File.ReadAllBytesAsync(filePath, token).AsUniTask());
         }
 
 
@@ -92,7 +115,7 @@ namespace SaveSystem.Internal {
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
             if (Authenticate)
-                AuthManager.AuthenticateData(data);
+                data = AuthManager.AuthenticateData(data);
 
             if (Encrypt)
                 data = Cryptographer.Decrypt(data);

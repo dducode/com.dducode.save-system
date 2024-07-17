@@ -21,10 +21,12 @@ namespace SaveSystem.Internal {
 
 
         internal async void ExecuteScheduledTask (CancellationToken token) {
-            if (m_queue.Count == 0)
-                return;
-
             try {
+                await WaitCurrentExecution(token);
+
+                if (m_queue.Count == 0)
+                    return;
+
                 await ExecuteTask(async () => await m_queue.Dequeue().Invoke(token));
             }
             catch (OperationCanceledException) {

@@ -23,23 +23,17 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(Name));
 
+                if (!string.IsNullOrEmpty(m_name) && File.Exists(DataPath)) {
+                    DataFolder = value;
+                    File.Move(DataPath, Path.Combine(DataFolder, $"{value}.profiledata"));
+                }
+
+                string oldName = m_name;
                 m_name = value;
                 m_serializationScope.Name = $"{value} scope";
+                SaveSystemCore.UpdateProfile(this, oldName);
             }
         }
-
-        [NotNull]
-        public string DataFolder {
-            get => m_dataFolder;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataFolder));
-
-                m_dataFolder = Storage.PrepareBeforeUsing(value, true);
-            }
-        }
-
-        public string DataPath => Path.Combine(m_dataFolder, $"{m_name}.profiledata");
 
         public bool Encrypt {
             get => m_handler.Encrypt;
@@ -63,6 +57,23 @@ namespace SaveSystem {
             set => m_handler.AuthManager = value;
         }
 
+        [NotNull]
+        internal string DataFolder {
+            get => m_dataFolder;
+            private set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(DataFolder));
+
+                string newDir = Storage.PrepareBeforeUsing(value, true);
+                if (!string.IsNullOrEmpty(m_dataFolder) && Directory.Exists(m_dataFolder))
+                    Directory.Move(m_dataFolder, newDir);
+
+                m_dataFolder = newDir;
+            }
+        }
+
+        internal string DataPath => Path.Combine(DataFolder, $"{m_name}.profiledata");
+
         private string m_name;
         private string m_dataFolder;
         private readonly SerializationScope m_serializationScope;
@@ -76,9 +87,14 @@ namespace SaveSystem {
         }
 
 
+        protected SaveProfile (string name) : this() {
+            m_name = name;
+            DataFolder = name;
+        }
+
+
         public virtual void Serialize (SaveWriter writer) {
             writer.Write(Name);
-            writer.Write(DataFolder);
             writer.Write(Encrypt);
             writer.Write(Authenticate);
         }
@@ -86,7 +102,7 @@ namespace SaveSystem {
 
         public virtual void Deserialize (SaveReader reader) {
             Name = reader.ReadString();
-            DataFolder = reader.ReadString();
+            DataFolder = m_name;
 
             var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
 
@@ -134,12 +150,12 @@ namespace SaveSystem {
 
 
         public override string ToString () {
-            return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, m_dataFolder)}";
+            return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, DataPath)}";
         }
 
 
-        internal async UniTask<byte[]> SaveProfileData (CancellationToken token = default) {
-            return await CancelableOperationsHandler.Execute(
+        internal async UniTask SaveProfileData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
                 async () => await m_handler.SaveData(DataPath, token),
                 Name, "Profile saving canceled", token: token
             );
@@ -148,19 +164,22 @@ namespace SaveSystem {
 
         internal async UniTask LoadProfileData (CancellationToken token = default) {
             await CancelableOperationsHandler.Execute(
-                async () => await m_handler.LoadData(DataPath, token), Name,
-                "Profile loading canceled", token: token
+                async () => await m_handler.LoadData(DataPath, token),
+                Name, "Profile loading canceled", token: token
             );
         }
 
 
         internal async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
+            if (!File.Exists(DataPath))
+                return Array.Empty<byte>();
             return await File.ReadAllBytesAsync(DataPath, token);
         }
 
 
         internal async UniTask ImportProfileData (byte[] data, CancellationToken token = default) {
-            await File.WriteAllBytesAsync(DataPath, data, token);
+            if (data.Length > 0)
+                await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
     }

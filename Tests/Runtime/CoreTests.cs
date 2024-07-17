@@ -122,6 +122,8 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.RegisterSerializables(nameof(spheres), spheres);
             var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
+            settings.encryption = false;
+            settings.authentication = false;
             settings.enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusLost;
             settings.savePeriod = 3;
             settings.enabledLogs = LogLevel.All;
@@ -213,7 +215,7 @@ namespace SaveSystem.Tests {
             sphereFactory.CreateObjects(250);
 
             SaveSystemCore.Authenticate = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+            SaveSystemCore.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.Save();
@@ -228,7 +230,7 @@ namespace SaveSystem.Tests {
             );
 
             SaveSystemCore.Authenticate = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(AuthHashKey, HashAlgorithmName.SHA1);
+            SaveSystemCore.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystemCore.Load();

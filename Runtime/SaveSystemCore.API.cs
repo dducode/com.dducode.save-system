@@ -174,7 +174,7 @@ namespace SaveSystem {
         /// </summary>
         [Pure]
         public static async UniTask<List<TProfile>> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.meta");
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
             var profiles = new List<TProfile>();
 
             foreach (string path in paths) {
@@ -198,7 +198,7 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.meta");
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
             if (File.Exists(path))
                 return;
 
@@ -212,7 +212,7 @@ namespace SaveSystem {
                 true
             );
 
-            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was registered");
+            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} registered");
         }
 
 
@@ -223,13 +223,13 @@ namespace SaveSystem {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.meta");
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
             if (!File.Exists(path))
                 return;
 
             File.Delete(path);
             Directory.Delete(profile.DataFolder, true);
-            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} was deleted");
+            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} deleted");
         }
 
 

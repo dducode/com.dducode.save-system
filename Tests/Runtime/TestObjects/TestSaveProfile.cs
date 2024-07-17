@@ -2,9 +2,8 @@
 
     internal class TestSaveProfile : SaveProfile {
 
-        public TestSaveProfile () {
+        public TestSaveProfile () : base("test_profile") {
             Name = "test_profile";
-            DataFolder = "test_profile";
         }
 
     }
