@@ -8,8 +8,6 @@
 
         public class AuthManagerTests {
 
-            private const string AuthHashKey = "LoremIpsum";
-
             private readonly string m_sourcePath =
                 Path.Combine(Application.dataPath, @"com.dducode.save-system\Tests\Runtime\TestResources\LoremIpsum.txt");
 
@@ -17,14 +15,14 @@
             [Test, Order(0)]
             public void SetLoremIpsumAuthHash () {
                 var authManager = new AuthenticationManager(HashAlgorithmName.SHA1);
-                authManager.SetAuthHash(File.ReadAllBytes(m_sourcePath));
+                File.WriteAllBytes(m_sourcePath, authManager.SetAuthHash(File.ReadAllBytes(m_sourcePath)));
             }
 
 
             [Test, Order(1)]
             public void AuthenticateLoremIpsumData () {
                 var authManager = new AuthenticationManager(HashAlgorithmName.SHA1);
-                authManager.AuthenticateData(File.ReadAllBytes(m_sourcePath));
+                File.WriteAllBytes(m_sourcePath, authManager.AuthenticateData(File.ReadAllBytes(m_sourcePath)));
             }
 
         }

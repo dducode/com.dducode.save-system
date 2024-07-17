@@ -122,6 +122,8 @@ namespace SaveSystem.Tests {
 
             SaveSystemCore.RegisterSerializables(nameof(spheres), spheres);
             var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
+            settings.encryption = false;
+            settings.authentication = false;
             settings.enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusLost;
             settings.savePeriod = 3;
             settings.enabledLogs = LogLevel.All;
