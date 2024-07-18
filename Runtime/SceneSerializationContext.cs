@@ -55,7 +55,7 @@ namespace SaveSystem {
             get {
                 SaveProfile profile = SaveSystemCore.SelectedSaveProfile;
                 return Path.Combine(
-                    profile == null ? SaveSystemCore.scenesFolder : profile.DataFolder, fileName
+                    profile == null ? SaveSystemCore.ScenesFolder : profile.DataFolder, fileName
                 );
             }
         }

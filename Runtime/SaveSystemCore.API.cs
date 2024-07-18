@@ -156,7 +156,7 @@ namespace SaveSystem {
 
             SetPlayerLoop();
             SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
-            SetManagedFolders();
+            SetInternalFolder();
             SetOnExitPlayModeCallback();
 
             m_exitCancellation = new CancellationTokenSource();

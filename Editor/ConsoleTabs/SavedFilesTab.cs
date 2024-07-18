@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,7 +10,11 @@ namespace SaveSystem.Editor.ConsoleTabs {
         private const string TypeKey = "saved_files_tab";
         private const string ShowInternalKey = TypeKey + "show_internal";
 
+        private readonly Dictionary<string, bool> m_folders = new();
         private bool m_showInternal = EditorPrefs.GetBool(ShowInternalKey, false);
+
+        private string m_selectedEntry;
+        private int m_indentLevel;
 
 
         public void Draw () {
@@ -39,41 +44,47 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void DrawFileSystemEntries (string path) {
-            string openEntryLabel = SystemInfo.operatingSystem.StartsWith("Windows")
-                ? "Show in explorer"
-                : "Reveal in finder";
-
             foreach (string entryPath in Directory.GetFileSystemEntries(path)) {
                 if (File.GetAttributes(entryPath).HasFlag(FileAttributes.Directory))
-                    DrawFolderEntry(openEntryLabel, entryPath);
+                    DrawFolderEntry(entryPath);
                 else
-                    DrawFileEntry(openEntryLabel, entryPath);
+                    DrawFileEntry(entryPath);
             }
         }
 
 
-        private void DrawFolderEntry (string openEntryLabel, string entryPath) {
+        private void DrawFolderEntry (string entryPath) {
             if (!m_showInternal && entryPath == SaveSystemCore.InternalFolder)
                 return;
 
+            m_folders.TryAdd(entryPath, false);
+
             using (new EditorGUILayout.HorizontalScope()) {
-                EditorGUILayout.LabelField(new GUIContent {
+                Event ev = Event.current;
+
+                if (ev.clickCount > 1 && EditorGUILayout.GetControlRect().Contains(ev.mousePosition))
+                    EditorUtility.RevealInFinder(entryPath);
+
+                m_folders[entryPath] = EditorGUILayout.Foldout(m_folders[entryPath], new GUIContent {
                     text = Path.GetFileName(entryPath),
                     image = EditorGUIUtility.IconContent("Folder Icon").image
                 });
-
-                if (GUILayout.Button(openEntryLabel, GUILayout.ExpandWidth(false)))
-                    EditorUtility.RevealInFinder(entryPath);
             }
 
             EditorGUI.indentLevel++;
-            DrawFileSystemEntries(entryPath);
+            if (m_folders[entryPath])
+                DrawFileSystemEntries(entryPath);
             EditorGUI.indentLevel--;
         }
 
 
-        private void DrawFileEntry (string openEntryLabel, string entryPath) {
+        private void DrawFileEntry (string entryPath) {
             using var scope = new EditorGUILayout.HorizontalScope();
+
+            Event ev = Event.current;
+
+            if (ev.clickCount > 1 && EditorGUILayout.GetControlRect().Contains(ev.mousePosition))
+                EditorUtility.RevealInFinder(entryPath);
 
             EditorGUILayout.LabelField(new GUIContent {
                 text = Path.GetFileName(entryPath),
@@ -81,10 +92,10 @@ namespace SaveSystem.Editor.ConsoleTabs {
             });
 
             string fileSize = Storage.GetFormattedDataSize(new FileInfo(entryPath).Length);
+            int indent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
             EditorGUILayout.LabelField(fileSize);
-
-            if (GUILayout.Button(openEntryLabel, GUILayout.ExpandWidth(false)))
-                EditorUtility.RevealInFinder(entryPath);
+            EditorGUI.indentLevel = indent;
         }
 
 

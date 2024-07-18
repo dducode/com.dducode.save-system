@@ -71,7 +71,7 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Storage.PrepareBeforeUsing(value);
+                string newDir = Path.Combine(SaveSystemCore.ProfilesFolder, value);
 
                 if (string.Equals(m_dataFolder, newDir))
                     return;

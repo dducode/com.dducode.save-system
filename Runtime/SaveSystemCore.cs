@@ -31,7 +31,28 @@ namespace SaveSystem {
         private const string AllProfilesFile = "all-profiles.data";
 
         internal static readonly string InternalFolder = SetInternalFolder();
-        internal static string scenesFolder;
+
+        internal static string ProfilesFolder {
+            get {
+                if (string.IsNullOrEmpty(m_profilesFolder)) {
+                    m_profilesFolder = Storage.PrepareBeforeUsing("profiles");
+                    Directory.CreateDirectory(m_profilesFolder);
+                }
+
+                return m_profilesFolder;
+            }
+        }
+
+        internal static string ScenesFolder {
+            get {
+                if (string.IsNullOrEmpty(m_scenesFolder)) {
+                    m_scenesFolder = Storage.PrepareBeforeUsing("scenes");
+                    Directory.CreateDirectory(m_scenesFolder);
+                }
+
+                return m_scenesFolder;
+            }
+        }
 
         // Common settings
         private static SaveProfile m_selectedSaveProfile;
@@ -58,6 +79,9 @@ namespace SaveSystem {
     #endif
 
         private static readonly SynchronizationPoint SynchronizationPoint = new();
+
+        private static string m_profilesFolder;
+        private static string m_scenesFolder;
 
         private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
@@ -141,13 +165,6 @@ namespace SaveSystem {
                 AuthManager = new AuthenticationManager(settings.authenticationSettings);
             else
                 AuthManager.SetSettings(settings.authenticationSettings);
-        }
-
-
-        private static void SetManagedFolders () {
-            SetInternalFolder();
-            scenesFolder = Storage.PrepareBeforeUsing("scenes");
-            Directory.CreateDirectory(scenesFolder);
         }
 
 
