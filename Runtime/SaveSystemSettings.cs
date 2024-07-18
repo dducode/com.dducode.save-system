@@ -16,7 +16,7 @@ namespace SaveSystem {
         public float savePeriod = 15;
 
         [Tooltip(Tooltips.DataPath)]
-        public string dataPath = "default_data_file.data";
+        public string dataPath;
 
         public string playerTag = "Player";
 

@@ -132,6 +132,8 @@ namespace SaveSystem.Editor {
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
+            if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))
+                m_dataPathProperty.stringValue = $"{Application.productName}.data";
 
             EditorGUILayout.Space(15);
         }
