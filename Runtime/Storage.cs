@@ -42,13 +42,8 @@ namespace SaveSystem {
         /// <summary>
         /// Creates new directories if they're not exists and returns full path
         /// </summary>
-        internal static string PrepareBeforeUsing (string path, bool isDirectory) {
-            string fullPath = GetFullPath(path);
-            string directoryPath = isDirectory
-                ? fullPath
-                : fullPath.Remove(fullPath.LastIndexOf(Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(directoryPath);
-            return fullPath;
+        internal static string PrepareBeforeUsing (string path) {
+            return GetFullPath(path);
         }
 
 

@@ -18,7 +18,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void Deserialize (SaveReader reader) {
+        public void Deserialize (SaveReader reader, int previousVersion) {
             Target.position = reader.Read<Vector3>();
         }
 

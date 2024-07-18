@@ -21,6 +21,8 @@ namespace SaveSystem {
     /// <seealso cref="DynamicObjectGroup{TDynamic}.CreateObjects"/>
     public sealed class DynamicObjectGroup<TDynamic> : IRuntimeSerializable {
 
+        public int Version { get; }
+
         public int Count => m_objects.Count;
 
         private readonly List<TDynamic> m_objects = new();
@@ -34,12 +36,14 @@ namespace SaveSystem {
         /// Creates a group and spawn, saving and loading dynamic objects using it
         /// </summary>
         /// <param name="factory"> A factory for an objects spawn. This is necessary to load dynamic objects </param>
-        public DynamicObjectGroup ([NotNull] IObjectFactory<TDynamic> factory) {
+        /// <param name="version"> Version of the objects </param>
+        public DynamicObjectGroup ([NotNull] IObjectFactory<TDynamic> factory, int version = 0) {
             Type type = typeof(TDynamic);
             if (!type.IsDefined(typeof(DynamicObjectAttribute), false))
                 throw new ArgumentException($"Type {type.Name} is not defined {nameof(DynamicObjectAttribute)}");
 
             m_factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            Version = version;
         }
 
 
@@ -48,10 +52,11 @@ namespace SaveSystem {
         /// </summary>
         /// <param name="factory"> A factory for an objects spawn. This is necessary to load dynamic objects </param>
         /// <param name="provider"> A provider to get object serialization adapter </param>
+        /// <param name="version"> Version of the objects </param>
         public DynamicObjectGroup (
             [NotNull] IObjectFactory<TDynamic> factory,
-            [NotNull] ISerializationProvider<ISerializationAdapter<TDynamic>, TDynamic> provider
-        ) : this(factory) {
+            [NotNull] ISerializationProvider<ISerializationAdapter<TDynamic>, TDynamic> provider, int version = 0
+        ) : this(factory, version) {
             m_serializationProvider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
@@ -122,7 +127,7 @@ namespace SaveSystem {
         }
 
 
-        public void Deserialize (SaveReader reader) {
+        public void Deserialize (SaveReader reader, int previousVersion) {
             var count = reader.Read<int>();
             if (count == 0)
                 return;
@@ -131,7 +136,7 @@ namespace SaveSystem {
             DiagnosticService.AddObjects(objects);
 
             foreach (IRuntimeSerializable serializable in m_serializables)
-                serializable.Deserialize(reader);
+                serializable.Deserialize(reader, previousVersion);
         }
 
 

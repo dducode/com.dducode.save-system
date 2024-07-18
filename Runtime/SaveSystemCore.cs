@@ -105,7 +105,7 @@ namespace SaveSystem {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            DataPath = Storage.PrepareBeforeUsing(settings.dataPath, false);
+            DataPath = Storage.PrepareBeforeUsing(settings.dataPath);
         }
 
 
@@ -146,13 +146,14 @@ namespace SaveSystem {
 
         private static void SetManagedFolders () {
             SetInternalFolder();
-            scenesFolder = Storage.PrepareBeforeUsing("scenes", true);
+            scenesFolder = Storage.PrepareBeforeUsing("scenes");
+            Directory.CreateDirectory(scenesFolder);
         }
 
 
         private static string SetInternalFolder () {
-            string folder = Storage.PrepareBeforeUsing(".internal", true);
-            new DirectoryInfo(folder).Attributes |= FileAttributes.Hidden;
+            string folder = Storage.PrepareBeforeUsing(".internal");
+            Directory.CreateDirectory(folder).Attributes |= FileAttributes.Hidden;
             return folder;
         }
 
@@ -168,14 +169,14 @@ namespace SaveSystem {
         }
 
 
-        internal static void UpdateProfile (SaveProfile profile, string oldName) {
+        internal static void UpdateProfile (SaveProfile profile, string oldName, string newName) {
             var memoryStream = new MemoryStream();
             using var writer = new SaveWriter(memoryStream);
             writer.Write(profile.GetType().Name);
             profile.Serialize(writer);
             byte[] data = memoryStream.ToArray();
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
+            string path = Path.Combine(InternalFolder, $"{newName}.profile");
             if (!string.IsNullOrEmpty(oldName))
                 File.Move(Path.Combine(InternalFolder, $"{oldName}.profile"), path);
 
@@ -401,11 +402,12 @@ namespace SaveSystem {
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
                 string type = reader.ReadString();
                 var profile = (SaveProfile)Activator.CreateInstance(
-                    Type.GetType(type) ?? throw new InvalidOperationException()
+                    Type.GetType(type) ?? throw new InvalidOperationException($"Unknown profile type: {type}")
                 );
-                profile.Deserialize(reader);
+                profile.Deserialize(reader, reader.Read<int>());
 
                 writer.Write(type);
+                writer.Write(profile.Version);
                 profile.Serialize(writer);
                 writer.Write(await profile.ExportProfileData(token));
             }
@@ -435,11 +437,12 @@ namespace SaveSystem {
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
                 string type = reader.ReadString();
                 var profile = (SaveProfile)Activator.CreateInstance(
-                    Type.GetType(type) ?? throw new InvalidOperationException()
+                    Type.GetType(type) ?? throw new InvalidOperationException($"Unknown profile type: {type}")
                 );
-                profile.Deserialize(reader);
+                profile.Deserialize(reader, reader.Read<int>());
 
                 writer.Write(type);
+                writer.Write(profile.Version);
                 profile.Serialize(writer);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }

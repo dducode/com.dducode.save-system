@@ -16,6 +16,8 @@ namespace SaveSystem {
 
     public abstract class SaveProfile : IRuntimeSerializable {
 
+        public virtual int Version => 0;
+
         [NotNull]
         public string Name {
             get => m_name;
@@ -23,15 +25,20 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(Name));
 
-                if (!string.IsNullOrEmpty(m_name) && File.Exists(DataPath)) {
-                    DataFolder = value;
-                    File.Move(DataPath, Path.Combine(DataFolder, $"{value}.profiledata"));
-                }
+                if (string.Equals(m_name, value))
+                    return;
 
                 string oldName = m_name;
                 m_name = value;
                 m_serializationScope.Name = $"{value} scope";
-                SaveSystemCore.UpdateProfile(this, oldName);
+
+                DataFolder = m_name;
+                string sourceFile = Path.Combine(DataFolder, $"{oldName}.profiledata");
+
+                if (File.Exists(sourceFile))
+                    File.Move(sourceFile, Path.Combine(DataFolder, $"{m_name}.profiledata"));
+
+                SaveSystemCore.UpdateProfile(this, oldName, m_name);
             }
         }
 
@@ -64,9 +71,15 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Storage.PrepareBeforeUsing(value, true);
-                if (!string.IsNullOrEmpty(m_dataFolder) && Directory.Exists(m_dataFolder))
+                string newDir = Storage.PrepareBeforeUsing(value);
+
+                if (string.Equals(m_dataFolder, newDir))
+                    return;
+
+                if (Directory.Exists(m_dataFolder))
                     Directory.Move(m_dataFolder, newDir);
+                else
+                    Directory.CreateDirectory(newDir);
 
                 m_dataFolder = newDir;
             }
@@ -100,8 +113,9 @@ namespace SaveSystem {
         }
 
 
-        public virtual void Deserialize (SaveReader reader) {
-            Name = reader.ReadString();
+        public virtual void Deserialize (SaveReader reader, int previousVersion) {
+            m_name = reader.ReadString();
+            m_serializationScope.Name = $"{m_name} scope";
             DataFolder = m_name;
 
             var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();

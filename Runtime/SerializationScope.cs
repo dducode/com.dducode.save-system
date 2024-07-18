@@ -146,6 +146,7 @@ namespace SaveSystem {
         private void SerializeObjects (SaveWriter writer) {
             foreach ((string key, IRuntimeSerializable serializable) in m_serializables) {
                 writer.Write(key);
+                writer.Write(serializable.Version);
                 serializable.Serialize(writer);
             }
         }
@@ -153,7 +154,7 @@ namespace SaveSystem {
 
         private void DeserializeObjects (SaveReader reader) {
             foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables)
-                m_serializables[reader.ReadString()].Deserialize(reader);
+                m_serializables[reader.ReadString()].Deserialize(reader, reader.Read<int>());
         }
 
     }

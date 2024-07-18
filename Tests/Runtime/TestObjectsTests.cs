@@ -47,7 +47,7 @@ namespace SaveSystem.Tests {
             );
 
             await using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open)))
-                objectGroup.Deserialize(reader);
+                objectGroup.Deserialize(reader, 0);
 
             await UniTask.WaitForSeconds(1);
         }

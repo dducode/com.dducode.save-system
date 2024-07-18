@@ -26,7 +26,7 @@ namespace SaveSystem.Tests.TestObjects {
         }
 
 
-        public void Deserialize (SaveReader reader) {
+        public void Deserialize (SaveReader reader, int previousVersion) {
             DataBuffer buffer = reader.ReadDataBuffer();
             Target.transform.rotation = buffer.Get<Quaternion>(nameof(Target.transform.rotation));
             Target.transform.localRotation = buffer.Get<Quaternion>(nameof(Target.transform.localRotation));

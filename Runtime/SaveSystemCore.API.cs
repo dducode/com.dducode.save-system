@@ -29,12 +29,7 @@ namespace SaveSystem {
         [NotNull]
         public static SaveProfile SelectedSaveProfile {
             get => m_selectedSaveProfile;
-            set {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(SelectedSaveProfile));
-
-                RegisterSaveProfile(m_selectedSaveProfile = value);
-            }
+            set => m_selectedSaveProfile = value ?? throw new ArgumentNullException(nameof(SelectedSaveProfile));
         }
 
         /// <summary>
@@ -86,7 +81,7 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
 
-                m_dataPath = Storage.PrepareBeforeUsing(value, false);
+                m_dataPath = Storage.PrepareBeforeUsing(value);
             }
         }
 
@@ -173,21 +168,19 @@ namespace SaveSystem {
         /// Get all previously created saving profiles
         /// </summary>
         [Pure]
-        public static async UniTask<List<TProfile>> LoadAllProfiles<TProfile> () where TProfile : SaveProfile, new() {
+        public static IEnumerable<TProfile> LoadAllProfiles<TProfile> ()
+            where TProfile : SaveProfile, new() {
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-            var profiles = new List<TProfile>();
 
             foreach (string path in paths) {
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                using var reader = new SaveReader(File.Open(path, FileMode.Open));
                 if (reader.ReadString() != typeof(TProfile).Name)
                     continue;
 
                 var profile = new TProfile();
-                profile.Deserialize(reader);
-                profiles.Add(profile);
+                profile.Deserialize(reader, reader.Read<int>());
+                yield return profile;
             }
-
-            return profiles;
         }
 
 
@@ -205,14 +198,16 @@ namespace SaveSystem {
             var memoryStream = new MemoryStream();
             using var writer = new SaveWriter(memoryStream);
             writer.Write(profile.GetType().Name);
+            writer.Write(profile.Version);
             profile.Serialize(writer);
             byte[] data = memoryStream.ToArray();
             SynchronizationPoint.ScheduleTask(
-                async token => await File.WriteAllBytesAsync(path, data, token).AsUniTask(),
+                async token => {
+                    await File.WriteAllBytesAsync(path, data, token).AsUniTask();
+                    Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} registered");
+                },
                 true
             );
-
-            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} registered");
         }
 
 
