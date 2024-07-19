@@ -6,6 +6,7 @@ using System.Text;
 using SaveSystem.BinaryHandlers;
 using SaveSystem.Internal;
 using SaveSystem.Security;
+using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
 
 namespace SaveSystem {
 
@@ -74,7 +75,7 @@ namespace SaveSystem {
 
         private static byte[] GetKey (string password) {
             return new Rfc2898DeriveBytes(
-                password, SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password))
+                password, SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password)), 10, HashAlgorithmName.SHA1
             ).GetBytes((int)AESKeyLength._128Bit);
         }
 
