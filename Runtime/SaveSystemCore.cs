@@ -440,15 +440,15 @@ namespace SaveSystem {
         private static async UniTask PullFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData globalData = await cloudStorage.Pull(DataPath);
+            StorageData globalData = await cloudStorage.Pull(Path.GetFileName(DataPath));
             if (globalData != null)
                 await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
-            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
+            StorageData profiles = await cloudStorage.Pull(Path.GetFileName(AllProfilesFile));
             if (profiles != null)
                 await PullProfiles(profiles);
 
-            StorageData dataTable = await cloudStorage.Pull(DataTable.Path);
+            StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DataTable.Path));
             if (dataTable != null)
                 await File.WriteAllBytesAsync(DataTable.Path, dataTable.rawData, token);
         }
