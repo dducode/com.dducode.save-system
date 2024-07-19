@@ -118,7 +118,7 @@ namespace SaveSystem {
             m_serializationScope.Name = $"{m_name} scope";
             DataFolder = m_name;
 
-            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+            var settings = ResourcesManager.LoadSettings();
 
             Encrypt = reader.Read<bool>();
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -20,7 +19,7 @@ namespace SaveSystem.Internal {
 
                 if (m_encrypt && Cryptographer == null) {
                     Cryptographer = new Cryptographer(
-                        ResourcesManager.LoadSettings<SaveSystemSettings>().encryptionSettings
+                        ResourcesManager.LoadSettings().encryptionSettings
                     );
                 }
             }
@@ -39,7 +38,7 @@ namespace SaveSystem.Internal {
 
                 if (m_authenticate && AuthManager == null) {
                     AuthManager = new AuthenticationManager(
-                        ResourcesManager.LoadSettings<SaveSystemSettings>().authenticationSettings
+                        ResourcesManager.LoadSettings().authenticationSettings
                     );
                 }
             }
@@ -67,31 +66,20 @@ namespace SaveSystem.Internal {
         internal async UniTask SaveData ([NotNull] string dataPath, CancellationToken token = default) {
             if (string.IsNullOrEmpty(dataPath))
                 throw new ArgumentNullException(nameof(dataPath));
-
-            byte[] data = SaveData();
-            if (data == null)
-                return;
-
-            await File.WriteAllBytesAsync(dataPath, data, token).AsUniTask();
-        }
-
-
-        [Pure]
-        internal byte[] SaveData () {
             if (Encrypt && Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer not sets");
 
             byte[] data = SerializationScope.SaveData();
             if (data == null)
-                return null;
+                return;
 
             if (Encrypt)
                 data = Cryptographer.Encrypt(data);
 
             if (Authenticate)
-                data = AuthManager.SetAuthHash(data);
+                AuthManager.SetAuthHash(dataPath, data);
 
-            return data;
+            await File.WriteAllBytesAsync(dataPath, data, token).AsUniTask();
         }
 
 
@@ -104,18 +92,10 @@ namespace SaveSystem.Internal {
                 return;
             }
 
-            LoadData(await File.ReadAllBytesAsync(filePath, token).AsUniTask());
-        }
-
-
-        internal void LoadData ([NotNull] byte[] data) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+            byte[] data = await File.ReadAllBytesAsync(filePath, token).AsUniTask();
 
             if (Authenticate)
-                data = AuthManager.AuthenticateData(data);
+                AuthManager.AuthenticateData(filePath, data);
 
             if (Encrypt)
                 data = Cryptographer.Decrypt(data);

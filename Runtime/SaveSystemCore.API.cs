@@ -155,7 +155,7 @@ namespace SaveSystem {
             };
 
             SetPlayerLoop();
-            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
+            SetSettings(ResourcesManager.LoadSettings());
             SetInternalFolder();
             SetOnExitPlayModeCallback();
 
@@ -174,7 +174,7 @@ namespace SaveSystem {
 
             foreach (string path in paths) {
                 using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                if (reader.ReadString() != typeof(TProfile).Name)
+                if (reader.ReadString() != typeof(TProfile).AssemblyQualifiedName)
                     continue;
 
                 var profile = new TProfile();
@@ -197,7 +197,7 @@ namespace SaveSystem {
 
             var memoryStream = new MemoryStream();
             using var writer = new SaveWriter(memoryStream);
-            writer.Write(profile.GetType().Name);
+            writer.Write(profile.GetType().AssemblyQualifiedName);
             writer.Write(profile.Version);
             profile.Serialize(writer);
             byte[] data = memoryStream.ToArray();

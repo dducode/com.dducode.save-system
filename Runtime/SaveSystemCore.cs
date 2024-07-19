@@ -90,7 +90,7 @@ namespace SaveSystem {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void AutoInit () {
-            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+            SaveSystemSettings settings = ResourcesManager.LoadSettings();
             if (settings != null && settings.automaticInitialize)
                 Initialize();
         }
@@ -401,10 +401,14 @@ namespace SaveSystem {
             }
 
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-            if (paths.Length == 0)
-                return;
+            if (paths.Length > 0)
+                await PushProfiles(cloudStorage, paths, token);
 
-            await PushProfiles(cloudStorage, paths, token);
+            if (File.Exists(DataTable.Path)) {
+                cloudStorage.Push(new StorageData(
+                    await File.ReadAllBytesAsync(DataTable.Path, token), Path.GetFileName(DataTable.Path))
+                );
+            }
         }
 
 
@@ -436,13 +440,17 @@ namespace SaveSystem {
         private static async UniTask PullFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData globalData = await cloudStorage.Pull(DataPath);
+            StorageData globalData = await cloudStorage.Pull(Path.GetFileName(DataPath));
             if (globalData != null)
                 await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
-            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
+            StorageData profiles = await cloudStorage.Pull(Path.GetFileName(AllProfilesFile));
             if (profiles != null)
                 await PullProfiles(profiles);
+
+            StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DataTable.Path));
+            if (dataTable != null)
+                await File.WriteAllBytesAsync(DataTable.Path, dataTable.rawData, token);
         }
 
 

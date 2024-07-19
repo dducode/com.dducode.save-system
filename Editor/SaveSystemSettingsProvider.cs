@@ -45,7 +45,7 @@ namespace SaveSystem.Editor {
 
 
         private SaveSystemSettingsProvider () {
-            Initialize(ResourcesManager.LoadSettings<SaveSystemSettings>());
+            Initialize(ResourcesManager.LoadSettings());
         }
 
 
@@ -76,7 +76,7 @@ namespace SaveSystem.Editor {
             );
 
             if (GUILayout.Button("Restore Settings Asset", GUILayout.ExpandWidth(false)))
-                Initialize(EditorResourcesManager.CreateSettings<SaveSystemSettings>());
+                Initialize(EditorResourcesManager.CreateSettings());
         }
 
 

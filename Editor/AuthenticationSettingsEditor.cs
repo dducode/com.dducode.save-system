@@ -1,4 +1,4 @@
-﻿using System;
+﻿using SaveSystem.Internal.Cryptography;
 using SaveSystem.Security;
 using UnityEditor;
 using UnityEngine;
@@ -35,12 +35,8 @@ namespace SaveSystem.Editor {
             settings.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
                 "Hash Algorithm", settings.hashAlgorithm, GUILayout.MaxWidth(300)
             );
-            settings.globalAuthHashKey = DrawingUtilities.DrawKeyProperty(
-                settings.globalAuthHashKey, "Global Auth Hash Key", "Generate Global Key", Guid.NewGuid().ToString
-            );
-            settings.profileAuthHashKey = DrawingUtilities.DrawKeyProperty(
-                settings.profileAuthHashKey, "Profile Auth Hash Key",
-                "Generate Profile Key", Guid.NewGuid().ToString
+            settings.dataTablePassword = DrawingUtilities.DrawKeyProperty(
+                settings.dataTablePassword, "Data Table Password", "Generate Password", CryptoUtilities.GenerateKey
             );
 
             GUI.enabled = true;

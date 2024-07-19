@@ -74,7 +74,7 @@ namespace SaveSystem {
             Encrypt = encrypt;
             Authenticate = authentication;
 
-            var settings = ResourcesManager.LoadSettings<SaveSystemSettings>();
+            SaveSystemSettings settings = ResourcesManager.LoadSettings();
 
             if (Encrypt)
                 Cryptographer = new Cryptographer(settings.encryptionSettings);
