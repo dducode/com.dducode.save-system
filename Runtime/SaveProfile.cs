@@ -196,6 +196,11 @@ namespace SaveSystem {
                 await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
+
+        internal void Clear () {
+            m_serializationScope.Clear();
+        }
+
     }
 
 }

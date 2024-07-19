@@ -68,7 +68,6 @@ namespace SaveSystem {
 
         private static SerializationScope m_globalScope;
         private static SaveDataHandler m_handler;
-        private static ICloudStorage m_cloudStorage;
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;

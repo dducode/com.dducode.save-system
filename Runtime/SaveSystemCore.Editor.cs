@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
     using SaveSystem.Internal;
+    using SaveSystem.Internal.Diagnostic;
     using UnityEngine;
     using UnityEngine.LowLevel;
     using UnityEngine.PlayerLoop;
@@ -33,8 +34,16 @@
 
                 m_autoSaveLastTime = 0;
                 m_savedBeforeExit = false;
+
+                if (m_selectedSaveProfile != null) {
+                    m_selectedSaveProfile.Clear();
+                    m_selectedSaveProfile = null;
+                }
+
+                m_globalScope.Clear();
                 m_globalScope = null;
                 m_handler = null;
+                DiagnosticService.Clear();
 
                 Application.quitting -= ResetOnExit;
             }

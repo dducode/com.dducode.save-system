@@ -143,6 +143,12 @@ namespace SaveSystem {
         }
 
 
+        internal void Clear () {
+            m_dataBuffer.Clear();
+            m_serializables.Clear();
+        }
+
+
         private void SerializeObjects (SaveWriter writer) {
             foreach ((string key, IRuntimeSerializable serializable) in m_serializables) {
                 writer.Write(key);

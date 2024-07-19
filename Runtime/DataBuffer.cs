@@ -131,6 +131,14 @@ namespace SaveSystem {
         }
 
 
+        internal void Clear () {
+            m_commonBuffer.Clear();
+            m_arrayBuffer.Clear();
+            m_stringBuffer.Clear();
+            m_meshDataBuffer.Clear();
+        }
+
+
         private void WriteBuffer (Dictionary<string, byte[]> buffer, SaveWriter writer) {
             writer.Write(buffer.Count);
 

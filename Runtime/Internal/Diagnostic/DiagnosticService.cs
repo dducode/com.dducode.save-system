@@ -55,6 +55,12 @@ namespace SaveSystem.Internal.Diagnostic {
             }
         }
 
+
+        [Conditional("UNITY_EDITOR")]
+        internal static void Clear () {
+            Dict.Clear();
+        }
+
     }
 
 }
