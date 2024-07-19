@@ -6,7 +6,7 @@ namespace SaveSystem.Editor {
 
         [MenuItem("Assets/Create/Save System/Save System Settings")]
         private static void CreateSettings (MenuCommand menuCommand) {
-            var settings = EditorResourcesManager.CreateSettings<SaveSystemSettings>();
+            SaveSystemSettings settings = EditorResourcesManager.CreateSettings();
             Selection.SetActiveObjectWithContext(settings, settings);
         }
 

@@ -155,7 +155,7 @@ namespace SaveSystem {
             };
 
             SetPlayerLoop();
-            SetSettings(ResourcesManager.LoadSettings<SaveSystemSettings>());
+            SetSettings(ResourcesManager.LoadSettings());
             SetInternalFolder();
             SetOnExitPlayModeCallback();
 

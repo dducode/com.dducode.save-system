@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Security;
 using System.Security.Cryptography;
-using SaveSystem.BinaryHandlers;
+using SaveSystem.Internal;
 using SaveSystem.Internal.Extensions;
 using SaveSystem.Internal.Templates;
 
@@ -33,42 +32,32 @@ namespace SaveSystem.Security {
         }
 
 
-        public byte[] AuthenticateData ([NotNull] byte[] bytes) {
-            if (bytes == null)
-                throw new ArgumentNullException(nameof(bytes));
-            if (bytes.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(bytes));
-
-            var stream = new MemoryStream(bytes);
-            using var reader = new SaveReader(stream);
-            byte[] storedHash = reader.ReadArray<byte>();
-            byte[] data = reader.ReadArray<byte>();
-            byte[] computeHash = ComputeHash(data, Algorithm);
-            if (storedHash.Length != computeHash.Length)
-                throw new SecurityException(Messages.DataIsCorrupted);
-
-            for (var i = 0; i < storedHash.Length; i++)
-                if (storedHash[i] != computeHash[i])
-                    throw new SecurityException(Messages.DataIsCorrupted);
-
-            return data;
-        }
-
-
-        public byte[] SetAuthHash ([NotNull] byte[] data) {
+        public void AuthenticateData ([NotNull] string filePath, [NotNull] byte[] data) {
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentNullException(nameof(filePath));
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            var stream = new MemoryStream();
+            using DataTable table = DataTable.Open();
+            byte[] storedHash = table[filePath];
+            byte[] computedHash = ComputeHash(data, Algorithm);
+            if (!storedHash.EqualsBytes(computedHash))
+                throw new SecurityException(Messages.DataIsCorrupted);
+        }
 
-            using (var writer = new SaveWriter(stream)) {
-                writer.Write(ComputeHash(data, Algorithm));
-                writer.Write(data);
-            }
 
-            return stream.ToArray();
+        public void SetAuthHash ([NotNull] string filePath, [NotNull] byte[] data) {
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentNullException(nameof(filePath));
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+
+            using DataTable table = DataTable.Open();
+            table[filePath] = ComputeHash(data, Algorithm);
         }
 
 

@@ -12,15 +12,15 @@ namespace SaveSystem.Editor {
         private static readonly string SaveSystemFolder = Path.Combine(ResourcesFolder, "Save System");
 
 
-        internal static TSettings CreateSettings<TSettings> () where TSettings : ScriptableObject {
+        internal static SaveSystemSettings CreateSettings () {
             CreateSaveSystemFolders();
-            string settingsFilePath = Path.Combine(SaveSystemFolder, $"{typeof(TSettings).Name}.asset");
+            string settingsFilePath = Path.Combine(SaveSystemFolder, $"{nameof(SaveSystemSettings)}.asset");
 
             if (File.Exists(Path.Combine(Application.dataPath, settingsFilePath))) {
-                return ResourcesManager.LoadSettings<TSettings>();
+                return ResourcesManager.LoadSettings();
             }
             else {
-                var settings = ScriptableObject.CreateInstance<TSettings>();
+                var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
                 AssetDatabase.CreateAsset(settings, settingsFilePath);
                 AssetDatabase.Refresh();
                 return settings;

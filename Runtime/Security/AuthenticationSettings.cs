@@ -1,4 +1,5 @@
 ﻿using System;
+using SaveSystem.Internal.Cryptography;
 
 namespace SaveSystem.Security {
 
@@ -6,8 +7,7 @@ namespace SaveSystem.Security {
     public class AuthenticationSettings {
 
         public HashAlgorithmName hashAlgorithm;
-        public string globalAuthHashKey = Guid.NewGuid().ToString();
-        public string profileAuthHashKey = Guid.NewGuid().ToString();
+        public string dataTablePassword = CryptoUtilities.GenerateKey();
 
 
         public override string ToString () {

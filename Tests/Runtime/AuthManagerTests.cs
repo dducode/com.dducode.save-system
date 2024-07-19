@@ -15,14 +15,14 @@
             [Test, Order(0)]
             public void SetLoremIpsumAuthHash () {
                 var authManager = new AuthenticationManager(HashAlgorithmName.SHA1);
-                File.WriteAllBytes(m_sourcePath, authManager.SetAuthHash(File.ReadAllBytes(m_sourcePath)));
+                authManager.SetAuthHash(m_sourcePath, File.ReadAllBytes(m_sourcePath));
             }
 
 
             [Test, Order(1)]
             public void AuthenticateLoremIpsumData () {
                 var authManager = new AuthenticationManager(HashAlgorithmName.SHA1);
-                File.WriteAllBytes(m_sourcePath, authManager.AuthenticateData(File.ReadAllBytes(m_sourcePath)));
+                authManager.AuthenticateData(m_sourcePath, File.ReadAllBytes(m_sourcePath));
             }
 
         }
