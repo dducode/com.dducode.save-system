@@ -88,18 +88,6 @@ namespace SaveSystem {
         }
 
         [NotNull]
-        internal string ScenesFolder {
-            get {
-                if (string.IsNullOrEmpty(m_scenesFolder)) {
-                    m_scenesFolder = Path.Combine(DataFolder, "_scenes");
-                    Directory.CreateDirectory(m_scenesFolder);
-                }
-
-                return m_scenesFolder;
-            }
-        }
-
-        [NotNull]
         internal SceneSerializationContext SceneContext {
             get => m_sceneContext;
             set {
@@ -199,15 +187,33 @@ namespace SaveSystem {
 
 
         internal async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
-            if (!File.Exists(DataPath))
+            string[] entries = Directory.GetFileSystemEntries(DataFolder);
+            if (entries.Length == 0)
                 return Array.Empty<byte>();
-            return await File.ReadAllBytesAsync(DataPath, token);
+
+            using var memoryStream = new MemoryStream();
+            await using var writer = new SaveWriter(memoryStream);
+
+            writer.Write(entries.Length);
+
+            foreach (string path in entries) {
+                writer.Write(path);
+                writer.Write(await File.ReadAllBytesAsync(path, token));
+            }
+
+            return memoryStream.ToArray();
         }
 
 
         internal async UniTask ImportProfileData (byte[] data, CancellationToken token = default) {
-            if (data.Length > 0)
-                await File.WriteAllBytesAsync(DataPath, data, token);
+            if (data.Length == 0)
+                return;
+
+            await using var reader = new SaveReader(new MemoryStream(data));
+            var entriesCount = reader.Read<int>();
+
+            for (var i = 0; i < entriesCount; i++)
+                await File.WriteAllBytesAsync(reader.ReadString(), reader.ReadArray<byte>(), token);
         }
 
 

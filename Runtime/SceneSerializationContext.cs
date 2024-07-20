@@ -72,7 +72,7 @@ namespace SaveSystem {
                 profile.SceneContext = this;
 
             DataPath = Path.Combine(
-                profile == null ? SaveSystemCore.ScenesFolder : profile.ScenesFolder, $"{fileName}.scenedata"
+                profile == null ? SaveSystemCore.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
             );
 
             Encrypt = encrypt;
