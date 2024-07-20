@@ -29,7 +29,12 @@ namespace SaveSystem {
         [NotNull]
         public static SaveProfile SelectedSaveProfile {
             get => m_selectedSaveProfile;
-            set => m_selectedSaveProfile = value ?? throw new ArgumentNullException(nameof(SelectedSaveProfile));
+            set {
+                m_selectedSaveProfile = value ?? throw new ArgumentNullException(nameof(SelectedSaveProfile));
+                m_globalScope.AttachNestedScope(m_selectedSaveProfile.ProfileScope);
+                if (m_sceneContext != null)
+                    m_selectedSaveProfile.SceneContext = m_sceneContext;
+            }
         }
 
         /// <summary>
@@ -70,18 +75,17 @@ namespace SaveSystem {
             }
         }
 
-
         /// <summary>
         /// Set the global data path
         /// </summary>
         [NotNull]
         public static string DataPath {
-            get => m_dataPath;
+            get => m_globalScope.DataPath;
             set {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
 
-                m_dataPath = Storage.PrepareBeforeUsing(value);
+                m_globalScope.DataPath = Storage.PrepareBeforeUsing(value);
             }
         }
 
@@ -104,8 +108,8 @@ namespace SaveSystem {
         }
 
         public static bool Encrypt {
-            get => m_handler.Encrypt;
-            set => m_handler.Encrypt = value;
+            get => m_globalScope.Encrypt;
+            set => m_globalScope.Encrypt = value;
         }
 
         /// <summary>
@@ -113,19 +117,19 @@ namespace SaveSystem {
         /// </summary>
         [NotNull]
         public static Cryptographer Cryptographer {
-            get => m_handler.Cryptographer;
-            set => m_handler.Cryptographer = value;
+            get => m_globalScope.Cryptographer;
+            set => m_globalScope.Cryptographer = value;
         }
 
         public static bool Authenticate {
-            get => m_handler.Authenticate;
-            set => m_handler.Authenticate = value;
+            get => m_globalScope.Authenticate;
+            set => m_globalScope.Authenticate = value;
         }
 
         [NotNull]
         public static AuthenticationManager AuthManager {
-            get => m_handler.AuthManager;
-            set => m_handler.AuthManager = value;
+            get => m_globalScope.AuthManager;
+            set => m_globalScope.AuthManager = value;
         }
 
         /// <summary>
@@ -148,10 +152,8 @@ namespace SaveSystem {
 
 
         public static void Initialize () {
-            m_handler = new SaveDataHandler {
-                SerializationScope = m_globalScope = new SerializationScope {
-                    Name = "Global scope"
-                }
+            m_globalScope = new SerializationScope {
+                Name = "Global scope"
             };
 
             SetPlayerLoop();
@@ -353,7 +355,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> Save (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await SaveObjects(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await SaveData(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
@@ -367,7 +369,7 @@ namespace SaveSystem {
         public static async UniTask<HandlingResult> Load (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await LoadObjects(token));
+                return await SynchronizationPoint.ExecuteTask(async () => await LoadData(token));
             }
             catch (OperationCanceledException) {
                 return HandlingResult.Canceled;
