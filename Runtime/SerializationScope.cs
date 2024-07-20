@@ -4,9 +4,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using SaveSystem.BinaryHandlers;
+using SaveSystem.Internal;
 using SaveSystem.Internal.Diagnostic;
 using SaveSystem.Internal.Templates;
+using SaveSystem.Security;
 using Logger = SaveSystem.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -15,10 +19,10 @@ using Logger = SaveSystem.Internal.Logger;
 
 namespace SaveSystem {
 
-    public sealed class SerializationScope {
+    internal sealed class SerializationScope {
 
         [NotNull]
-        public string Name {
+        internal string Name {
             get => m_name;
             set {
                 if (string.IsNullOrEmpty(value))
@@ -28,15 +32,73 @@ namespace SaveSystem {
             }
         }
 
-        private string m_name;
+        [NotNull]
+        internal string DataPath {
+            get => m_dataPath;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(DataPath));
 
+                m_dataPath = value;
+            }
+        }
+
+        internal bool Encrypt {
+            get => m_encrypt;
+            set {
+                m_encrypt = value;
+
+                if (m_encrypt && Cryptographer == null) {
+                    Cryptographer = new Cryptographer(
+                        ResourcesManager.LoadSettings().encryptionSettings
+                    );
+                }
+            }
+        }
+
+        [NotNull]
+        internal Cryptographer Cryptographer {
+            get => m_cryptographer;
+            set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
+        }
+
+        internal bool Authenticate {
+            get => m_authenticate;
+            set {
+                m_authenticate = value;
+
+                if (m_authenticate && AuthManager == null) {
+                    AuthManager = new AuthenticationManager(
+                        ResourcesManager.LoadSettings().authenticationSettings
+                    );
+                }
+            }
+        }
+
+        [NotNull]
+        internal AuthenticationManager AuthManager {
+            get => m_authManager;
+            set => m_authManager = value ?? throw new ArgumentNullException(nameof(AuthManager));
+        }
+
+
+        private string m_name;
+        private string m_dataPath;
+
+        private bool m_encrypt;
+        private Cryptographer m_cryptographer;
+
+        private bool m_authenticate;
+        private AuthenticationManager m_authManager;
+
+        private SerializationScope m_nestedScope;
         private DataBuffer m_dataBuffer = new();
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
         private bool m_registrationClosed;
 
 
-        public void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
+        internal void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
@@ -45,7 +107,8 @@ namespace SaveSystem {
 
 
         [Pure]
-        public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
+        internal TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default)
+            where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
@@ -53,10 +116,15 @@ namespace SaveSystem {
         }
 
 
+        internal void AttachNestedScope ([NotNull] SerializationScope serializationScope) {
+            m_nestedScope = serializationScope ?? throw new ArgumentNullException(nameof(serializationScope));
+        }
+
+
         /// <summary>
         /// Registers an serializable object to save
         /// </summary>
-        public void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
+        internal void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             if (m_registrationClosed) {
                 Logger.LogError(Name, Messages.RegistrationClosed);
                 return;
@@ -77,7 +145,7 @@ namespace SaveSystem {
         /// <summary>
         /// Registers some serializable objects to save
         /// </summary>
-        public void RegisterSerializables (
+        internal void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
             if (m_registrationClosed) {
@@ -101,41 +169,76 @@ namespace SaveSystem {
         }
 
 
-        public byte[] SaveData () {
-            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
-                return null;
+        internal async UniTask Serialize (CancellationToken token) {
+            if (Encrypt && Cryptographer == null)
+                throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
+            if (Authenticate && AuthManager == null)
+                throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
+
+            if (ObjectsCount == 0 && m_dataBuffer.Count == 0) {
+                if (m_nestedScope != null)
+                    await m_nestedScope.Serialize(token);
+                return;
+            }
 
             m_registrationClosed = true;
 
-            using var memoryStream = new MemoryStream();
-            using var writer = new SaveWriter(memoryStream);
+            byte[] data;
 
-            writer.Write(m_dataBuffer);
-            SerializeObjects(writer);
+            using (var memoryStream = new MemoryStream()) {
+                await using var writer = new SaveWriter(memoryStream);
+                writer.Write(m_dataBuffer);
+                SerializeObjects(writer);
+                data = memoryStream.ToArray();
+            }
 
+            if (Encrypt)
+                data = Cryptographer.Encrypt(data);
+            if (Authenticate)
+                AuthManager.SetAuthHash(DataPath, data);
+
+            await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
-            return memoryStream.ToArray();
+
+            if (m_nestedScope != null)
+                await m_nestedScope.Serialize(token);
         }
 
 
-        public void LoadData ([NotNull] byte[] data) {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+        internal async UniTask Deserialize (CancellationToken token) {
+            if (Encrypt && Cryptographer == null)
+                throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
+            if (Authenticate && AuthManager == null)
+                throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             m_registrationClosed = true;
 
-            using var reader = new SaveReader(new MemoryStream(data));
+            if (!File.Exists(DataPath)) {
+                SetDefaults();
+                if (m_nestedScope != null)
+                    await m_nestedScope.Deserialize(token);
+                return;
+            }
 
-            m_dataBuffer = reader.ReadDataBuffer();
-            DeserializeObjects(reader);
+            byte[] data = await File.ReadAllBytesAsync(DataPath, token);
 
-            Logger.Log(Name, "Data loaded");
+            if (Authenticate)
+                AuthManager.AuthenticateData(DataPath, data);
+            if (Encrypt)
+                data = Cryptographer.Decrypt(data);
+
+            await using (var reader = new SaveReader(new MemoryStream(data))) {
+                m_dataBuffer = reader.ReadDataBuffer();
+                DeserializeObjects(reader);
+                Logger.Log(Name, "Data loaded");
+            }
+
+            if (m_nestedScope != null)
+                await m_nestedScope.Deserialize(token);
         }
 
 
-        public void SetDefaults () {
+        internal void SetDefaults () {
             m_registrationClosed = true;
 
             foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))

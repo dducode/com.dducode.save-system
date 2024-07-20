@@ -30,38 +30,40 @@ namespace SaveSystem {
 
                 string oldName = m_name;
                 m_name = value;
-                m_serializationScope.Name = $"{value} scope";
+                ProfileScope.Name = $"{value} scope";
 
                 DataFolder = m_name;
-                string sourceFile = Path.Combine(DataFolder, $"{oldName}.profiledata");
+                DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
+                string oldPath = Path.Combine(DataFolder, $"{oldName}.profiledata");
 
-                if (File.Exists(sourceFile))
-                    File.Move(sourceFile, Path.Combine(DataFolder, $"{m_name}.profiledata"));
+                if (File.Exists(oldPath))
+                    File.Move(oldPath, DataPath);
 
                 SaveSystemCore.UpdateProfile(this, oldName, m_name);
             }
         }
 
+
         public bool Encrypt {
-            get => m_handler.Encrypt;
-            set => m_handler.Encrypt = value;
+            get => ProfileScope.Encrypt;
+            set => ProfileScope.Encrypt = value;
         }
 
         [NotNull]
         public Cryptographer Cryptographer {
-            get => m_handler.Cryptographer;
-            set => m_handler.Cryptographer = value;
+            get => ProfileScope.Cryptographer;
+            set => ProfileScope.Cryptographer = value;
         }
 
         public bool Authenticate {
-            get => m_handler.Authenticate;
-            set => m_handler.Authenticate = value;
+            get => ProfileScope.Authenticate;
+            set => ProfileScope.Authenticate = value;
         }
 
         [NotNull]
         public AuthenticationManager AuthManager {
-            get => m_handler.AuthManager;
-            set => m_handler.AuthManager = value;
+            get => ProfileScope.AuthManager;
+            set => ProfileScope.AuthManager = value;
         }
 
         [NotNull]
@@ -71,7 +73,7 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Path.Combine(SaveSystemCore.ProfilesFolder, value);
+                string newDir = Path.Combine(SaveSystemCore.ProfilesFolder, value.ToLower().Replace(' ', '-'));
 
                 if (string.Equals(m_dataFolder, newDir))
                     return;
@@ -85,24 +87,51 @@ namespace SaveSystem {
             }
         }
 
-        internal string DataPath => Path.Combine(DataFolder, $"{m_name}.profiledata");
+        [NotNull]
+        internal string ScenesFolder {
+            get {
+                if (string.IsNullOrEmpty(m_scenesFolder)) {
+                    m_scenesFolder = Path.Combine(DataFolder, "_scenes");
+                    Directory.CreateDirectory(m_scenesFolder);
+                }
+
+                return m_scenesFolder;
+            }
+        }
+
+        [NotNull]
+        internal SceneSerializationContext SceneContext {
+            get => m_sceneContext;
+            set {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(SceneContext));
+                m_sceneContext = value;
+                ProfileScope.AttachNestedScope(m_sceneContext.SceneScope);
+            }
+        }
+
+        internal SerializationScope ProfileScope { get; }
+
+        private string DataPath {
+            get => ProfileScope.DataPath;
+            set => ProfileScope.DataPath = value;
+        }
 
         private string m_name;
         private string m_dataFolder;
-        private readonly SerializationScope m_serializationScope;
-        private readonly SaveDataHandler m_handler;
+        private string m_scenesFolder;
+        private SceneSerializationContext m_sceneContext;
 
 
         protected SaveProfile () {
-            m_handler = new SaveDataHandler {
-                SerializationScope = m_serializationScope = new SerializationScope()
-            };
+            ProfileScope = new SerializationScope();
         }
 
 
         protected SaveProfile (string name) : this() {
             m_name = name;
             DataFolder = name;
+            DataPath = Path.Combine(DataFolder, $"{name.ToLower().Replace(' ', '-')}.profiledata");
         }
 
 
@@ -115,10 +144,11 @@ namespace SaveSystem {
 
         public virtual void Deserialize (SaveReader reader, int previousVersion) {
             m_name = reader.ReadString();
-            m_serializationScope.Name = $"{m_name} scope";
+            ProfileScope.Name = $"{m_name} scope";
             DataFolder = m_name;
+            DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
 
-            var settings = ResourcesManager.LoadSettings();
+            SaveSystemSettings settings = ResourcesManager.LoadSettings();
 
             Encrypt = reader.Read<bool>();
 
@@ -136,7 +166,7 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            m_serializationScope.WriteData(key, value);
+            ProfileScope.WriteData(key, value);
         }
 
 
@@ -145,13 +175,13 @@ namespace SaveSystem {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_serializationScope.ReadData(key, defaultValue);
+            return ProfileScope.ReadData(key, defaultValue);
         }
 
 
         /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
         public void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
-            m_serializationScope.RegisterSerializable(key, serializable);
+            ProfileScope.RegisterSerializable(key, serializable);
         }
 
 
@@ -159,28 +189,12 @@ namespace SaveSystem {
         public void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
-            m_serializationScope.RegisterSerializables(key, serializables);
+            ProfileScope.RegisterSerializables(key, serializables);
         }
 
 
         public override string ToString () {
             return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, DataPath)}";
-        }
-
-
-        internal async UniTask SaveProfileData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_handler.SaveData(DataPath, token),
-                Name, "Profile saving canceled", token: token
-            );
-        }
-
-
-        internal async UniTask LoadProfileData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_handler.LoadData(DataPath, token),
-                Name, "Profile loading canceled", token: token
-            );
         }
 
 
@@ -198,7 +212,7 @@ namespace SaveSystem {
 
 
         internal void Clear () {
-            m_serializationScope.Clear();
+            ProfileScope.Clear();
         }
 
     }

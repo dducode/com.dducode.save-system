@@ -42,7 +42,6 @@
 
                 m_globalScope.Clear();
                 m_globalScope = null;
-                m_handler = null;
                 DiagnosticService.Clear();
 
                 Application.quitting -= ResetOnExit;

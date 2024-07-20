@@ -20,21 +20,6 @@ namespace SaveSystem.Internal {
             }
         }
 
-
-        public static async UniTask<TResult> Execute<TResult> (
-            Func<UniTask<TResult>> task, string sender, string onCancelMessage,
-            Object context = null, CancellationToken token = default
-        ) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await task();
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(sender, onCancelMessage, context);
-                return default;
-            }
-        }
-
     }
 
 }

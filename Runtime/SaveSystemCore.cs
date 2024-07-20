@@ -54,6 +54,16 @@ namespace SaveSystem {
             }
         }
 
+        internal static SceneSerializationContext SceneContext {
+            get => m_sceneContext;
+            set {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(SceneContext));
+                m_sceneContext = value;
+                m_globalScope.AttachNestedScope(m_sceneContext.SceneScope);
+            }
+        }
+
         // Common settings
         private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
@@ -67,7 +77,6 @@ namespace SaveSystem {
         private static CancellationTokenSource m_exitCancellation;
 
         private static SerializationScope m_globalScope;
-        private static SaveDataHandler m_handler;
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
@@ -78,6 +87,7 @@ namespace SaveSystem {
     #endif
 
         private static readonly SynchronizationPoint SynchronizationPoint = new();
+        private static SceneSerializationContext m_sceneContext;
 
         private static string m_profilesFolder;
         private static string m_scenesFolder;
@@ -128,7 +138,7 @@ namespace SaveSystem {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            DataPath = Storage.PrepareBeforeUsing(settings.dataPath);
+            DataPath = settings.dataPath;
         }
 
 
@@ -281,7 +291,7 @@ namespace SaveSystem {
             }
             else {
                 OnSaveStart?.Invoke(SaveType.OnExit);
-                SaveObjects().ContinueWith(Continuation).Forget();
+                SaveData().ContinueWith(Continuation).Forget();
                 return false;
             }
 
@@ -317,7 +327,7 @@ namespace SaveSystem {
 
         private static async UniTask CommonSavingTask (SaveType saveType, CancellationToken token) {
             OnSaveStart?.Invoke(saveType);
-            HandlingResult result = await SaveObjects(token);
+            HandlingResult result = await SaveData(token);
             OnSaveEnd?.Invoke(saveType);
 
             LogResult(saveType, result);
@@ -334,14 +344,10 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask<HandlingResult> SaveObjects (CancellationToken token = default) {
+        private static async UniTask<HandlingResult> SaveData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SaveGlobalData(token);
-
-                if (m_selectedSaveProfile != null)
-                    await m_selectedSaveProfile.SaveProfileData(token);
-
+                await m_globalScope.Serialize(token);
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -351,42 +357,16 @@ namespace SaveSystem {
         }
 
 
-        private static async UniTask<HandlingResult> LoadObjects (CancellationToken token = default) {
+        private static async UniTask<HandlingResult> LoadData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await LoadGlobalData(token);
-
-                if (m_selectedSaveProfile != null)
-                    await m_selectedSaveProfile.LoadProfileData(token);
-
+                await m_globalScope.Deserialize(token);
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
                 return HandlingResult.Canceled;
             }
-        }
-
-
-        /// <summary>
-        /// Start saving of objects in the global scope and wait it
-        /// </summary>
-        private static async UniTask SaveGlobalData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_handler.SaveData(DataPath, token),
-                nameof(SaveSystemCore), "Global data saving canceled", token: token
-            );
-        }
-
-
-        /// <summary>
-        /// Start loading of objects in the global scope and wait it
-        /// </summary>
-        private static async UniTask LoadGlobalData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_handler.LoadData(DataPath, token),
-                nameof(SaveSystemCore), "Global data loading canceled", token: token
-            );
         }
 
 
