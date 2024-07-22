@@ -1,7 +1,7 @@
 ﻿using System;
-using SaveSystem.Internal.Cryptography;
+using SaveSystemPackage.Internal.Cryptography;
 
-namespace SaveSystem.Security {
+namespace SaveSystemPackage.Security {
 
     [Serializable]
     public class AuthenticationSettings {

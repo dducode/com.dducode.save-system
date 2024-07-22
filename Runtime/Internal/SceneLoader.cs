@@ -1,10 +1,10 @@
 ﻿using System;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Internal.Extensions;
+using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal static class SceneLoader {
 

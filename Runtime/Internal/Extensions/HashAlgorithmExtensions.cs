@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 
-namespace SaveSystem.Internal.Extensions {
+namespace SaveSystemPackage.Internal.Extensions {
 
     internal static class HashAlgorithmExtensions {
 

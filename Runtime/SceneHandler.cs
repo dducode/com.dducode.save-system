@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     public abstract class SceneHandler : MonoBehaviour {
 

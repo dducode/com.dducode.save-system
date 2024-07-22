@@ -1,9 +1,9 @@
 ﻿using System.Text;
-using SaveSystem.Internal.Templates;
-using SaveSystem.Security;
+using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Security;
 using UnityEngine;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     public class SaveSystemSettings : ScriptableObject {
 

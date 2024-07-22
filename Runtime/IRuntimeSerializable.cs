@@ -1,6 +1,6 @@
-﻿using SaveSystem.BinaryHandlers;
+﻿using SaveSystemPackage.BinaryHandlers;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// Implement this for simplifed handling of your objects.

@@ -1,6 +1,6 @@
 ﻿using Cysharp.Threading.Tasks;
 
-namespace SaveSystem.CloudSave {
+namespace SaveSystemPackage.CloudSave {
 
     public interface ICloudStorage {
 

@@ -1,4 +1,4 @@
-﻿namespace SaveSystem {
+﻿namespace SaveSystemPackage {
 
     public interface ISerializationProvider<out TAdapter, in TTarget> where TAdapter : ISerializationAdapter<TTarget> {
 

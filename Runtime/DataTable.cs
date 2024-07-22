@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     public class DataTable : IDisposable {
 
         private const int IVLength = 16;
-        internal static string Path => System.IO.Path.Combine(SaveSystemCore.InternalFolder, "datatable.data");
+        internal static string Path => System.IO.Path.Combine(SaveSystem.InternalFolder, "datatable.data");
 
         public byte[] this [string key] {
             get {

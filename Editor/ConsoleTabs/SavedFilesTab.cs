@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using SaveSystemPackage;
 using UnityEditor;
 using UnityEngine;
 
@@ -54,7 +55,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void DrawFolderEntry (string entryPath) {
-            if (!m_showInternal && entryPath == SaveSystemCore.InternalFolder)
+            if (!m_showInternal && entryPath == SaveSystemPackage.SaveSystem.InternalFolder)
                 return;
 
             m_folders.TryAdd(entryPath, false);

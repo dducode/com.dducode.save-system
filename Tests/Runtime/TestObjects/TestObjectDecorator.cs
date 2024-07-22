@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem.Tests.TestObjects {
+namespace SaveSystemPackage.Tests.TestObjects {
 
     public class TestObjectDecorator<TComponent> where TComponent : Component {
 

@@ -1,10 +1,10 @@
 ﻿#if IN_UNITY_PACKAGES_PROJECT
     using System.IO;
     using NUnit.Framework;
-    using SaveSystem.Security;
+    using SaveSystemPackage.Security;
     using UnityEngine;
 
-    namespace SaveSystem.Tests {
+    namespace SaveSystemPackage.Tests {
 
         public class AuthManagerTests {
 

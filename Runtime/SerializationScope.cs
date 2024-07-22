@@ -6,18 +6,18 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal;
-using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Internal.Templates;
-using SaveSystem.Security;
-using Logger = SaveSystem.Internal.Logger;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Diagnostic;
+using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Security;
+using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
 
 // ReSharper disable SuspiciousTypeConversion.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     internal sealed class SerializationScope {
 

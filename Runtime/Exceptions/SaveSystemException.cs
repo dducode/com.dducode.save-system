@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SaveSystem.Exceptions {
+namespace SaveSystemPackage.Exceptions {
 
     public class SaveSystemException : Exception {
 

@@ -2,15 +2,15 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
-using SaveSystem.Internal.Cryptography;
-using SaveSystem.Internal.Extensions;
-using Logger = SaveSystem.Internal.Logger;
+using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal.Extensions;
+using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystem.Security {
+namespace SaveSystemPackage.Security {
 
     public class Cryptographer {
 

@@ -2,12 +2,12 @@
     using System.IO;
     using System.Threading.Tasks;
     using NUnit.Framework;
-    using SaveSystem.Internal.Cryptography;
-    using SaveSystem.Security;
+    using SaveSystemPackage.Internal.Cryptography;
+    using SaveSystemPackage.Security;
     using UnityEditor;
     using UnityEngine;
 
-    namespace SaveSystem.Tests {
+    namespace SaveSystemPackage.Tests {
 
         public class CryptographerTests {
 

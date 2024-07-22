@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal static class ResourcesManager {
 

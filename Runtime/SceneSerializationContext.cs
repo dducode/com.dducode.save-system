@@ -5,15 +5,15 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 using UnityEngine;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable SuspiciousTypeConversion.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     public sealed class SceneSerializationContext : MonoBehaviour {
 
@@ -64,15 +64,15 @@ namespace SaveSystem {
                 Name = $"{name} scope"
             };
 
-            SaveProfile profile = SaveSystemCore.SelectedSaveProfile;
+            SaveProfile profile = SaveSystem.SelectedSaveProfile;
 
             if (profile == null)
-                SaveSystemCore.SceneContext = this;
+                SaveSystem.SceneContext = this;
             else
                 profile.SceneContext = this;
 
             DataPath = Path.Combine(
-                profile == null ? SaveSystemCore.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
+                profile == null ? SaveSystem.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
             );
 
             Encrypt = encrypt;
@@ -111,7 +111,7 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
         public SceneSerializationContext RegisterSerializable (
             [NotNull] string key, [NotNull] IRuntimeSerializable serializable
         ) {
@@ -120,7 +120,7 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
         public SceneSerializationContext RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {

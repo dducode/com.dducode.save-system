@@ -5,23 +5,20 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.CloudSave;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.CloudSave;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 using UnityEngine;
-using Logger = SaveSystem.Internal.Logger;
-
-#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
-#endif
+using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
-    public static partial class SaveSystemCore {
+    public static partial class SaveSystem {
 
         /// <summary>
         /// Uses for serializing data into a separately file
@@ -162,7 +159,7 @@ namespace SaveSystem {
             SetOnExitPlayModeCallback();
 
             m_exitCancellation = new CancellationTokenSource();
-            Logger.Log(nameof(SaveSystemCore), "Initialized");
+            Logger.Log(nameof(SaveSystem), "Initialized");
         }
 
 
@@ -206,7 +203,7 @@ namespace SaveSystem {
             SynchronizationPoint.ScheduleTask(
                 async token => {
                     await File.WriteAllBytesAsync(path, data, token).AsUniTask();
-                    Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} registered");
+                    Logger.Log(nameof(SaveSystem), $"Profile {{{profile}}} registered");
                 },
                 true
             );
@@ -226,7 +223,7 @@ namespace SaveSystem {
 
             File.Delete(path);
             Directory.Delete(profile.DataFolder, true);
-            Logger.Log(nameof(SaveSystemCore), $"Profile {{{profile}}} deleted");
+            Logger.Log(nameof(SaveSystem), $"Profile {{{profile}}} deleted");
         }
 
 
@@ -249,13 +246,13 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
         public static void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             m_globalScope.RegisterSerializable(key, serializable);
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
         public static void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
@@ -269,7 +266,7 @@ namespace SaveSystem {
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
         public static void ConfigureSettings (SaveSystemSettings settings) {
             SetSettings(settings);
-            Logger.Log(nameof(SaveSystemCore), $"Parameters was configured: {settings}");
+            Logger.Log(nameof(SaveSystem), $"Parameters was configured: {settings}");
         }
 
 
@@ -279,7 +276,7 @@ namespace SaveSystem {
         /// </summary>
         public static void BindKey (KeyCode keyCode) {
             m_quickSaveKey = keyCode;
-            Logger.Log(nameof(SaveSystemCore), $"Key \"{keyCode}\" was bind with quick save");
+            Logger.Log(nameof(SaveSystem), $"Key \"{keyCode}\" was bind with quick save");
         }
     #endif
 
@@ -290,7 +287,7 @@ namespace SaveSystem {
         /// </summary>
         public static void BindAction (InputAction action) {
             m_quickSaveAction = action;
-            Logger.Log(nameof(SaveSystemCore), $"Action \"{action}\" was bind with quick save");
+            Logger.Log(nameof(SaveSystem), $"Action \"{action}\" was bind with quick save");
         }
     #endif
 
@@ -325,7 +322,7 @@ namespace SaveSystem {
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Push to cloud canceled");
+                Logger.LogWarning(nameof(SaveSystem), "Push to cloud canceled");
                 return HandlingResult.Canceled;
             }
         }
@@ -343,7 +340,7 @@ namespace SaveSystem {
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Pull from cloud canceled");
+                Logger.LogWarning(nameof(SaveSystem), "Pull from cloud canceled");
                 return HandlingResult.Canceled;
             }
         }

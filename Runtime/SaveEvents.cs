@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// Defines save events that can be managed by external code

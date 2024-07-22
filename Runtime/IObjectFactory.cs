@@ -1,4 +1,4 @@
-﻿namespace SaveSystem {
+﻿namespace SaveSystemPackage {
 
     public interface IObjectFactory<out TObject> {
 

@@ -1,4 +1,4 @@
-﻿namespace SaveSystem {
+﻿namespace SaveSystemPackage {
 
     /// <summary>
     /// Contains information about the type of saving

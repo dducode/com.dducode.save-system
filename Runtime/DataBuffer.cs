@@ -4,10 +4,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.InteropServices;
-using SaveSystem.BinaryHandlers;
+using SaveSystemPackage.BinaryHandlers;
 
 // ReSharper disable UnusedMember.Global
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// The buffer for writing and reading data

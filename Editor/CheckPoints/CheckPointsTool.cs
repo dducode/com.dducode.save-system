@@ -1,5 +1,5 @@
 ﻿using System;
-using SaveSystem.CheckPoints;
+using SaveSystemPackage.CheckPoints;
 using UnityEditor;
 using UnityEditor.EditorTools;
 using UnityEditor.ShortcutManagement;

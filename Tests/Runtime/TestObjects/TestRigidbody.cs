@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SaveSystem.Tests.TestObjects {
+namespace SaveSystemPackage.Tests.TestObjects {
 
     [RequireComponent(typeof(Rigidbody))]
     public class TestRigidbody : MonoBehaviour {

@@ -5,14 +5,14 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     public abstract class SaveProfile : IRuntimeSerializable {
 
@@ -39,7 +39,7 @@ namespace SaveSystem {
                 if (File.Exists(oldPath))
                     File.Move(oldPath, DataPath);
 
-                SaveSystemCore.UpdateProfile(this, oldName, m_name);
+                SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
 
@@ -73,7 +73,7 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Path.Combine(SaveSystemCore.ProfilesFolder, value.ToLower().Replace(' ', '-'));
+                string newDir = Path.Combine(SaveSystem.ProfilesFolder, value.ToLower().Replace(' ', '-'));
 
                 if (string.Equals(m_dataFolder, newDir))
                     return;
@@ -167,13 +167,13 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
         public void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             ProfileScope.RegisterSerializable(key, serializable);
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
         public void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {

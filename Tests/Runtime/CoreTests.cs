@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
-using SaveSystem.CheckPoints;
-using SaveSystem.Internal.Cryptography;
-using SaveSystem.Security;
-using SaveSystem.Tests.TestObjects;
+using SaveSystemPackage.CheckPoints;
+using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Security;
+using SaveSystemPackage.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
@@ -15,7 +15,7 @@ using Debug = UnityEngine.Debug;
 using UnityEngine.InputSystem;
 #endif
 
-namespace SaveSystem.Tests {
+namespace SaveSystemPackage.Tests {
 
     public class CoreTests {
 
@@ -30,8 +30,8 @@ namespace SaveSystem.Tests {
             camera.AddComponent<Camera>();
             camera.transform.position = new Vector3(0, 0, -10);
 
-            SaveSystemCore.EnabledLogs = LogLevel.All;
-            SaveSystemCore.SelectedSaveProfile = new TestSaveProfile();
+            SaveSystem.EnabledLogs = LogLevel.All;
+            SaveSystem.SelectedSaveProfile = new TestSaveProfile();
             Debug.Log("Start test");
         }
 
@@ -40,13 +40,13 @@ namespace SaveSystem.Tests {
         public IEnumerator AutoSave () {
             TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
-            SaveSystemCore.SavePeriod = 1.5f;
-            SaveSystemCore.EnabledSaveEvents = SaveEvents.AutoSave;
+            SaveSystem.SavePeriod = 1.5f;
+            SaveSystem.EnabledSaveEvents = SaveEvents.AutoSave;
 
-            SaveSystemCore.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
+            SaveSystem.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var autoSaveCompleted = false;
-            SaveSystemCore.OnSaveEnd += saveType => {
+            SaveSystem.OnSaveEnd += saveType => {
                 if (saveType == SaveType.AutoSave)
                     autoSaveCompleted = true;
             };
@@ -61,17 +61,17 @@ namespace SaveSystem.Tests {
             TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            SaveSystemCore.BindKey(KeyCode.S);
+            SaveSystem.BindKey(KeyCode.S);
         #elif ENABLE_INPUT_SYSTEM
             SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
         #else
             #error Compile error: no unity inputs enabled
         #endif
 
-            SaveSystemCore.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
+            SaveSystem.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var quickSaveCompleted = false;
-            SaveSystemCore.OnSaveEnd += saveType => {
+            SaveSystem.OnSaveEnd += saveType => {
                 if (saveType == SaveType.QuickSave)
                     quickSaveCompleted = true;
             };
@@ -89,13 +89,13 @@ namespace SaveSystem.Tests {
             sphere.transform.position = Vector3.up * 10;
             sphere.tag = sphereTag;
 
-            SaveSystemCore.PlayerTag = sphereTag;
+            SaveSystem.PlayerTag = sphereTag;
 
-            SaveSystemCore.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
+            SaveSystem.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
-            SaveSystemCore.OnSaveEnd += saveType => {
+            SaveSystem.OnSaveEnd += saveType => {
                 if (saveType == SaveType.SaveAtCheckpoint)
                     saveAtCheckpointCompleted = true;
             };
@@ -120,7 +120,7 @@ namespace SaveSystem.Tests {
                     sphere.tag = sphereTag;
             }
 
-            SaveSystemCore.RegisterSerializables(nameof(spheres), spheres);
+            SaveSystem.RegisterSerializables(nameof(spheres), spheres);
             var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
             settings.encryption = false;
             settings.authentication = false;
@@ -128,19 +128,19 @@ namespace SaveSystem.Tests {
             settings.savePeriod = 3;
             settings.enabledLogs = LogLevel.All;
             settings.playerTag = sphereTag;
-            SaveSystemCore.ConfigureSettings(settings);
+            SaveSystem.ConfigureSettings(settings);
 
             var testStopped = false;
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            SaveSystemCore.BindKey(KeyCode.S);
+            SaveSystem.BindKey(KeyCode.S);
         #elif ENABLE_INPUT_SYSTEM
             SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
         #else
             #error Compile error: no unity inputs enabled
         #endif
 
-            SaveSystemCore.OnSaveEnd += saveType => {
+            SaveSystem.OnSaveEnd += saveType => {
                 if (saveType == SaveType.QuickSave)
                     testStopped = true;
             };
@@ -157,8 +157,8 @@ namespace SaveSystem.Tests {
             );
             sphereFactory.CreateObjects(250);
 
-            SaveSystemCore.EnabledSaveEvents = SaveEvents.OnExit;
-            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            SaveSystem.EnabledSaveEvents = SaveEvents.OnExit;
+            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             yield return new WaitForEndOfFrame();
             Application.Quit();
         }
@@ -173,15 +173,15 @@ namespace SaveSystem.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystemCore.Encrypt = true;
-            SaveSystemCore.Cryptographer = new Cryptographer(
+            SaveSystem.Encrypt = true;
+            SaveSystem.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
             );
 
-            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.Save();
+            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystem.Save();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -194,15 +194,15 @@ namespace SaveSystem.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystemCore.Encrypt = true;
-            SaveSystemCore.Cryptographer = new Cryptographer(
+            SaveSystem.Encrypt = true;
+            SaveSystem.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
             );
 
-            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.Load();
+            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystem.Load();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -214,11 +214,11 @@ namespace SaveSystem.Tests {
             );
             sphereFactory.CreateObjects(250);
 
-            SaveSystemCore.Authenticate = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Authenticate = true;
+            SaveSystem.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
-            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.Save();
+            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystem.Save();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -229,11 +229,11 @@ namespace SaveSystem.Tests {
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
-            SaveSystemCore.Authenticate = true;
-            SaveSystemCore.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Authenticate = true;
+            SaveSystem.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
-            SaveSystemCore.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystemCore.Load();
+            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            await SaveSystem.Load();
             await UniTask.WaitForSeconds(1);
 
             PlayerPrefs.DeleteKey(AuthHashKey);
@@ -247,16 +247,16 @@ namespace SaveSystem.Tests {
             public async Task WriteToDataBuffer () {
                 var factory = new TestObjectFactory(PrimitiveType.Sphere);
                 TestObject testObject = factory.CreateObject();
-                SaveSystemCore.WriteData("position", testObject.transform.position);
+                SaveSystem.WriteData("position", testObject.transform.position);
                 Debug.Log(testObject.transform.position);
-                await SaveSystemCore.Save();
+                await SaveSystem.Save();
             }
 
 
             [Test, Order(1)]
             public async Task ReadFromDataBuffer () {
-                await SaveSystemCore.Load();
-                Debug.Log(SaveSystemCore.ReadData<Vector3>("position"));
+                await SaveSystem.Load();
+                Debug.Log(SaveSystem.ReadData<Vector3>("position"));
             }
 
         }

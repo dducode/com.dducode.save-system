@@ -4,8 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal sealed class SynchronizationPoint {
 

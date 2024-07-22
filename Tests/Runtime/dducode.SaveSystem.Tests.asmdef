@@ -1,6 +1,6 @@
 {
     "name": "SaveSystem.Tests",
-    "rootNamespace": "SaveSystem.Tests",
+    "rootNamespace": "SaveSystemPackage.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",

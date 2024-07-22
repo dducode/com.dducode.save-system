@@ -1,7 +1,9 @@
 {
     "name": "SaveSystem.Editor",
-    "rootNamespace": "SaveSystem.Editor",
-    "references": ["GUID:6fb5746aaca12424eb11949f8b822c54"],
+    "rootNamespace": "SaveSystemPackage.Editor",
+    "references": [
+        "GUID:6fb5746aaca12424eb11949f8b822c54"
+    ],
     "includePlatforms": [
         "Editor"
     ],

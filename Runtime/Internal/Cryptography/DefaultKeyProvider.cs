@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Security.Cryptography;
 using System.Text;
-using SaveSystem.Security;
+using SaveSystemPackage.Security;
 
-namespace SaveSystem.Internal.Cryptography {
+namespace SaveSystemPackage.Internal.Cryptography {
 
     internal class DefaultKeyProvider : IKeyProvider {
 

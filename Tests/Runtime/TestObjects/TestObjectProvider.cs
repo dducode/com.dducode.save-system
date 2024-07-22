@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Tests.TestObjects {
+﻿namespace SaveSystemPackage.Tests.TestObjects {
 
     public class TestObjectProvider : ISerializationProvider<TestObjectAdapter, TestObject> {
 

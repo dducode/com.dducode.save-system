@@ -2,31 +2,28 @@
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.CloudSave;
-using SaveSystem.Internal;
-using SaveSystem.Internal.Templates;
-using SaveSystem.Security;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.CloudSave;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Security;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using Logger = SaveSystem.Internal.Logger;
+using Logger = SaveSystemPackage.Internal.Logger;
 using MemoryStream = System.IO.MemoryStream;
-
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 // ReSharper disable SuspiciousTypeConversion.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// The Core of the Save System. It accepts <see cref="DynamicObjectGroup{TDynamic}">object group</see>
     /// and starts saving in three main modes - autosave, quick-save and save at checkpoint.
     /// Also it starts the saving when the player exit the game
     /// </summary>
-    public static partial class SaveSystemCore {
+    public static partial class SaveSystem {
 
         private const string AllProfilesFile = "all-profiles.data";
 
@@ -108,14 +105,14 @@ namespace SaveSystem {
         private static void SetPlayerLoop () {
             PlayerLoopSystem modifiedLoop = PlayerLoop.GetCurrentPlayerLoop();
             var saveSystemLoop = new PlayerLoopSystem {
-                type = typeof(SaveSystemCore),
+                type = typeof(SaveSystem),
                 updateDelegate = UpdateSystem
             };
 
             if (PlayerLoopManager.TryInsertSubSystem(ref modifiedLoop, saveSystemLoop, typeof(PreLateUpdate)))
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
-                Logger.LogError(nameof(SaveSystemCore), $"Failed insert system: {saveSystemLoop}");
+                Logger.LogError(nameof(SaveSystem), $"Failed insert system: {saveSystemLoop}");
         }
 
 
@@ -123,7 +120,7 @@ namespace SaveSystem {
             if (settings == null) {
                 settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
                 Debug.LogWarning(Logger.FormattedMessage(
-                    nameof(SaveSystemCore), Messages.SettingsNotFound
+                    nameof(SaveSystem), Messages.SettingsNotFound
                 ));
             }
 
@@ -150,7 +147,7 @@ namespace SaveSystem {
         private static void SetEncryptionSettings (SaveSystemSettings settings) {
             if (settings.encryptionSettings == null) {
                 if (settings.encryption)
-                    Logger.LogError(nameof(SaveSystemCore), "Encryption enabled but settings not set");
+                    Logger.LogError(nameof(SaveSystem), "Encryption enabled but settings not set");
                 return;
             }
 
@@ -165,7 +162,7 @@ namespace SaveSystem {
         private static void SetAuthSettings (SaveSystemSettings settings) {
             if (settings.authenticationSettings == null) {
                 if (settings.authentication)
-                    Logger.LogError(nameof(SaveSystemCore), "Authentication enabled but settings not set");
+                    Logger.LogError(nameof(SaveSystem), "Authentication enabled but settings not set");
                 return;
             }
 
@@ -286,7 +283,7 @@ namespace SaveSystem {
             m_exitCancellation.Cancel();
 
             if (Application.isEditor) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Saving before the quitting is not supported in the editor");
+                Logger.LogWarning(nameof(SaveSystem), "Saving before the quitting is not supported in the editor");
                 return m_savedBeforeExit = true;
             }
             else {
@@ -299,11 +296,11 @@ namespace SaveSystem {
                 OnSaveEnd?.Invoke(SaveType.OnExit);
                 m_savedBeforeExit = true;
                 if (result is HandlingResult.Success)
-                    Logger.Log(nameof(SaveSystemCore), "Successful saving before the quitting");
+                    Logger.Log(nameof(SaveSystem), "Successful saving before the quitting");
                 else if (result is HandlingResult.Canceled)
-                    Logger.LogWarning(nameof(SaveSystemCore), "The saving before the quitting was canceled");
+                    Logger.LogWarning(nameof(SaveSystem), "The saving before the quitting was canceled");
                 else if (result is HandlingResult.Error)
-                    Logger.LogError(nameof(SaveSystemCore), "Some error was occured");
+                    Logger.LogError(nameof(SaveSystem), "Some error was occured");
                 Application.Quit();
             }
         }
@@ -336,11 +333,11 @@ namespace SaveSystem {
 
         private static void LogResult (SaveType saveType, HandlingResult result) {
             if (result is HandlingResult.Success)
-                Logger.Log(nameof(SaveSystemCore), $"{saveType}: success");
+                Logger.Log(nameof(SaveSystem), $"{saveType}: success");
             else if (result is HandlingResult.Canceled)
-                Logger.LogWarning(nameof(SaveSystemCore), $"{saveType}: canceled");
+                Logger.LogWarning(nameof(SaveSystem), $"{saveType}: canceled");
             else if (result is HandlingResult.Error)
-                Logger.LogError(nameof(SaveSystemCore), $"{saveType}: error");
+                Logger.LogError(nameof(SaveSystem), $"{saveType}: error");
         }
 
 
@@ -351,7 +348,7 @@ namespace SaveSystem {
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Saving operation canceled");
+                Logger.LogWarning(nameof(SaveSystem), "Saving operation canceled");
                 return HandlingResult.Canceled;
             }
         }
@@ -364,7 +361,7 @@ namespace SaveSystem {
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystemCore), "Loading operation canceled");
+                Logger.LogWarning(nameof(SaveSystem), "Loading operation canceled");
                 return HandlingResult.Canceled;
             }
         }

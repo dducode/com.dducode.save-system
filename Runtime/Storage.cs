@@ -3,7 +3,7 @@ using UnityEngine;
 
 // ReSharper disable UnusedMember.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// Use this class to get information about data

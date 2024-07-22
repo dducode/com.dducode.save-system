@@ -1,13 +1,13 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem.CheckPoints {
+namespace SaveSystemPackage.CheckPoints {
 
     [AddComponentMenu("Scripts/Check Point")]
     [RequireComponent(typeof(SphereCollider))]
     public class CheckPoint : CheckPointBase {
 
         private void OnTriggerEnter (Collider other) {
-            SaveSystemCore.SaveAtCheckpoint(other);
+            SaveSystem.SaveAtCheckpoint(other);
         }
 
     }
