@@ -59,7 +59,7 @@ namespace SaveSystemPackage {
             using (var reader = new SaveReader(new MemoryStream(buffer))) {
                 var rows = reader.Read<int>();
                 for (var i = 0; i < rows; i++)
-                    table.Add(reader.ReadString(), reader.ReadArray<byte>());
+                    table.Add(Encoding.ASCII.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
             }
 
             return table;
@@ -89,7 +89,7 @@ namespace SaveSystemPackage {
                 writer.Write(m_map.Count);
 
                 foreach ((string key, byte[] bytes) in m_map) {
-                    writer.Write(key);
+                    writer.Write(Encoding.ASCII.GetBytes(key));
                     writer.Write(bytes);
                 }
 
