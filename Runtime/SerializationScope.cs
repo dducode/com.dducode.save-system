@@ -107,6 +107,32 @@ namespace SaveSystemPackage {
         }
 
 
+        internal void WriteData<TValue> ([NotNull] string key, TValue[] array) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_dataBuffer.Write(key, array);
+        }
+
+
+        internal void WriteData ([NotNull] string key, [NotNull] string value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentNullException(nameof(value));
+
+            m_dataBuffer.Write(key, value);
+        }
+
+
+        internal void WriteData ([NotNull] string key, MeshData meshData) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_dataBuffer.Write(key, meshData);
+        }
+
+
         [Pure]
         internal TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default)
             where TValue : unmanaged {
@@ -114,6 +140,33 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             return m_dataBuffer.Count == 0 ? defaultValue : m_dataBuffer.Get(key, defaultValue);
+        }
+
+
+        [Pure]
+        internal TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_dataBuffer.Count == 0 ? Array.Empty<TValue>() : m_dataBuffer.GetArray<TValue>(key);
+        }
+
+
+        [Pure]
+        internal string ReadData ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_dataBuffer.Count == 0 ? defaultValue : m_dataBuffer.GetString(key, defaultValue);
+        }
+
+
+        [Pure]
+        internal MeshData ReadMeshData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_dataBuffer.Count == 0 ? default : m_dataBuffer.GetMeshData(key);
         }
 
 

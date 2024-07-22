@@ -16,6 +16,8 @@ using UnityEngine;
 
 namespace SaveSystemPackage {
 
+    [AddComponentMenu("Save System/Scene Serialization Context")]
+    [DisallowMultipleComponent]
     public sealed class SceneSerializationContext : MonoBehaviour {
 
         [SerializeField]
@@ -83,7 +85,7 @@ namespace SaveSystemPackage {
 
         private void OnValidate () {
             if (string.IsNullOrEmpty(fileName))
-                fileName = gameObject.scene.name;
+                fileName = gameObject.scene.name.ToLower().Replace(' ', '-');
         }
 
 
