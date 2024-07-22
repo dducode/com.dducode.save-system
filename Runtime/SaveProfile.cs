@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -164,20 +163,6 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             return ProfileScope.ReadData(key, defaultValue);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
-        public void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
-            ProfileScope.RegisterSerializable(key, serializable);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
-        public void RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
-        ) {
-            ProfileScope.RegisterSerializables(key, serializables);
         }
 
 

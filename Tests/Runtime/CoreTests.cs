@@ -23,12 +23,15 @@ namespace SaveSystemPackage.Tests {
         private const string SaltKey = "salt";
         private const string AuthHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
 
+        private SceneSerializationContext m_sceneContext;
+
 
         [SetUp]
         public void Start () {
             var camera = new GameObject();
             camera.AddComponent<Camera>();
             camera.transform.position = new Vector3(0, 0, -10);
+            m_sceneContext = new GameObject("Scene Serialization Context").AddComponent<SceneSerializationContext>();
 
             SaveSystem.EnabledLogs = LogLevel.All;
             SaveSystem.SelectedSaveProfile = new TestSaveProfile();
@@ -43,7 +46,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.SavePeriod = 1.5f;
             SaveSystem.EnabledSaveEvents = SaveEvents.AutoSave;
 
-            SaveSystem.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
+            m_sceneContext.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var autoSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
@@ -68,7 +71,7 @@ namespace SaveSystemPackage.Tests {
             #error Compile error: no unity inputs enabled
         #endif
 
-            SaveSystem.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
+            m_sceneContext.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var quickSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
@@ -91,7 +94,7 @@ namespace SaveSystemPackage.Tests {
 
             SaveSystem.PlayerTag = sphereTag;
 
-            SaveSystem.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
+            m_sceneContext.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -120,7 +123,7 @@ namespace SaveSystemPackage.Tests {
                     sphere.tag = sphereTag;
             }
 
-            SaveSystem.RegisterSerializables(nameof(spheres), spheres);
+            m_sceneContext.RegisterSerializables(nameof(spheres), spheres);
             var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
             settings.encryption = false;
             settings.authentication = false;
@@ -158,7 +161,7 @@ namespace SaveSystemPackage.Tests {
             sphereFactory.CreateObjects(250);
 
             SaveSystem.EnabledSaveEvents = SaveEvents.OnExit;
-            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             yield return new WaitForEndOfFrame();
             Application.Quit();
         }
@@ -180,7 +183,7 @@ namespace SaveSystemPackage.Tests {
                 generationParams
             );
 
-            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Save();
             await UniTask.WaitForSeconds(1);
         }
@@ -201,7 +204,7 @@ namespace SaveSystemPackage.Tests {
                 generationParams
             );
 
-            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Load();
             await UniTask.WaitForSeconds(1);
         }
@@ -217,7 +220,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Authenticate = true;
             SaveSystem.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
-            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Save();
             await UniTask.WaitForSeconds(1);
         }
@@ -232,7 +235,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Authenticate = true;
             SaveSystem.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
-            SaveSystem.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Load();
             await UniTask.WaitForSeconds(1);
 

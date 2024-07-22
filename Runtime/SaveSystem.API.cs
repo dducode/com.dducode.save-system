@@ -246,20 +246,6 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
-        public static void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
-            m_globalScope.RegisterSerializable(key, serializable);
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
-        public static void RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
-        ) {
-            m_globalScope.RegisterSerializables(key, serializables);
-        }
-
-
         /// <summary>
         /// Configures all the Core parameters
         /// </summary>
