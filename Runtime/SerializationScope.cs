@@ -50,9 +50,8 @@ namespace SaveSystemPackage {
                 m_encrypt = value;
 
                 if (m_encrypt && Cryptographer == null) {
-                    Cryptographer = new Cryptographer(
-                        ResourcesManager.LoadSettings().encryptionSettings
-                    );
+                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+                    Cryptographer = new Cryptographer(settings.encryptionSettings);
                 }
             }
         }
@@ -69,9 +68,8 @@ namespace SaveSystemPackage {
                 m_authenticate = value;
 
                 if (m_authenticate && AuthManager == null) {
-                    AuthManager = new AuthenticationManager(
-                        ResourcesManager.LoadSettings().authenticationSettings
-                    );
+                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+                    AuthManager = new AuthenticationManager(settings.authenticationSettings);
                 }
             }
         }

@@ -97,8 +97,11 @@ namespace SaveSystemPackage {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void AutoInit () {
             SaveSystemSettings settings = ResourcesManager.LoadSettings();
-            if (settings != null && settings.automaticInitialize)
+
+            if (settings != null && settings.automaticInitialize) {
+                settings.Dispose();
                 Initialize();
+            }
         }
 
 
@@ -128,6 +131,7 @@ namespace SaveSystemPackage {
             SetCheckpointsSettings(settings);
             SetEncryptionSettings(settings);
             SetAuthSettings(settings);
+            settings.Dispose();
         }
 
 

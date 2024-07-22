@@ -135,15 +135,13 @@ namespace SaveSystemPackage {
             DataFolder = m_name;
             DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
 
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
+            using SaveSystemSettings settings = ResourcesManager.LoadSettings();
 
             Encrypt = reader.Read<bool>();
-
             if (Encrypt)
                 Cryptographer = new Cryptographer(settings.encryptionSettings);
 
             Authenticate = reader.Read<bool>();
-
             if (Authenticate)
                 AuthManager = new AuthenticationManager(settings.authenticationSettings);
         }
