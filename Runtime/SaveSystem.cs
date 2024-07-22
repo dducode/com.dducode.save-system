@@ -371,7 +371,7 @@ namespace SaveSystemPackage {
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             if (File.Exists(DataPath)) {
-                cloudStorage.Push(new StorageData(
+                await cloudStorage.Push(new StorageData(
                     await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
                 );
             }
@@ -381,7 +381,7 @@ namespace SaveSystemPackage {
                 await PushProfiles(cloudStorage, paths, token);
 
             if (File.Exists(DataTable.Path)) {
-                cloudStorage.Push(new StorageData(
+                await cloudStorage.Push(new StorageData(
                     await File.ReadAllBytesAsync(DataTable.Path, token), Path.GetFileName(DataTable.Path))
                 );
             }
@@ -409,7 +409,7 @@ namespace SaveSystemPackage {
                 writer.Write(await profile.ExportProfileData(token));
             }
 
-            cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllProfilesFile));
+            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllProfilesFile));
         }
 
 
