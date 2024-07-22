@@ -143,7 +143,7 @@ namespace SaveSystemPackage {
             writer.Write(buffer.Count);
 
             foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.ASCII.GetBytes(key));
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key]);
             }
         }
@@ -154,7 +154,7 @@ namespace SaveSystemPackage {
             var buffer = new Dictionary<string, byte[]>();
 
             for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.ASCII.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
 
             return buffer;
         }
@@ -164,7 +164,7 @@ namespace SaveSystemPackage {
             writer.Write(buffer.Count);
 
             foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.ASCII.GetBytes(key));
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key].Key);
                 writer.Write(buffer[key].Value);
             }
@@ -176,7 +176,7 @@ namespace SaveSystemPackage {
             var buffer = new Dictionary<string, KeyValuePair<int, byte[]>>();
 
             for (var i = 0; i < count; i++) {
-                string key = Encoding.ASCII.GetString(reader.ReadArray<byte>());
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 var length = reader.Read<int>();
                 byte[] array = reader.ReadArray<byte>();
                 buffer.Add(key, new KeyValuePair<int, byte[]>(length, array));
@@ -190,7 +190,7 @@ namespace SaveSystemPackage {
             writer.Write(buffer.Count);
 
             foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.ASCII.GetBytes(key));
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key]);
             }
         }
@@ -201,7 +201,7 @@ namespace SaveSystemPackage {
             var buffer = new Dictionary<string, MeshData>();
 
             for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.ASCII.GetString(reader.ReadArray<byte>()), reader.ReadMeshData());
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadMeshData());
 
             return buffer;
         }
@@ -211,7 +211,7 @@ namespace SaveSystemPackage {
             writer.Write(buffer.Count);
 
             foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.ASCII.GetBytes(key));
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key]);
             }
         }
@@ -222,7 +222,7 @@ namespace SaveSystemPackage {
 
             var buffer = new Dictionary<string, string>();
             for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.ASCII.GetString(reader.ReadArray<byte>()), reader.ReadString());
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadString());
 
             return buffer;
         }

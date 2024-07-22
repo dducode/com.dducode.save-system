@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
@@ -254,7 +255,7 @@ namespace SaveSystemPackage {
 
         private void SerializeObjects (SaveWriter writer) {
             foreach ((string key, IRuntimeSerializable serializable) in m_serializables) {
-                writer.Write(key);
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(serializable.Version);
                 serializable.Serialize(writer);
             }
@@ -262,8 +263,10 @@ namespace SaveSystemPackage {
 
 
         private void DeserializeObjects (SaveReader reader) {
-            foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables)
-                m_serializables[reader.ReadString()].Deserialize(reader, reader.Read<int>());
+            foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
+                m_serializables[key].Deserialize(reader, reader.Read<int>());
+            }
         }
 
     }
