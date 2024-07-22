@@ -5,6 +5,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 using UnityEngine;
@@ -75,16 +76,8 @@ namespace SaveSystemPackage {
                 profile == null ? SaveSystem.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
             );
 
-            Encrypt = encrypt;
-            Authenticate = authentication;
-
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-            if (Encrypt)
-                Cryptographer = new Cryptographer(settings.encryptionSettings);
-
-            if (Authenticate)
-                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+            SetupSettings();
+            RegisterRecorders();
         }
 
 
@@ -120,7 +113,7 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string, IEnumerable{IRuntimeSerializable})"/>
         public SceneSerializationContext RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
@@ -160,6 +153,36 @@ namespace SaveSystemPackage {
 
         internal void Clear () {
             SceneScope.Clear();
+        }
+
+
+        private void SetupSettings () {
+            Encrypt = encrypt;
+            Authenticate = authentication;
+
+            using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+
+            if (Encrypt)
+                Cryptographer = new Cryptographer(settings.encryptionSettings);
+
+            if (Authenticate)
+                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+        }
+
+
+        private void RegisterRecorders () {
+            RegisterSerializables(
+                "transform-recorders",
+                FindObjectsByType<TransformRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
+            );
+            RegisterSerializables(
+                "rigidbody-recorders",
+                FindObjectsByType<RigidbodyRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
+            );
+            RegisterSerializables(
+                "mesh-filter-recorders",
+                FindObjectsByType<MeshFilterRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
+            );
         }
 
     }

@@ -1,10 +1,9 @@
-﻿using SaveSystemPackage;
-using SaveSystemPackage.Internal;
+﻿using SaveSystemPackage.Internal;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     internal class SaveSystemSettingsProvider {
 

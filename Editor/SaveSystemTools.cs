@@ -1,7 +1,6 @@
-﻿using SaveSystemPackage;
-using UnityEditor;
+﻿using UnityEditor;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     internal static class SaveSystemTools {
 

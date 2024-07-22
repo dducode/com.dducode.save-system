@@ -37,9 +37,11 @@ namespace SaveSystemPackage {
             byte[] data = File.ReadAllBytes(Path);
             byte[] buffer;
 
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-            string password = settings.authenticationSettings.dataTablePassword;
-            ResourcesManager.UnloadSettings(settings);
+            string password;
+
+            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+                password = settings.authenticationSettings.dataTablePassword;
+            }
 
             using var aes = Aes.Create();
             byte[] key = GetKey(password);
@@ -96,9 +98,11 @@ namespace SaveSystemPackage {
                 buffer = memoryStream.ToArray();
             }
 
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-            string password = settings.authenticationSettings.dataTablePassword;
-            ResourcesManager.UnloadSettings(settings);
+            string password;
+
+            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+                password = settings.authenticationSettings.dataTablePassword;
+            }
 
             using (var memoryStream = new MemoryStream()) {
                 byte[] iv = GetIV();

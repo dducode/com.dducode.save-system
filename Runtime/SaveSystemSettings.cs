@@ -1,11 +1,12 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using UnityEngine;
 
 namespace SaveSystemPackage {
 
-    public class SaveSystemSettings : ScriptableObject {
+    public class SaveSystemSettings : ScriptableObject, IDisposable {
 
         public bool automaticInitialize = true;
         public SaveEvents enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnSceneLoad | SaveEvents.OnExit;
@@ -35,6 +36,11 @@ namespace SaveSystemPackage {
             AppendAuthSettings(result);
 
             return result.ToString();
+        }
+
+
+        public void Dispose () {
+            Resources.UnloadAsset(this);
         }
 
 

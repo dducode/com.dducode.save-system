@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Editor {
+﻿namespace SaveSystemPackage.Editor {
 
     internal enum ConsoleTabsNames {
 

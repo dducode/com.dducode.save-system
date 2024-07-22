@@ -1,10 +1,9 @@
 ﻿using System.Linq;
-using SaveSystemPackage;
 using SaveSystemPackage.Internal;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     [CustomEditor(typeof(SceneHandler), true)]
     public class SceneHandlerEditor : UnityEditor.Editor {

@@ -6,7 +6,7 @@ using UnityEditor.ShortcutManagement;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace SaveSystem.Editor.CheckPoints {
+namespace SaveSystemPackage.Editor.CheckPoints {
 
     [EditorTool("Check Points Tool")]
     public class CheckPointsTool : EditorTool {

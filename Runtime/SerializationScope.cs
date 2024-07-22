@@ -156,11 +156,13 @@ namespace SaveSystemPackage {
 
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
-
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
             IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
+
+            if (objects.Length == 0)
+                return;
 
             for (var i = 0; i < objects.Length; i++)
                 m_serializables.Add($"{key}_{i}", objects[i]);

@@ -1,10 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using SaveSystemPackage;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor.ConsoleTabs {
+namespace SaveSystemPackage.Editor.ConsoleTabs {
 
     internal class SavedFilesTab : IConsoleTab {
 

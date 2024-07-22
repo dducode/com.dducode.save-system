@@ -6,7 +6,7 @@ using SaveSystemPackage.Internal.Diagnostic;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor.ConsoleTabs {
+namespace SaveSystemPackage.Editor.ConsoleTabs {
 
     internal class TrackerTab : IConsoleTab {
 

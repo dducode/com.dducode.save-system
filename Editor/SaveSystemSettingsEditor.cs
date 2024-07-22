@@ -1,8 +1,7 @@
-﻿using SaveSystemPackage;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     [CustomEditor(typeof(SaveSystemSettings))]
     public class SaveSystemSettingsEditor : UnityEditor.Editor {

@@ -3,7 +3,7 @@ using SaveSystemPackage.Security;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     [CustomPropertyDrawer(typeof(AuthenticationSettings))]
     public class AuthenticationSettingsEditor : PropertyDrawer {

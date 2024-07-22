@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Editor.ConsoleTabs {
+﻿namespace SaveSystemPackage.Editor.ConsoleTabs {
 
     internal interface IConsoleTab {
 

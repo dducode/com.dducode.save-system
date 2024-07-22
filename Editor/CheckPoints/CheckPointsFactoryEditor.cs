@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor.CheckPoints {
+namespace SaveSystemPackage.Editor.CheckPoints {
 
     internal static class CheckPointsFactoryEditor {
 
