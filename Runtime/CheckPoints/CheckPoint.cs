@@ -2,7 +2,7 @@
 
 namespace SaveSystemPackage.CheckPoints {
 
-    [AddComponentMenu("Scripts/Check Point")]
+    [AddComponentMenu("Save System/Check Point")]
     [RequireComponent(typeof(SphereCollider))]
     public class CheckPoint : CheckPointBase {
 
