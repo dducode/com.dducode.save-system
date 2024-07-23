@@ -51,6 +51,11 @@ namespace SaveSystemPackage.Internal {
         }
 
 
+        internal void Clear () {
+            m_queue.Clear();
+        }
+
+
         private async UniTask WaitCurrentExecution (CancellationToken token = default) {
             while (IsPerformed)
                 await UniTask.Yield(token);

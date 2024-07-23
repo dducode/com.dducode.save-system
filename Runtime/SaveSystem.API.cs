@@ -254,6 +254,7 @@ namespace SaveSystemPackage {
         /// </summary>
         /// <param name="exitCode"> if the exit code is zero, the game will be saved </param>
         public static async UniTask ExitGame (int exitCode = 0) {
+            SynchronizationPoint.Clear();
             m_exitCancellation.Cancel();
             if (exitCode == 0)
                 await SynchronizationPoint.ExecuteTask(async () => await Game.Save());
