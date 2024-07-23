@@ -264,7 +264,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask PushToCloudStorage (
+        private static async UniTask UploadToCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             StorageData gameData = await Game.ExportGameData(token);
@@ -273,7 +273,7 @@ namespace SaveSystemPackage {
 
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
             if (paths.Length > 0)
-                await PushProfiles(cloudStorage, paths, token);
+                await UploadProfiles(cloudStorage, paths, token);
 
             StorageData dataTable = await DataTable.Export(token);
             if (dataTable != null)
@@ -281,7 +281,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask PushProfiles (
+        private static async UniTask UploadProfiles (
             ICloudStorage cloudStorage, string[] paths, CancellationToken token
         ) {
             var memoryStream = new MemoryStream();
@@ -305,7 +305,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask PullFromCloudStorage (
+        private static async UniTask DownloadFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             StorageData gameData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
@@ -314,7 +314,7 @@ namespace SaveSystemPackage {
 
             StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
             if (profiles != null)
-                await PullProfiles(profiles);
+                await DownloadProfiles(profiles);
 
             StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DataTable.Path));
             if (dataTable != null)
@@ -322,7 +322,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask PullProfiles (StorageData profiles) {
+        private static async UniTask DownloadProfiles (StorageData profiles) {
             await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
             string[] paths = reader.ReadStringArray();
 

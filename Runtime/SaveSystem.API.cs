@@ -227,6 +227,9 @@ namespace SaveSystemPackage {
     #endif
 
 
+        /// <summary>
+        /// Save the game and load a scene
+        /// </summary>
         public static async UniTask LoadSceneAsync (
             Func<UniTask> sceneLoading, CancellationToken token = default
         ) {
@@ -235,6 +238,9 @@ namespace SaveSystemPackage {
         }
 
 
+        /// <summary>
+        /// Save the game and load a scene
+        /// </summary>
         public static async UniTask LoadSceneAsync<TData> (
             Func<UniTask> sceneLoading, TData passedData, CancellationToken token = default
         ) {
@@ -243,6 +249,10 @@ namespace SaveSystemPackage {
         }
 
 
+        /// <summary>
+        /// Save the game and exit
+        /// </summary>
+        /// <param name="exitCode"> if the exit code is zero, the game will be saved </param>
         public static async UniTask ExitGame (int exitCode = 0) {
             m_exitCancellation.Cancel();
             if (exitCode == 0)
@@ -256,7 +266,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async UniTask PushToCloud (
+        public static async UniTask UploadToCloud (
             [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             if (cloudStorage == null)
@@ -264,7 +274,7 @@ namespace SaveSystemPackage {
 
             try {
                 token.ThrowIfCancellationRequested();
-                await SynchronizationPoint.ExecuteTask(async () => await PushToCloudStorage(cloudStorage, token));
+                await SynchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(cloudStorage, token));
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystem), "Push to cloud canceled");
@@ -272,7 +282,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async UniTask PullFromCloud (
+        public static async UniTask DownloadFromCloud (
             [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             if (cloudStorage == null)
@@ -280,7 +290,7 @@ namespace SaveSystemPackage {
 
             try {
                 token.ThrowIfCancellationRequested();
-                await SynchronizationPoint.ExecuteTask(async () => await PullFromCloudStorage(cloudStorage, token));
+                await SynchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(cloudStorage, token));
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystem), "Pull from cloud canceled");
