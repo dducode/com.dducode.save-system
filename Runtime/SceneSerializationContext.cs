@@ -7,6 +7,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 using UnityEngine;
 
@@ -85,7 +86,7 @@ namespace SaveSystemPackage {
 
         private void OnValidate () {
             if (string.IsNullOrEmpty(fileName))
-                fileName = gameObject.scene.name.ToLower().Replace(' ', '-');
+                fileName = gameObject.scene.name.ToPathFormat();
         }
 
 

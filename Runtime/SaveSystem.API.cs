@@ -8,6 +8,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -163,50 +164,48 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <summary>
-        /// Get all previously created saving profiles
-        /// </summary>
-        [Pure]
-        public static IEnumerable<TProfile> LoadAllProfiles<TProfile> ()
-            where TProfile : SaveProfile, new() {
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
+        public static SaveProfile CreateProfile ([NotNull] string name, bool encrypt = true, bool authenticate = true) {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
 
-            foreach (string path in paths) {
-                using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                if (reader.ReadString() != typeof(TProfile).AssemblyQualifiedName)
-                    continue;
-
-                var profile = new TProfile();
-                profile.Deserialize(reader, reader.Read<int>());
-                yield return profile;
-            }
+            string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profilemetadata");
+            var profile = new SaveProfile(name, encrypt, authenticate);
+            using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
+            writer.Write(name);
+            writer.Write(encrypt);
+            writer.Write(authenticate);
+            return profile;
         }
 
 
         /// <summary>
-        /// Saves new profile into the internal persistent storage
+        /// Get all previously created saving profiles
         /// </summary>
-        public static void RegisterSaveProfile ([NotNull] SaveProfile profile) {
-            if (profile == null)
-                throw new ArgumentNullException(nameof(profile));
+        [Pure]
+        public static IEnumerable<SaveProfile> LoadAllProfiles () {
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
-            if (File.Exists(path))
-                return;
+            foreach (string path in paths) {
+                using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                yield return new SaveProfile(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+            }
+        }
 
-            var memoryStream = new MemoryStream();
-            using var writer = new SaveWriter(memoryStream);
-            writer.Write(profile.GetType().AssemblyQualifiedName);
-            writer.Write(profile.Version);
-            profile.Serialize(writer);
-            byte[] data = memoryStream.ToArray();
-            SynchronizationPoint.ScheduleTask(
-                async token => {
-                    await File.WriteAllBytesAsync(path, data, token).AsUniTask();
-                    Logger.Log(nameof(SaveSystem), $"Profile {{{profile}}} registered");
-                },
-                true
-            );
+
+        [Pure]
+        public static SaveProfile LoadProfile ([NotNull] string name) {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
+
+            foreach (string path in paths) {
+                using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                if (string.Equals(reader.ReadString(), name))
+                    return new SaveProfile(name, reader.Read<bool>(), reader.Read<bool>());
+            }
+
+            return null;
         }
 
 
@@ -217,7 +216,7 @@ namespace SaveSystemPackage {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.profilemetadata");
             if (!File.Exists(path))
                 return;
 

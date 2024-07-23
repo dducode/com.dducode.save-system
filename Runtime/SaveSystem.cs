@@ -197,20 +197,14 @@ namespace SaveSystemPackage {
 
 
         internal static void UpdateProfile (SaveProfile profile, string oldName, string newName) {
-            var memoryStream = new MemoryStream();
-            using var writer = new SaveWriter(memoryStream);
-            writer.Write(profile.GetType().Name);
-            profile.Serialize(writer);
-            byte[] data = memoryStream.ToArray();
-
-            string path = Path.Combine(InternalFolder, $"{newName}.profile");
+            string path = Path.Combine(InternalFolder, $"{newName}.profilemetadata");
             if (!string.IsNullOrEmpty(oldName))
-                File.Move(Path.Combine(InternalFolder, $"{oldName}.profile"), path);
+                File.Move(Path.Combine(InternalFolder, $"{oldName}.profilemetadata"), path);
 
-            SynchronizationPoint.ScheduleTask(
-                async token => await File.WriteAllBytesAsync(path, data, token).AsUniTask(),
-                true
-            );
+            using var writer = new SaveWriter(File.Open(path, FileMode.Open));
+            writer.Write(newName);
+            writer.Write(profile.Encrypt);
+            writer.Write(profile.Authenticate);
         }
 
 
@@ -380,7 +374,7 @@ namespace SaveSystemPackage {
                 );
             }
 
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
             if (paths.Length > 0)
                 await PushProfiles(cloudStorage, paths, token);
 
@@ -401,15 +395,11 @@ namespace SaveSystemPackage {
 
             foreach (string path in paths) {
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                string type = reader.ReadString();
-                var profile = (SaveProfile)Activator.CreateInstance(
-                    Type.GetType(type) ?? throw new InvalidOperationException($"Unknown profile type: {type}")
-                );
-                profile.Deserialize(reader, reader.Read<int>());
+                var profile = new SaveProfile(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
 
-                writer.Write(type);
-                writer.Write(profile.Version);
-                profile.Serialize(writer);
+                writer.Write(profile.Name);
+                writer.Write(profile.Encrypt);
+                writer.Write(profile.Authenticate);
                 writer.Write(await profile.ExportProfileData(token));
             }
 
@@ -424,7 +414,7 @@ namespace SaveSystemPackage {
             if (globalData != null)
                 await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
 
-            StorageData profiles = await cloudStorage.Pull(Path.GetFileName(AllProfilesFile));
+            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
             if (profiles != null)
                 await PullProfiles(profiles);
 
@@ -440,15 +430,10 @@ namespace SaveSystemPackage {
 
             foreach (string path in paths) {
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-                string type = reader.ReadString();
-                var profile = (SaveProfile)Activator.CreateInstance(
-                    Type.GetType(type) ?? throw new InvalidOperationException($"Unknown profile type: {type}")
-                );
-                profile.Deserialize(reader, reader.Read<int>());
-
-                writer.Write(type);
-                writer.Write(profile.Version);
-                profile.Serialize(writer);
+                var profile = new SaveProfile(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                writer.Write(profile.Name);
+                writer.Write(profile.Encrypt);
+                writer.Write(profile.Authenticate);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }

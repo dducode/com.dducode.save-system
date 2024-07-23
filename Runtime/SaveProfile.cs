@@ -6,6 +6,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 
 // ReSharper disable UnusedMember.Global
@@ -13,9 +14,7 @@ using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage {
 
-    public abstract class SaveProfile : IRuntimeSerializable {
-
-        public virtual int Version => 0;
+    public sealed class SaveProfile {
 
         [NotNull]
         public string Name {
@@ -32,7 +31,7 @@ namespace SaveSystemPackage {
                 ProfileScope.Name = $"{value} scope";
 
                 DataFolder = m_name;
-                DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
+                DataPath = Path.Combine(DataFolder, $"{m_name.ToPathFormat()}.profiledata");
                 string oldPath = Path.Combine(DataFolder, $"{oldName}.profiledata");
 
                 if (File.Exists(oldPath))
@@ -41,7 +40,6 @@ namespace SaveSystemPackage {
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
-
 
         public bool Encrypt {
             get => ProfileScope.Encrypt;
@@ -72,7 +70,7 @@ namespace SaveSystemPackage {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Path.Combine(SaveSystem.ProfilesFolder, value.ToLower().Replace(' ', '-'));
+                string newDir = Path.Combine(SaveSystem.ProfilesFolder, value.ToPathFormat());
 
                 if (string.Equals(m_dataFolder, newDir))
                     return;
@@ -99,9 +97,9 @@ namespace SaveSystemPackage {
 
         internal SerializationScope ProfileScope { get; }
 
-        private string DataPath {
+        internal string DataPath {
             get => ProfileScope.DataPath;
-            set => ProfileScope.DataPath = value;
+            private set => ProfileScope.DataPath = value;
         }
 
         private string m_name;
@@ -110,40 +108,19 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        protected SaveProfile () {
-            ProfileScope = new SerializationScope();
-        }
+        internal SaveProfile ([NotNull] string name, bool encrypt, bool authenticate) {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
 
-
-        protected SaveProfile (string name) : this() {
             m_name = name;
+            ProfileScope = new SerializationScope {
+                Name = $"{m_name} scope"
+            };
             DataFolder = name;
-            DataPath = Path.Combine(DataFolder, $"{name.ToLower().Replace(' ', '-')}.profiledata");
-        }
+            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
 
-
-        public virtual void Serialize (SaveWriter writer) {
-            writer.Write(Name);
-            writer.Write(Encrypt);
-            writer.Write(Authenticate);
-        }
-
-
-        public virtual void Deserialize (SaveReader reader, int previousVersion) {
-            m_name = reader.ReadString();
-            ProfileScope.Name = $"{m_name} scope";
-            DataFolder = m_name;
-            DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
-
-            using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-            Encrypt = reader.Read<bool>();
-            if (Encrypt)
-                Cryptographer = new Cryptographer(settings.encryptionSettings);
-
-            Authenticate = reader.Read<bool>();
-            if (Authenticate)
-                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+            Encrypt = encrypt;
+            Authenticate = authenticate;
         }
 
 
@@ -155,12 +132,66 @@ namespace SaveSystemPackage {
         }
 
 
+        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+
+            ProfileScope.WriteData(key, array);
+        }
+
+
+        public void WriteData ([NotNull] string key, [NotNull] string value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentNullException(nameof(value));
+
+            ProfileScope.WriteData(key, value);
+        }
+
+
         [Pure]
         public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
             return ProfileScope.ReadData(key, defaultValue);
+        }
+
+
+        [Pure]
+        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return ProfileScope.ReadArray<TValue>(key);
+        }
+
+
+        [Pure]
+        public string ReadData ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return ProfileScope.ReadData(key, defaultValue);
+        }
+
+
+        public async UniTask SaveProfileData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
+                async () => await ProfileScope.Serialize(token),
+                Name, "Profile data saving canceled", token: token
+            );
+        }
+
+
+        public async UniTask LoadProfileData (CancellationToken token = default) {
+            await CancelableOperationsHandler.Execute(
+                async () => await ProfileScope.Deserialize(token),
+                Name, "Profile data loading canceled", token: token
+            );
         }
 
 

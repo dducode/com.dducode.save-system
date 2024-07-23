@@ -1,4 +1,5 @@
 ﻿using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -133,7 +134,7 @@ namespace SaveSystemPackage.Editor {
 
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
             if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))
-                m_dataPathProperty.stringValue = $"{Application.productName.ToLower().Replace(' ', '-')}.data";
+                m_dataPathProperty.stringValue = $"{Application.productName.ToPathFormat()}.data";
 
             EditorGUILayout.Space(15);
         }
