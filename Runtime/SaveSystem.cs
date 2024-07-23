@@ -6,7 +6,6 @@ using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Templates;
-using SaveSystemPackage.Security;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.LowLevel;
@@ -51,18 +50,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal static SceneSerializationContext SceneContext {
-            get => m_sceneContext;
-            set {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(SceneContext));
-                m_sceneContext = value;
-                m_globalScope.AttachNestedScope(m_sceneContext.SceneScope);
-            }
-        }
-
         // Common settings
-        private static SaveProfile m_selectedSaveProfile;
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
         private static string m_dataPath;
@@ -73,8 +61,6 @@ namespace SaveSystemPackage {
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
-        private static SerializationScope m_globalScope;
-
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static KeyCode m_quickSaveKey;
     #endif
@@ -84,7 +70,6 @@ namespace SaveSystemPackage {
     #endif
 
         private static readonly SynchronizationPoint SynchronizationPoint = new();
-        private static SceneSerializationContext m_sceneContext;
 
         private static string m_profilesFolder;
         private static string m_scenesFolder;
@@ -139,7 +124,7 @@ namespace SaveSystemPackage {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            DataPath = settings.dataPath;
+            Game.DataPath = settings.dataPath;
         }
 
 
@@ -155,11 +140,8 @@ namespace SaveSystemPackage {
                 return;
             }
 
-            Encrypt = settings.encryption;
-            if (Cryptographer == null)
-                Cryptographer = new Cryptographer(settings.encryptionSettings);
-            else
-                Cryptographer.SetSettings(settings.encryptionSettings);
+            Game.Encrypt = settings.encryption;
+            Game.Cryptographer.SetSettings(settings.encryptionSettings);
         }
 
 
@@ -170,11 +152,8 @@ namespace SaveSystemPackage {
                 return;
             }
 
-            Authenticate = settings.authentication;
-            if (AuthManager == null)
-                AuthManager = new AuthenticationManager(settings.authenticationSettings);
-            else
-                AuthManager.SetSettings(settings.authenticationSettings);
+            Game.Authenticate = settings.authentication;
+            Game.AuthManager.SetSettings(settings.authenticationSettings);
         }
 
 
@@ -342,7 +321,7 @@ namespace SaveSystemPackage {
         private static async UniTask<HandlingResult> SaveData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await m_globalScope.Serialize(token);
+                await Game.SaveGameData(token);
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -355,7 +334,7 @@ namespace SaveSystemPackage {
         private static async UniTask<HandlingResult> LoadData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await m_globalScope.Deserialize(token);
+                await Game.LoadGameData(token);
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -368,9 +347,9 @@ namespace SaveSystemPackage {
         private static async UniTask PushToCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            if (File.Exists(DataPath)) {
+            if (File.Exists(Game.DataPath)) {
                 await cloudStorage.Push(new StorageData(
-                    await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+                    await File.ReadAllBytesAsync(Game.DataPath, token), Path.GetFileName(Game.DataPath))
                 );
             }
 
@@ -410,9 +389,9 @@ namespace SaveSystemPackage {
         private static async UniTask PullFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData globalData = await cloudStorage.Pull(Path.GetFileName(DataPath));
+            StorageData globalData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
             if (globalData != null)
-                await File.WriteAllBytesAsync(DataPath, globalData.rawData, token);
+                await File.WriteAllBytesAsync(Game.DataPath, globalData.rawData, token);
 
             StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
             if (profiles != null)

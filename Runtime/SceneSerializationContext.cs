@@ -68,10 +68,10 @@ namespace SaveSystemPackage {
                 Name = $"{name} scope"
             };
 
-            SaveProfile profile = SaveSystem.SelectedSaveProfile;
+            SaveProfile profile = SaveSystem.Game.SaveProfile;
 
             if (profile == null)
-                SaveSystem.SceneContext = this;
+                SaveSystem.Game.SceneContext = this;
             else
                 profile.SceneContext = this;
 

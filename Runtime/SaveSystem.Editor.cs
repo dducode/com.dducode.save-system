@@ -34,14 +34,7 @@
 
                 m_autoSaveLastTime = 0;
                 m_savedBeforeExit = false;
-
-                if (m_selectedSaveProfile != null) {
-                    m_selectedSaveProfile.Clear();
-                    m_selectedSaveProfile = null;
-                }
-
-                m_globalScope.Clear();
-                m_globalScope = null;
+                Game = null;
                 DiagnosticService.Clear();
 
                 Application.quitting -= ResetOnExit;

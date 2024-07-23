@@ -9,7 +9,6 @@ using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Security;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Logger = SaveSystemPackage.Internal.Logger;
@@ -21,19 +20,7 @@ namespace SaveSystemPackage {
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public static partial class SaveSystem {
 
-        /// <summary>
-        /// Uses for serializing data into a separately file
-        /// </summary>
-        [NotNull]
-        public static SaveProfile SelectedSaveProfile {
-            get => m_selectedSaveProfile;
-            set {
-                m_selectedSaveProfile = value ?? throw new ArgumentNullException(nameof(SelectedSaveProfile));
-                m_globalScope.AttachNestedScope(m_selectedSaveProfile.ProfileScope);
-                if (m_sceneContext != null)
-                    m_selectedSaveProfile.SceneContext = m_sceneContext;
-            }
-        }
+        public static Game Game { get; private set; }
 
         /// <summary>
         /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
@@ -74,20 +61,6 @@ namespace SaveSystemPackage {
         }
 
         /// <summary>
-        /// Set the global data path
-        /// </summary>
-        [NotNull]
-        public static string DataPath {
-            get => m_globalScope.DataPath;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
-
-                m_globalScope.DataPath = Storage.PrepareBeforeUsing(value);
-            }
-        }
-
-        /// <summary>
         /// Player tag is used to filtering messages from triggered checkpoints
         /// </summary>
         /// <value> Tag of the player object </value>
@@ -103,31 +76,6 @@ namespace SaveSystemPackage {
 
                 m_playerTag = value;
             }
-        }
-
-        public static bool Encrypt {
-            get => m_globalScope.Encrypt;
-            set => m_globalScope.Encrypt = value;
-        }
-
-        /// <summary>
-        /// Cryptographer used to encrypt/decrypt serializable data
-        /// </summary>
-        [NotNull]
-        public static Cryptographer Cryptographer {
-            get => m_globalScope.Cryptographer;
-            set => m_globalScope.Cryptographer = value;
-        }
-
-        public static bool Authenticate {
-            get => m_globalScope.Authenticate;
-            set => m_globalScope.Authenticate = value;
-        }
-
-        [NotNull]
-        public static AuthenticationManager AuthManager {
-            get => m_globalScope.AuthManager;
-            set => m_globalScope.AuthManager = value;
         }
 
         /// <summary>
@@ -150,9 +98,7 @@ namespace SaveSystemPackage {
 
 
         public static void Initialize () {
-            m_globalScope = new SerializationScope {
-                Name = "Global scope"
-            };
+            Game = new Game();
 
             SetPlayerLoop();
             SetSettings(ResourcesManager.LoadSettings());
@@ -223,25 +169,6 @@ namespace SaveSystemPackage {
             File.Delete(path);
             Directory.Delete(profile.DataFolder, true);
             Logger.Log(nameof(SaveSystem), $"Profile {{{profile}}} deleted");
-        }
-
-
-        public static void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            m_globalScope.WriteData(key, value);
-        }
-
-
-        [Pure]
-        public static TValue ReadData<TValue> (
-            [NotNull] string key, TValue defaultValue = default
-        ) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_globalScope.ReadData(key, defaultValue);
         }
 
 

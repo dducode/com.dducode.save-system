@@ -34,7 +34,7 @@ namespace SaveSystemPackage.Tests {
             m_sceneContext = new GameObject("Scene Serialization Context").AddComponent<SceneSerializationContext>();
 
             SaveSystem.EnabledLogs = LogLevel.All;
-            SaveSystem.SelectedSaveProfile = SaveSystem.CreateProfile("test-profile");
+            SaveSystem.Game.SaveProfile = SaveSystem.CreateProfile("test-profile");
             Debug.Log("Start test");
         }
 
@@ -176,8 +176,8 @@ namespace SaveSystemPackage.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystem.Encrypt = true;
-            SaveSystem.Cryptographer = new Cryptographer(
+            SaveSystem.Game.Encrypt = true;
+            SaveSystem.Game.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
@@ -197,8 +197,8 @@ namespace SaveSystemPackage.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystem.Encrypt = true;
-            SaveSystem.Cryptographer = new Cryptographer(
+            SaveSystem.Game.Encrypt = true;
+            SaveSystem.Game.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
@@ -217,8 +217,8 @@ namespace SaveSystemPackage.Tests {
             );
             sphereFactory.CreateObjects(250);
 
-            SaveSystem.Authenticate = true;
-            SaveSystem.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Game.Authenticate = true;
+            SaveSystem.Game.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Save();
@@ -232,8 +232,8 @@ namespace SaveSystemPackage.Tests {
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
-            SaveSystem.Authenticate = true;
-            SaveSystem.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Game.Authenticate = true;
+            SaveSystem.Game.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Load();
@@ -250,7 +250,7 @@ namespace SaveSystemPackage.Tests {
             public async Task WriteToDataBuffer () {
                 var factory = new TestObjectFactory(PrimitiveType.Sphere);
                 TestObject testObject = factory.CreateObject();
-                SaveSystem.WriteData("position", testObject.transform.position);
+                SaveSystem.Game.WriteData("position", testObject.transform.position);
                 Debug.Log(testObject.transform.position);
                 await SaveSystem.Save();
             }
@@ -259,7 +259,7 @@ namespace SaveSystemPackage.Tests {
             [Test, Order(1)]
             public async Task ReadFromDataBuffer () {
                 await SaveSystem.Load();
-                Debug.Log(SaveSystem.ReadData<Vector3>("position"));
+                Debug.Log(SaveSystem.Game.ReadData<Vector3>("position"));
             }
 
         }
