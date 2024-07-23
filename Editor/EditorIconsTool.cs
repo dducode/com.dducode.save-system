@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     internal class EditorIconsTool {
 

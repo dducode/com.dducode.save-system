@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace SaveSystem.CloudSave {
+namespace SaveSystemPackage.CloudSave {
 
     public class StorageData {
 

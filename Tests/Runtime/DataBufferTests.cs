@@ -1,10 +1,10 @@
 ﻿using System.IO;
 using System.Text;
 using NUnit.Framework;
-using SaveSystem.BinaryHandlers;
+using SaveSystemPackage.BinaryHandlers;
 using UnityEngine;
 
-namespace SaveSystem.Tests {
+namespace SaveSystemPackage.Tests {
 
     public class DataBufferTests {
 

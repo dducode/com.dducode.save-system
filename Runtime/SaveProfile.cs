@@ -1,22 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
+using SaveSystemPackage.Security;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
-    public abstract class SaveProfile : IRuntimeSerializable {
-
-        public virtual int Version => 0;
+    public sealed class SaveProfile {
 
         [NotNull]
         public string Name {
@@ -33,16 +31,17 @@ namespace SaveSystem {
                 ProfileScope.Name = $"{value} scope";
 
                 DataFolder = m_name;
-                DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
+                DataPath = Path.Combine(DataFolder, $"{m_name.ToPathFormat()}.profiledata");
                 string oldPath = Path.Combine(DataFolder, $"{oldName}.profiledata");
 
                 if (File.Exists(oldPath))
                     File.Move(oldPath, DataPath);
 
-                SaveSystemCore.UpdateProfile(this, oldName, m_name);
+                SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
 
+        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => ProfileScope.Encrypt;
@@ -73,7 +72,7 @@ namespace SaveSystem {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Path.Combine(SaveSystemCore.ProfilesFolder, value.ToLower().Replace(' ', '-'));
+                string newDir = Path.Combine(SaveSystem.ProfilesFolder, value.ToPathFormat());
 
                 if (string.Equals(m_dataFolder, newDir))
                     return;
@@ -93,16 +92,16 @@ namespace SaveSystem {
             set {
                 if (value == null)
                     throw new ArgumentNullException(nameof(SceneContext));
+
                 m_sceneContext = value;
-                ProfileScope.AttachNestedScope(m_sceneContext.SceneScope);
             }
         }
 
-        internal SerializationScope ProfileScope { get; }
+        private SerializationScope ProfileScope { get; }
 
-        private string DataPath {
+        internal string DataPath {
             get => ProfileScope.DataPath;
-            set => ProfileScope.DataPath = value;
+            private set => ProfileScope.DataPath = value;
         }
 
         private string m_name;
@@ -111,42 +110,20 @@ namespace SaveSystem {
         private SceneSerializationContext m_sceneContext;
 
 
-        protected SaveProfile () {
-            ProfileScope = new SerializationScope();
-        }
+        internal SaveProfile ([NotNull] string name, bool autoSave, bool encrypt, bool authenticate) {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
 
-
-        protected SaveProfile (string name) : this() {
             m_name = name;
+            ProfileScope = new SerializationScope {
+                Name = $"{m_name} profile scope"
+            };
             DataFolder = name;
-            DataPath = Path.Combine(DataFolder, $"{name.ToLower().Replace(' ', '-')}.profiledata");
-        }
+            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
 
-
-        public virtual void Serialize (SaveWriter writer) {
-            writer.Write(Name);
-            writer.Write(Encrypt);
-            writer.Write(Authenticate);
-        }
-
-
-        public virtual void Deserialize (SaveReader reader, int previousVersion) {
-            m_name = reader.ReadString();
-            ProfileScope.Name = $"{m_name} scope";
-            DataFolder = m_name;
-            DataPath = Path.Combine(DataFolder, $"{m_name.ToLower().Replace(' ', '-')}.profiledata");
-
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-            Encrypt = reader.Read<bool>();
-
-            if (Encrypt)
-                Cryptographer = new Cryptographer(settings.encryptionSettings);
-
-            Authenticate = reader.Read<bool>();
-
-            if (Authenticate)
-                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+            AutoSave = autoSave;
+            Encrypt = encrypt;
+            Authenticate = authenticate;
         }
 
 
@@ -155,6 +132,35 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(key));
 
             ProfileScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+
+            ProfileScope.WriteData(key, array);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData ([NotNull] string key, [NotNull] string value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentNullException(nameof(value));
+
+            ProfileScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -167,17 +173,45 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
-        public void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
-            ProfileScope.RegisterSerializable(key, serializable);
+        [Pure]
+        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return ProfileScope.ReadArray<TValue>(key);
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
-        public void RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
-        ) {
-            ProfileScope.RegisterSerializables(key, serializables);
+        [Pure]
+        public string ReadData ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return ProfileScope.ReadData(key, defaultValue);
+        }
+
+
+        public async UniTask Save (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await ProfileScope.Serialize(token);
+                if (SceneContext != null)
+                    await SceneContext.Save(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(ProfileScope.Name, "Data saving canceled");
+            }
+        }
+
+
+        public async UniTask Load (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await ProfileScope.Deserialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(ProfileScope.Name, "Data loading canceled");
+            }
         }
 
 
@@ -219,6 +253,11 @@ namespace SaveSystem {
 
         internal void Clear () {
             ProfileScope.Clear();
+        }
+
+
+        private void ScheduleAutoSave () {
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await ProfileScope.Serialize(token), true);
         }
 
     }

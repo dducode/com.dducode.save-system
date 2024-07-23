@@ -1,9 +1,10 @@
-﻿using SaveSystem.Internal;
+﻿using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     internal class SaveSystemSettingsProvider {
 
@@ -128,12 +129,12 @@ namespace SaveSystem.Editor {
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
 
             var saveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
-            if (saveEvents.HasFlag(SaveEvents.AutoSave))
+            if (saveEvents.HasFlag(SaveEvents.PeriodicSave))
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
             if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))
-                m_dataPathProperty.stringValue = $"{Application.productName.ToLower().Replace(' ', '-')}.data";
+                m_dataPathProperty.stringValue = $"{Application.productName.ToPathFormat()}.data";
 
             EditorGUILayout.Space(15);
         }

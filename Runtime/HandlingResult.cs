@@ -1,4 +1,4 @@
-﻿namespace SaveSystem {
+﻿namespace SaveSystemPackage {
 
     /// <summary>
     /// Possible results enumeration of handling

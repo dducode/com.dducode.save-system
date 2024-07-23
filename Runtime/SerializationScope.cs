@@ -4,20 +4,21 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal;
-using SaveSystem.Internal.Diagnostic;
-using SaveSystem.Internal.Templates;
-using SaveSystem.Security;
-using Logger = SaveSystem.Internal.Logger;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Diagnostic;
+using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Security;
+using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
 
 // ReSharper disable SuspiciousTypeConversion.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     internal sealed class SerializationScope {
 
@@ -48,10 +49,13 @@ namespace SaveSystem {
             set {
                 m_encrypt = value;
 
-                if (m_encrypt && Cryptographer == null) {
-                    Cryptographer = new Cryptographer(
-                        ResourcesManager.LoadSettings().encryptionSettings
-                    );
+                if (m_encrypt) {
+                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+
+                    if (Cryptographer == null)
+                        Cryptographer = new Cryptographer(settings.encryptionSettings);
+                    else
+                        Cryptographer.SetSettings(settings.encryptionSettings);
                 }
             }
         }
@@ -67,10 +71,13 @@ namespace SaveSystem {
             set {
                 m_authenticate = value;
 
-                if (m_authenticate && AuthManager == null) {
-                    AuthManager = new AuthenticationManager(
-                        ResourcesManager.LoadSettings().authenticationSettings
-                    );
+                if (m_authenticate) {
+                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+
+                    if (AuthManager == null)
+                        AuthManager = new AuthenticationManager(settings.authenticationSettings);
+                    else
+                        AuthManager.SetSettings(settings.authenticationSettings);
                 }
             }
         }
@@ -91,7 +98,6 @@ namespace SaveSystem {
         private bool m_authenticate;
         private AuthenticationManager m_authManager;
 
-        private SerializationScope m_nestedScope;
         private DataBuffer m_dataBuffer = new();
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
@@ -106,6 +112,32 @@ namespace SaveSystem {
         }
 
 
+        internal void WriteData<TValue> ([NotNull] string key, TValue[] array) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_dataBuffer.Write(key, array);
+        }
+
+
+        internal void WriteData ([NotNull] string key, [NotNull] string value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentNullException(nameof(value));
+
+            m_dataBuffer.Write(key, value);
+        }
+
+
+        internal void WriteData ([NotNull] string key, MeshData meshData) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_dataBuffer.Write(key, meshData);
+        }
+
+
         [Pure]
         internal TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default)
             where TValue : unmanaged {
@@ -116,8 +148,30 @@ namespace SaveSystem {
         }
 
 
-        internal void AttachNestedScope ([NotNull] SerializationScope serializationScope) {
-            m_nestedScope = serializationScope ?? throw new ArgumentNullException(nameof(serializationScope));
+        [Pure]
+        internal TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_dataBuffer.Count == 0 ? Array.Empty<TValue>() : m_dataBuffer.GetArray<TValue>(key);
+        }
+
+
+        [Pure]
+        internal string ReadData ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_dataBuffer.Count == 0 ? defaultValue : m_dataBuffer.GetString(key, defaultValue);
+        }
+
+
+        [Pure]
+        internal MeshData ReadMeshData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_dataBuffer.Count == 0 ? default : m_dataBuffer.GetMeshData(key);
         }
 
 
@@ -155,11 +209,13 @@ namespace SaveSystem {
 
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
-
             if (serializables == null)
                 throw new ArgumentNullException(nameof(serializables));
 
             IRuntimeSerializable[] objects = serializables as IRuntimeSerializable[] ?? serializables.ToArray();
+
+            if (objects.Length == 0)
+                return;
 
             for (var i = 0; i < objects.Length; i++)
                 m_serializables.Add($"{key}_{i}", objects[i]);
@@ -175,11 +231,8 @@ namespace SaveSystem {
             if (Authenticate && AuthManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (ObjectsCount == 0 && m_dataBuffer.Count == 0) {
-                if (m_nestedScope != null)
-                    await m_nestedScope.Serialize(token);
+            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
-            }
 
             m_registrationClosed = true;
 
@@ -199,9 +252,6 @@ namespace SaveSystem {
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
-
-            if (m_nestedScope != null)
-                await m_nestedScope.Serialize(token);
         }
 
 
@@ -215,8 +265,6 @@ namespace SaveSystem {
 
             if (!File.Exists(DataPath)) {
                 SetDefaults();
-                if (m_nestedScope != null)
-                    await m_nestedScope.Deserialize(token);
                 return;
             }
 
@@ -232,9 +280,6 @@ namespace SaveSystem {
                 DeserializeObjects(reader);
                 Logger.Log(Name, "Data loaded");
             }
-
-            if (m_nestedScope != null)
-                await m_nestedScope.Deserialize(token);
         }
 
 
@@ -254,7 +299,7 @@ namespace SaveSystem {
 
         private void SerializeObjects (SaveWriter writer) {
             foreach ((string key, IRuntimeSerializable serializable) in m_serializables) {
-                writer.Write(key);
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(serializable.Version);
                 serializable.Serialize(writer);
             }
@@ -262,8 +307,10 @@ namespace SaveSystem {
 
 
         private void DeserializeObjects (SaveReader reader) {
-            foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables)
-                m_serializables[reader.ReadString()].Deserialize(reader, reader.Read<int>());
+            foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
+                m_serializables[key].Deserialize(reader, reader.Read<int>());
+            }
         }
 
     }

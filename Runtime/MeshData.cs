@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// Contains the data of a mesh. Mesh can be casted to MeshData and vice-versa

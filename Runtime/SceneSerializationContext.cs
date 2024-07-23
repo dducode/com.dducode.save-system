@@ -5,16 +5,22 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using SaveSystemPackage.CloudSave;
+using SaveSystemPackage.ComponentsRecording;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
+using SaveSystemPackage.Security;
 using UnityEngine;
+using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable SuspiciousTypeConversion.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
+    [AddComponentMenu("Save System/Scene Serialization Context")]
+    [DisallowMultipleComponent]
     public sealed class SceneSerializationContext : MonoBehaviour {
 
         [SerializeField]
@@ -24,7 +30,12 @@ namespace SaveSystem {
         private bool authentication;
 
         [SerializeField]
+        private bool autoSave;
+
+        [SerializeField]
         private string fileName;
+
+        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => SceneScope.Encrypt;
@@ -51,7 +62,7 @@ namespace SaveSystem {
             set => SceneScope.AuthManager = value;
         }
 
-        internal SerializationScope SceneScope { get; private set; }
+        private SerializationScope SceneScope { get; set; }
 
         private string DataPath {
             get => SceneScope.DataPath;
@@ -61,36 +72,28 @@ namespace SaveSystem {
 
         private void Awake () {
             SceneScope = new SerializationScope {
-                Name = $"{name} scope"
+                Name = $"{gameObject.scene.name} scene scope"
             };
 
-            SaveProfile profile = SaveSystemCore.SelectedSaveProfile;
+            SaveProfile profile = SaveSystem.Game.SaveProfile;
 
             if (profile == null)
-                SaveSystemCore.SceneContext = this;
+                SaveSystem.Game.SceneContext = this;
             else
                 profile.SceneContext = this;
 
             DataPath = Path.Combine(
-                profile == null ? SaveSystemCore.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
+                profile == null ? SaveSystem.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
             );
 
-            Encrypt = encrypt;
-            Authenticate = authentication;
-
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-            if (Encrypt)
-                Cryptographer = new Cryptographer(settings.encryptionSettings);
-
-            if (Authenticate)
-                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+            SetupSettings();
+            RegisterRecorders();
         }
 
 
         private void OnValidate () {
             if (string.IsNullOrEmpty(fileName))
-                fileName = gameObject.scene.name;
+                fileName = gameObject.scene.name.ToPathFormat();
         }
 
 
@@ -99,6 +102,46 @@ namespace SaveSystem {
                 throw new ArgumentNullException(nameof(key));
 
             SceneScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+
+            SceneScope.WriteData(key, array);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData ([NotNull] string key, [NotNull] string value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentNullException(nameof(value));
+
+            SceneScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData ([NotNull] string key, MeshData meshData) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            SceneScope.WriteData(key, meshData);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -111,7 +154,34 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,SaveSystem.IRuntimeSerializable)"/>
+        [Pure]
+        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return SceneScope.ReadArray<TValue>(key);
+        }
+
+
+        [Pure]
+        public string ReadData ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return SceneScope.ReadData(key, defaultValue);
+        }
+
+
+        [Pure]
+        public MeshData ReadMeshData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return SceneScope.ReadMeshData(key);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
         public SceneSerializationContext RegisterSerializable (
             [NotNull] string key, [NotNull] IRuntimeSerializable serializable
         ) {
@@ -120,7 +190,7 @@ namespace SaveSystem {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string,System.Collections.Generic.IEnumerable{SaveSystem.IRuntimeSerializable})"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string, IEnumerable{IRuntimeSerializable})"/>
         public SceneSerializationContext RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
@@ -129,26 +199,32 @@ namespace SaveSystem {
         }
 
 
-        public async UniTask SaveSceneData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await SceneScope.Serialize(token),
-                name, "Scene data saving canceled", this, token
-            );
+        public async UniTask Save (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await SceneScope.Serialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(SceneScope.Name, "Data saving canceled");
+            }
         }
 
 
-        public async UniTask LoadSceneData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await SceneScope.Deserialize(token),
-                name, "Scene data loading canceled", this, token
-            );
+        public async UniTask Load (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await SceneScope.Deserialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(SceneScope.Name, "Data loading canceled");
+            }
         }
 
 
-        internal async UniTask<byte[]> ExportSceneData (CancellationToken token = default) {
-            if (!File.Exists(DataPath))
-                return Array.Empty<byte>();
-            return await File.ReadAllBytesAsync(DataPath, token);
+        internal async UniTask<StorageData> ExportSceneData (CancellationToken token = default) {
+            return File.Exists(DataPath)
+                ? new StorageData(await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+                : null;
         }
 
 
@@ -160,6 +236,42 @@ namespace SaveSystem {
 
         internal void Clear () {
             SceneScope.Clear();
+        }
+
+
+        private void SetupSettings () {
+            AutoSave = autoSave;
+            Encrypt = encrypt;
+            Authenticate = authentication;
+
+            using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+
+            if (Encrypt)
+                Cryptographer = new Cryptographer(settings.encryptionSettings);
+
+            if (Authenticate)
+                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+        }
+
+
+        private void RegisterRecorders () {
+            RegisterSerializables(
+                "transform-recorders",
+                FindObjectsByType<TransformRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
+            );
+            RegisterSerializables(
+                "rigidbody-recorders",
+                FindObjectsByType<RigidbodyRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
+            );
+            RegisterSerializables(
+                "mesh-filter-recorders",
+                FindObjectsByType<MeshFilterRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
+            );
+        }
+
+
+        private void ScheduleAutoSave () {
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await SceneScope.Serialize(token), true);
         }
 
     }

@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Security {
+﻿namespace SaveSystemPackage.Security {
 
     public enum AESKeyLength {
 

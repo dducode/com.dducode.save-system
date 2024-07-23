@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal static class ResourcesManager {
 
@@ -9,15 +9,12 @@ namespace SaveSystem.Internal {
         }
 
 
+    #if UNITY_EDITOR
         internal static bool TryLoadSettings (out SaveSystemSettings settings) {
             settings = LoadSettings();
             return settings != null;
         }
-
-
-        internal static void UnloadSettings (SaveSystemSettings settings) {
-            Resources.UnloadAsset(settings);
-        }
+    #endif
 
     }
 

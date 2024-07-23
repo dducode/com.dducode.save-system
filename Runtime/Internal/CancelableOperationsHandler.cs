@@ -3,7 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Object = UnityEngine.Object;
 
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     public class CancelableOperationsHandler {
 

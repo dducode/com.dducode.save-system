@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// Defines save events that can be managed by external code
@@ -15,7 +15,7 @@ namespace SaveSystem {
         None = 0,
 
         /// <summary>
-        /// Autosave will be executed once during each save period
+        /// Autosave will be executed for any changes in the data
         /// </summary>
         AutoSave = 1,
 
@@ -30,19 +30,9 @@ namespace SaveSystem {
         OnLowMemory = 4,
 
         /// <summary>
-        /// This event will be invoked during a scene loading (only when the scene loading operation starts from the Core)
+        /// Periodic save will be executed once during each save period
         /// </summary>
-        OnSceneLoad = 8,
-
-        /// <summary>
-        /// This event will be executed when the player will exit the game
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// It is not supported in the Editor
-        /// </para>
-        /// </remarks>
-        OnExit = 16,
+        PeriodicSave = 8,
 
         /// <summary>
         /// All events will be executed

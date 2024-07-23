@@ -4,8 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal sealed class SynchronizationPoint {
 
@@ -52,17 +51,8 @@ namespace SaveSystem.Internal {
         }
 
 
-        internal async UniTask<TResult> ExecuteTask<TResult> (Func<UniTask<TResult>> task) {
-            await WaitCurrentExecution();
-
-            IsPerformed = true;
-
-            try {
-                return await task();
-            }
-            finally {
-                IsPerformed = false;
-            }
+        internal void Clear () {
+            m_queue.Clear();
         }
 
 

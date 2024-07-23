@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Object = UnityEngine.Object;
 
-namespace SaveSystem.Internal.Diagnostic {
+namespace SaveSystemPackage.Internal.Diagnostic {
 
     internal static class DiagnosticService {
 

@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem.CheckPoints {
+namespace SaveSystemPackage.CheckPoints {
 
 #if IN_UNITY_PACKAGES_PROJECT
     [Icon("Assets/com.dducode.save-system/Editor/Icons/checkpoint_icon.png")]

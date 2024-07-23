@@ -1,9 +1,9 @@
 ﻿using System;
-using SaveSystem.Editor.ConsoleTabs;
+using SaveSystemPackage.Editor.ConsoleTabs;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     public class SaveSystemConsole : EditorWindow {
 

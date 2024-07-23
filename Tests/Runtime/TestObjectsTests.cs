@@ -2,13 +2,13 @@
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Tests.TestObjects;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Tests.TestObjects;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 
-namespace SaveSystem.Tests {
+namespace SaveSystemPackage.Tests {
 
     public class TestObjectsTests {
 

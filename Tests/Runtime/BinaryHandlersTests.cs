@@ -3,10 +3,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
-using SaveSystem.BinaryHandlers;
+using SaveSystemPackage.BinaryHandlers;
 using UnityEngine;
 
-namespace SaveSystem.Tests {
+namespace SaveSystemPackage.Tests {
 
     public class BinaryHandlersTests {
 

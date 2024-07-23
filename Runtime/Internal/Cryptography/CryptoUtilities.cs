@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 
-namespace SaveSystem.Internal.Cryptography {
+namespace SaveSystemPackage.Internal.Cryptography {
 
     internal static class CryptoUtilities {
 

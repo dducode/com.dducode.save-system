@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     internal static class DrawingUtilities {
 

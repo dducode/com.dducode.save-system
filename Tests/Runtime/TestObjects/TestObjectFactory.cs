@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.Contracts;
 using UnityEngine;
 
-namespace SaveSystem.Tests.TestObjects {
+namespace SaveSystemPackage.Tests.TestObjects {
 
     public class TestObjectFactory : IObjectFactory<TestObject> {
 

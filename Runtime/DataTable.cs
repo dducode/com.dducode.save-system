@@ -3,17 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal;
-using SaveSystem.Security;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.CloudSave;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     public class DataTable : IDisposable {
 
         private const int IVLength = 16;
-        internal static string Path => System.IO.Path.Combine(SaveSystemCore.InternalFolder, "datatable.data");
+        internal static string Path => System.IO.Path.Combine(SaveSystem.InternalFolder, "datatable.data");
 
         public byte[] this [string key] {
             get {
@@ -37,9 +40,11 @@ namespace SaveSystem {
             byte[] data = File.ReadAllBytes(Path);
             byte[] buffer;
 
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-            string password = settings.authenticationSettings.dataTablePassword;
-            ResourcesManager.UnloadSettings(settings);
+            string password;
+
+            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+                password = settings.authenticationSettings.dataTablePassword;
+            }
 
             using var aes = Aes.Create();
             byte[] key = GetKey(password);
@@ -59,10 +64,23 @@ namespace SaveSystem {
             using (var reader = new SaveReader(new MemoryStream(buffer))) {
                 var rows = reader.Read<int>();
                 for (var i = 0; i < rows; i++)
-                    table.Add(reader.ReadString(), reader.ReadArray<byte>());
+                    table.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
             }
 
             return table;
+        }
+
+
+        internal static async UniTask<StorageData> Export (CancellationToken token = default) {
+            return File.Exists(Path)
+                ? new StorageData(await File.ReadAllBytesAsync(Path, token), System.IO.Path.GetFileName(Path))
+                : null;
+        }
+
+
+        internal static async UniTask Import (byte[] data, CancellationToken token = default) {
+            if (data.Length > 0)
+                await File.WriteAllBytesAsync(Path, data, token);
         }
 
 
@@ -89,16 +107,18 @@ namespace SaveSystem {
                 writer.Write(m_map.Count);
 
                 foreach ((string key, byte[] bytes) in m_map) {
-                    writer.Write(key);
+                    writer.Write(Encoding.UTF8.GetBytes(key));
                     writer.Write(bytes);
                 }
 
                 buffer = memoryStream.ToArray();
             }
 
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
-            string password = settings.authenticationSettings.dataTablePassword;
-            ResourcesManager.UnloadSettings(settings);
+            string password;
+
+            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+                password = settings.authenticationSettings.dataTablePassword;
+            }
 
             using (var memoryStream = new MemoryStream()) {
                 byte[] iv = GetIV();

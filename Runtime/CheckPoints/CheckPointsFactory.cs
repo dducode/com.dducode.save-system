@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace SaveSystem.CheckPoints {
+namespace SaveSystemPackage.CheckPoints {
 
     /// <summary>
     /// You can create checkpoints at runtime by using this class

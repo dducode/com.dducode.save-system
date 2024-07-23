@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine.LowLevel;
 
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal static class PlayerLoopManager {
 

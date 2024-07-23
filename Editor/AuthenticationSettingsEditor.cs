@@ -1,9 +1,9 @@
-﻿using SaveSystem.Internal.Cryptography;
-using SaveSystem.Security;
+﻿using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Security;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor {
+namespace SaveSystemPackage.Editor {
 
     [CustomPropertyDrawer(typeof(AuthenticationSettings))]
     public class AuthenticationSettingsEditor : PropertyDrawer {

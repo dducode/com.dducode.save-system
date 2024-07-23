@@ -1,7 +1,7 @@
-﻿using SaveSystem.Attributes;
+﻿using SaveSystemPackage.Attributes;
 using UnityEngine;
 
-namespace SaveSystem.Tests.TestObjects {
+namespace SaveSystemPackage.Tests.TestObjects {
 
     [DynamicObject]
     public class TestObject : MonoBehaviour {

@@ -1,14 +1,14 @@
 ﻿#if UNITY_EDITOR
-    using SaveSystem.Internal;
-    using SaveSystem.Internal.Diagnostic;
+    using SaveSystemPackage.Internal;
+    using SaveSystemPackage.Internal.Diagnostic;
     using UnityEngine;
     using UnityEngine.LowLevel;
     using UnityEngine.PlayerLoop;
-    using Logger = SaveSystem.Internal.Logger;
+    using Logger = SaveSystemPackage.Internal.Logger;
 
-    namespace SaveSystem {
+    namespace SaveSystemPackage {
 
-        public static partial class SaveSystemCore {
+        public static partial class SaveSystem {
 
             static partial void SetOnExitPlayModeCallback () {
                 Application.quitting += ResetOnExit;
@@ -20,7 +20,6 @@
                 OnSaveStart = null;
                 OnSaveEnd = null;
 
-                Application.wantsToQuit -= SaveBeforeExit;
                 Application.focusChanged -= OnFocusLost;
                 Application.lowMemory -= OnLowMemory;
 
@@ -33,15 +32,7 @@
             #endif
 
                 m_autoSaveLastTime = 0;
-                m_savedBeforeExit = false;
-
-                if (m_selectedSaveProfile != null) {
-                    m_selectedSaveProfile.Clear();
-                    m_selectedSaveProfile = null;
-                }
-
-                m_globalScope.Clear();
-                m_globalScope = null;
+                Game = null;
                 DiagnosticService.Clear();
 
                 Application.quitting -= ResetOnExit;
@@ -49,10 +40,10 @@
 
 
             private static void ResetPlayerLoop (PlayerLoopSystem modifiedLoop) {
-                if (PlayerLoopManager.TryRemoveSubSystem(ref modifiedLoop, typeof(SaveSystemCore), typeof(PreLateUpdate)))
+                if (PlayerLoopManager.TryRemoveSubSystem(ref modifiedLoop, typeof(SaveSystem), typeof(PreLateUpdate)))
                     PlayerLoop.SetPlayerLoop(modifiedLoop);
                 else
-                    Logger.LogError(nameof(SaveSystemCore), $"Failed remove system: {typeof(SaveSystemCore)}");
+                    Logger.LogError(nameof(SaveSystem), $"Failed remove system: {typeof(SaveSystem)}");
             }
 
         }

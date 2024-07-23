@@ -3,7 +3,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace SaveSystem.Editor.ConsoleTabs {
+namespace SaveSystemPackage.Editor.ConsoleTabs {
 
     internal class SavedFilesTab : IConsoleTab {
 
@@ -54,7 +54,7 @@ namespace SaveSystem.Editor.ConsoleTabs {
 
 
         private void DrawFolderEntry (string entryPath) {
-            if (!m_showInternal && entryPath == SaveSystemCore.InternalFolder)
+            if (!m_showInternal && entryPath == SaveSystemPackage.SaveSystem.InternalFolder)
                 return;
 
             m_folders.TryAdd(entryPath, false);

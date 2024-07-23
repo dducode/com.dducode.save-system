@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SaveSystem.Attributes {
+namespace SaveSystemPackage.Attributes {
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
     public class DynamicObjectAttribute : Attribute { }

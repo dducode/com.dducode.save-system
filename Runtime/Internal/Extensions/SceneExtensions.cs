@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace SaveSystem.Internal.Extensions {
+namespace SaveSystemPackage.Internal.Extensions {
 
     internal static class SceneExtensions {
 

@@ -1,14 +1,15 @@
-﻿using System.Text;
-using SaveSystem.Internal.Templates;
-using SaveSystem.Security;
+﻿using System;
+using System.Text;
+using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Security;
 using UnityEngine;
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
-    public class SaveSystemSettings : ScriptableObject {
+    public class SaveSystemSettings : ScriptableObject, IDisposable {
 
         public bool automaticInitialize = true;
-        public SaveEvents enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnSceneLoad | SaveEvents.OnExit;
+        public SaveEvents enabledSaveEvents = SaveEvents.AutoSave;
         public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
 
         [Min(0)]
@@ -38,10 +39,15 @@ namespace SaveSystem {
         }
 
 
+        public void Dispose () {
+            Resources.UnloadAsset(this);
+        }
+
+
         private void AppendCommonSettings (StringBuilder result) {
             result.Append($"\nEnabled Save Events: {enabledSaveEvents}");
             result.Append($"\nEnabled Logs: {enabledLogs}");
-            if (enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
+            if (enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave))
                 result.Append($"\nSave Period: {savePeriod} sec");
             result.Append($"\nData Path: {dataPath}");
             result.Append($"\nPlayer Tag: {playerTag}");

@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Internal.Templates {
+﻿namespace SaveSystemPackage.Internal.Templates {
 
     public static class Tooltips {
 

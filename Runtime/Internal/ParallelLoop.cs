@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 
-namespace SaveSystem.Internal {
+namespace SaveSystemPackage.Internal {
 
     internal static class ParallelLoop {
 

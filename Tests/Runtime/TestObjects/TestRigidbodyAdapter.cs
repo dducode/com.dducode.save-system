@@ -1,7 +1,7 @@
-﻿using SaveSystem.BinaryHandlers;
+﻿using SaveSystemPackage.BinaryHandlers;
 using UnityEngine;
 
-namespace SaveSystem.Tests.TestObjects {
+namespace SaveSystemPackage.Tests.TestObjects {
 
     public class TestRigidbodyAdapter : ISerializationAdapter<TestRigidbody> {
 

@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
-using System.Linq;
 using System.Runtime.InteropServices;
-using SaveSystem.BinaryHandlers;
+using System.Text;
+using SaveSystemPackage.BinaryHandlers;
 
 // ReSharper disable UnusedMember.Global
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// The buffer for writing and reading data
@@ -143,7 +143,7 @@ namespace SaveSystem {
             writer.Write(buffer.Count);
 
             foreach (string key in buffer.Keys) {
-                writer.Write(key);
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key]);
             }
         }
@@ -154,7 +154,7 @@ namespace SaveSystem {
             var buffer = new Dictionary<string, byte[]>();
 
             for (var i = 0; i < count; i++)
-                buffer.Add(reader.ReadString(), reader.ReadArray<byte>());
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
 
             return buffer;
         }
@@ -164,7 +164,7 @@ namespace SaveSystem {
             writer.Write(buffer.Count);
 
             foreach (string key in buffer.Keys) {
-                writer.Write(key);
+                writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key].Key);
                 writer.Write(buffer[key].Value);
             }
@@ -176,7 +176,7 @@ namespace SaveSystem {
             var buffer = new Dictionary<string, KeyValuePair<int, byte[]>>();
 
             for (var i = 0; i < count; i++) {
-                string key = reader.ReadString();
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 var length = reader.Read<int>();
                 byte[] array = reader.ReadArray<byte>();
                 buffer.Add(key, new KeyValuePair<int, byte[]>(length, array));
@@ -188,38 +188,42 @@ namespace SaveSystem {
 
         private void WriteBuffer (Dictionary<string, MeshData> buffer, SaveWriter writer) {
             writer.Write(buffer.Count);
-            writer.Write(buffer.Keys.ToArray());
-            writer.Write(buffer.Values.ToArray());
+
+            foreach (string key in buffer.Keys) {
+                writer.Write(Encoding.UTF8.GetBytes(key));
+                writer.Write(buffer[key]);
+            }
         }
 
 
         private Dictionary<string, MeshData> ReadMeshDataBuffer (SaveReader reader) {
             var count = reader.Read<int>();
-            ReadOnlySpan<string> keys = reader.ReadStringArray();
-            ReadOnlySpan<MeshData> values = reader.ReadMeshDataArray();
-
             var buffer = new Dictionary<string, MeshData>();
+
             for (var i = 0; i < count; i++)
-                buffer.Add(keys[i], values[i]);
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadMeshData());
+
             return buffer;
         }
 
 
         private void WriteBuffer (Dictionary<string, string> buffer, SaveWriter writer) {
             writer.Write(buffer.Count);
-            writer.Write(buffer.Keys.ToArray());
-            writer.Write(buffer.Values.ToArray());
+
+            foreach (string key in buffer.Keys) {
+                writer.Write(Encoding.UTF8.GetBytes(key));
+                writer.Write(buffer[key]);
+            }
         }
 
 
         private Dictionary<string, string> ReadStringBuffer (SaveReader reader) {
             var count = reader.Read<int>();
-            ReadOnlySpan<string> keys = reader.ReadStringArray();
-            ReadOnlySpan<string> values = reader.ReadStringArray();
 
             var buffer = new Dictionary<string, string>();
             for (var i = 0; i < count; i++)
-                buffer.Add(keys[i], values[i]);
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadString());
+
             return buffer;
         }
 

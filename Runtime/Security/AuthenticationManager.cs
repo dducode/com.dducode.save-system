@@ -2,15 +2,15 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security;
 using System.Security.Cryptography;
-using SaveSystem.Internal;
-using SaveSystem.Internal.Extensions;
-using SaveSystem.Internal.Templates;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Extensions;
+using SaveSystemPackage.Internal.Templates;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
-namespace SaveSystem.Security {
+namespace SaveSystemPackage.Security {
 
     public class AuthenticationManager {
 

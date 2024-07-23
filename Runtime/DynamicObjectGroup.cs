@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using SaveSystem.Attributes;
-using SaveSystem.BinaryHandlers;
-using SaveSystem.Internal.Diagnostic;
+using SaveSystemPackage.Attributes;
+using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal.Diagnostic;
 using ArgumentException = System.ArgumentException;
 using Object = UnityEngine.Object;
 
@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
-namespace SaveSystem {
+namespace SaveSystemPackage {
 
     /// <summary>
     /// You can create dynamic objects from this and pass all created objects as serializable

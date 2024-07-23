@@ -1,4 +1,4 @@
-﻿namespace SaveSystem.Internal {
+﻿namespace SaveSystemPackage.Internal {
 
     public static class ByteExtensions {
 
