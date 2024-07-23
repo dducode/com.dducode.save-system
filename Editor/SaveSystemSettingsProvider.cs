@@ -129,7 +129,7 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
 
             var saveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
-            if (saveEvents.HasFlag(SaveEvents.AutoSave))
+            if (saveEvents.HasFlag(SaveEvents.PeriodicSave))
                 EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
 
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));

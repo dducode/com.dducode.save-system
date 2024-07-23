@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 
@@ -39,6 +40,8 @@ namespace SaveSystemPackage {
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
+
+        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => ProfileScope.Encrypt;
@@ -89,12 +92,12 @@ namespace SaveSystemPackage {
             set {
                 if (value == null)
                     throw new ArgumentNullException(nameof(SceneContext));
+
                 m_sceneContext = value;
-                ProfileScope.AttachNestedScope(m_sceneContext.SceneScope);
             }
         }
 
-        internal SerializationScope ProfileScope { get; }
+        private SerializationScope ProfileScope { get; }
 
         internal string DataPath {
             get => ProfileScope.DataPath;
@@ -107,17 +110,18 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal SaveProfile ([NotNull] string name, bool encrypt, bool authenticate) {
+        internal SaveProfile ([NotNull] string name, bool autoSave, bool encrypt, bool authenticate) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
             ProfileScope = new SerializationScope {
-                Name = $"{m_name} scope"
+                Name = $"{m_name} profile scope"
             };
             DataFolder = name;
             DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
 
+            AutoSave = autoSave;
             Encrypt = encrypt;
             Authenticate = authenticate;
         }
@@ -128,6 +132,9 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             ProfileScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -138,6 +145,9 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(array));
 
             ProfileScope.WriteData(key, array);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -148,6 +158,9 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(value));
 
             ProfileScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -179,12 +192,26 @@ namespace SaveSystemPackage {
 
 
         public async UniTask Save (CancellationToken token = default) {
-            await SaveSystem.SaveScope(ProfileScope, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                await ProfileScope.Serialize(token);
+                if (SceneContext != null)
+                    await SceneContext.Save(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(ProfileScope.Name, "Data saving canceled");
+            }
         }
 
 
         public async UniTask Load (CancellationToken token = default) {
-            await SaveSystem.LoadScope(ProfileScope, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                await ProfileScope.Deserialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(ProfileScope.Name, "Data loading canceled");
+            }
         }
 
 
@@ -226,6 +253,11 @@ namespace SaveSystemPackage {
 
         internal void Clear () {
             ProfileScope.Clear();
+        }
+
+
+        private void ScheduleAutoSave () {
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await ProfileScope.Serialize(token));
         }
 
     }

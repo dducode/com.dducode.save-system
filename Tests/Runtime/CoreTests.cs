@@ -40,17 +40,17 @@ namespace SaveSystemPackage.Tests {
 
 
         [UnityTest]
-        public IEnumerator AutoSave () {
+        public IEnumerator PeriodicSave () {
             TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
             SaveSystem.SavePeriod = 1.5f;
-            SaveSystem.EnabledSaveEvents = SaveEvents.AutoSave;
+            SaveSystem.EnabledSaveEvents = SaveEvents.PeriodicSave;
 
             m_sceneContext.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var autoSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
-                if (saveType == SaveType.AutoSave)
+                if (saveType == SaveType.PeriodicSave)
                     autoSaveCompleted = true;
             };
 
@@ -154,16 +154,15 @@ namespace SaveSystemPackage.Tests {
 
 
         [UnityTest]
-        public IEnumerator Quitting () {
+        public async Task Quitting () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Cube), new TestObjectProvider()
             );
             sphereFactory.CreateObjects(250);
 
-            SaveSystem.EnabledSaveEvents = SaveEvents.OnExit;
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            yield return new WaitForEndOfFrame();
-            Application.Quit();
+            await UniTask.Delay(500);
+            await SaveSystem.ExitGame();
         }
 
 
@@ -184,7 +183,7 @@ namespace SaveSystemPackage.Tests {
             );
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Save();
+            await SaveSystem.Game.Save();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -205,7 +204,7 @@ namespace SaveSystemPackage.Tests {
             );
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Load();
+            await SaveSystem.Game.Load();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -221,7 +220,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Game.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Save();
+            await SaveSystem.Game.Save();
             await UniTask.WaitForSeconds(1);
         }
 
@@ -236,7 +235,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Game.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Load();
+            await SaveSystem.Game.Load();
             await UniTask.WaitForSeconds(1);
 
             PlayerPrefs.DeleteKey(AuthHashKey);
@@ -252,13 +251,13 @@ namespace SaveSystemPackage.Tests {
                 TestObject testObject = factory.CreateObject();
                 SaveSystem.Game.WriteData("position", testObject.transform.position);
                 Debug.Log(testObject.transform.position);
-                await SaveSystem.Save();
+                await SaveSystem.Game.Save();
             }
 
 
             [Test, Order(1)]
             public async Task ReadFromDataBuffer () {
-                await SaveSystem.Load();
+                await SaveSystem.Game.Load();
                 Debug.Log(SaveSystem.Game.ReadData<Vector3>("position"));
             }
 

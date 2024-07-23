@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 
 // ReSharper disable UnusedMember.Global
@@ -23,7 +24,6 @@ namespace SaveSystemPackage {
             get => m_saveProfile;
             set {
                 m_saveProfile = value ?? throw new ArgumentNullException(nameof(SaveProfile));
-                m_globalScope.AttachNestedScope(m_saveProfile.ProfileScope);
                 if (m_sceneContext != null)
                     m_saveProfile.SceneContext = m_sceneContext;
             }
@@ -34,18 +34,20 @@ namespace SaveSystemPackage {
         /// </summary>
         [NotNull]
         public string DataPath {
-            get => m_globalScope.DataPath;
+            get => GameScope.DataPath;
             set {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
 
-                m_globalScope.DataPath = Storage.PrepareBeforeUsing(value);
+                GameScope.DataPath = Storage.PrepareBeforeUsing(value);
             }
         }
 
+        public bool AutoSave { get; set; }
+
         public bool Encrypt {
-            get => m_globalScope.Encrypt;
-            set => m_globalScope.Encrypt = value;
+            get => GameScope.Encrypt;
+            set => GameScope.Encrypt = value;
         }
 
         /// <summary>
@@ -53,19 +55,19 @@ namespace SaveSystemPackage {
         /// </summary>
         [NotNull]
         public Cryptographer Cryptographer {
-            get => m_globalScope.Cryptographer;
-            set => m_globalScope.Cryptographer = value;
+            get => GameScope.Cryptographer;
+            set => GameScope.Cryptographer = value;
         }
 
         public bool Authenticate {
-            get => m_globalScope.Authenticate;
-            set => m_globalScope.Authenticate = value;
+            get => GameScope.Authenticate;
+            set => GameScope.Authenticate = value;
         }
 
         [NotNull]
         public AuthenticationManager AuthManager {
-            get => m_globalScope.AuthManager;
-            set => m_globalScope.AuthManager = value;
+            get => GameScope.AuthManager;
+            set => GameScope.AuthManager = value;
         }
 
         internal SceneSerializationContext SceneContext {
@@ -74,12 +76,11 @@ namespace SaveSystemPackage {
                 if (value == null)
                     throw new ArgumentNullException(nameof(SceneContext));
                 m_sceneContext = value;
-                m_globalScope.AttachNestedScope(m_sceneContext.SceneScope);
             }
         }
 
-        private readonly SerializationScope m_globalScope = new() {
-            Name = "Global scope"
+        private SerializationScope GameScope { get; } = new() {
+            Name = "Game scope"
         };
 
         private SaveProfile m_saveProfile;
@@ -90,7 +91,10 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            m_globalScope.WriteData(key, value);
+            GameScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -100,7 +104,10 @@ namespace SaveSystemPackage {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
 
-            m_globalScope.WriteData(key, array);
+            GameScope.WriteData(key, array);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -110,7 +117,10 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(value))
                 throw new ArgumentNullException(nameof(value));
 
-            m_globalScope.WriteData(key, value);
+            GameScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -119,7 +129,7 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_globalScope.ReadData(key, defaultValue);
+            return GameScope.ReadData(key, defaultValue);
         }
 
 
@@ -128,7 +138,7 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_globalScope.ReadArray<TValue>(key);
+            return GameScope.ReadArray<TValue>(key);
         }
 
 
@@ -137,17 +147,39 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_globalScope.ReadData(key, defaultValue);
+            return GameScope.ReadData(key, defaultValue);
         }
 
 
+        /// <summary>
+        /// Start saving immediately and wait it
+        /// </summary>
         public async UniTask Save (CancellationToken token = default) {
-            await SaveSystem.SaveScope(m_globalScope, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                await GameScope.Serialize(token);
+                if (SaveProfile != null)
+                    await SaveProfile.Save(token);
+                else if (SceneContext != null)
+                    await SceneContext.Save(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(GameScope.Name, "Data saving canceled");
+            }
         }
 
 
+        /// <summary>
+        /// Start loading and wait it
+        /// </summary>
         public async UniTask Load (CancellationToken token = default) {
-            await SaveSystem.LoadScope(m_globalScope, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                await GameScope.Deserialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(GameScope.Name, "Data loading canceled");
+            }
         }
 
 
@@ -161,6 +193,11 @@ namespace SaveSystemPackage {
         internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
                 await File.WriteAllBytesAsync(DataPath, data, token);
+        }
+
+
+        private void ScheduleAutoSave () {
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await GameScope.Serialize(token));
         }
 
     }

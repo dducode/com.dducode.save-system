@@ -20,7 +20,6 @@
                 OnSaveStart = null;
                 OnSaveEnd = null;
 
-                Application.wantsToQuit -= SaveBeforeExit;
                 Application.focusChanged -= OnFocusLost;
                 Application.lowMemory -= OnLowMemory;
 
@@ -33,7 +32,6 @@
             #endif
 
                 m_autoSaveLastTime = 0;
-                m_savedBeforeExit = false;
                 Game = null;
                 DiagnosticService.Clear();
 

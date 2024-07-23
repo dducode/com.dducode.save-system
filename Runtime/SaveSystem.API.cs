@@ -13,6 +13,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Logger = SaveSystemPackage.Internal.Logger;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace SaveSystemPackage {
@@ -113,14 +117,17 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Creates new save profile and stores it in the internal storage
         /// </summary>
-        public static SaveProfile CreateProfile ([NotNull] string name, bool encrypt = true, bool authenticate = true) {
+        public static SaveProfile CreateProfile (
+            [NotNull] string name, bool autoSave = true, bool encrypt = true, bool authenticate = true
+        ) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profilemetadata");
-            var profile = new SaveProfile(name, encrypt, authenticate);
+            var profile = new SaveProfile(name, autoSave, encrypt, authenticate);
             using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
             writer.Write(name);
+            writer.Write(autoSave);
             writer.Write(encrypt);
             writer.Write(authenticate);
             return profile;
@@ -131,12 +138,16 @@ namespace SaveSystemPackage {
         /// Get all previously created saving profiles
         /// </summary>
         [Pure]
-        public static IEnumerable<SaveProfile> LoadAllProfiles () {
+        public static async IAsyncEnumerable<SaveProfile> LoadAllProfiles () {
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
 
             foreach (string path in paths) {
-                using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                yield return new SaveProfile(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                var profile = new SaveProfile(
+                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                );
+                await profile.Load();
+                yield return profile;
             }
         }
 
@@ -145,16 +156,22 @@ namespace SaveSystemPackage {
         /// Get saving profile by its name
         /// </summary>
         [Pure]
-        public static SaveProfile LoadProfile ([NotNull] string name) {
+        public static async UniTask<SaveProfile> LoadProfile ([NotNull] string name) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
 
             foreach (string path in paths) {
-                using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                if (string.Equals(reader.ReadString(), name))
-                    return new SaveProfile(name, reader.Read<bool>(), reader.Read<bool>());
+                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+
+                if (string.Equals(reader.ReadString(), name)) {
+                    var profile = new SaveProfile(
+                        name, reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                    );
+                    await profile.Load();
+                    return profile;
+                }
             }
 
             return null;
@@ -211,24 +228,35 @@ namespace SaveSystemPackage {
 
 
         public static async UniTask LoadSceneAsync (
-            Func<UniTask> asyncSceneLoading, CancellationToken token = default
+            Func<UniTask> sceneLoading, CancellationToken token = default
         ) {
-            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
-                await ExecuteOnSceneLoadSaving(token);
-            await SceneLoader.LoadSceneAsync(asyncSceneLoading);
+            await SynchronizationPoint.ExecuteTask(async () => await Game.Save(token));
+            await SceneLoader.LoadSceneAsync(sceneLoading);
         }
 
 
         public static async UniTask LoadSceneAsync<TData> (
-            Func<UniTask> asyncSceneLoading, TData passedData, CancellationToken token = default
+            Func<UniTask> sceneLoading, TData passedData, CancellationToken token = default
         ) {
-            if (m_enabledSaveEvents.HasFlag(SaveEvents.OnSceneLoad))
-                await ExecuteOnSceneLoadSaving(token);
-            await SceneLoader.LoadSceneAsync(asyncSceneLoading, passedData);
+            await SynchronizationPoint.ExecuteTask(async () => await Game.Save(token));
+            await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
         }
 
 
-        public static async UniTask<HandlingResult> PushToCloud (
+        public static async UniTask ExitGame (int exitCode = 0) {
+            m_exitCancellation.Cancel();
+            if (exitCode == 0)
+                await SynchronizationPoint.ExecuteTask(async () => await Game.Save());
+
+        #if UNITY_EDITOR
+            EditorApplication.ExitPlaymode();
+        #else
+            Application.Quit(exitCode);
+        #endif
+        }
+
+
+        public static async UniTask PushToCloud (
             [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             if (cloudStorage == null)
@@ -237,16 +265,14 @@ namespace SaveSystemPackage {
             try {
                 token.ThrowIfCancellationRequested();
                 await SynchronizationPoint.ExecuteTask(async () => await PushToCloudStorage(cloudStorage, token));
-                return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystem), "Push to cloud canceled");
-                return HandlingResult.Canceled;
             }
         }
 
 
-        public static async UniTask<HandlingResult> PullFromCloud (
+        public static async UniTask PullFromCloud (
             [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
         ) {
             if (cloudStorage == null)
@@ -255,39 +281,9 @@ namespace SaveSystemPackage {
             try {
                 token.ThrowIfCancellationRequested();
                 await SynchronizationPoint.ExecuteTask(async () => await PullFromCloudStorage(cloudStorage, token));
-                return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystem), "Pull from cloud canceled");
-                return HandlingResult.Canceled;
-            }
-        }
-
-
-        /// <summary>
-        /// Start saving immediately and wait it
-        /// </summary>
-        public static async UniTask<HandlingResult> Save (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await SaveData(token));
-            }
-            catch (OperationCanceledException) {
-                return HandlingResult.Canceled;
-            }
-        }
-
-
-        /// <summary>
-        /// Start loading and wait it
-        /// </summary>
-        public static async UniTask<HandlingResult> Load (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                return await SynchronizationPoint.ExecuteTask(async () => await LoadData(token));
-            }
-            catch (OperationCanceledException) {
-                return HandlingResult.Canceled;
             }
         }
 

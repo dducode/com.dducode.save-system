@@ -74,9 +74,8 @@ namespace SaveSystemPackage {
         private static string m_profilesFolder;
         private static string m_scenesFolder;
 
-        private static bool m_autoSaveEnabled;
+        private static bool m_periodicSaveEnabled;
         private static float m_autoSaveLastTime;
-        private static bool m_savedBeforeExit;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -112,48 +111,17 @@ namespace SaveSystemPackage {
                 ));
             }
 
-            SetCommonSettings(settings);
-            SetCheckpointsSettings(settings);
-            SetEncryptionSettings(settings);
-            SetAuthSettings(settings);
-            settings.Dispose();
-        }
-
-
-        private static void SetCommonSettings (SaveSystemSettings settings) {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            Game.DataPath = settings.dataPath;
-        }
-
-
-        private static void SetCheckpointsSettings (SaveSystemSettings settings) {
             PlayerTag = settings.playerTag;
-        }
 
-
-        private static void SetEncryptionSettings (SaveSystemSettings settings) {
-            if (settings.encryptionSettings == null) {
-                if (settings.encryption)
-                    Logger.LogError(nameof(SaveSystem), "Encryption enabled but settings not set");
-                return;
-            }
-
+            Game.DataPath = settings.dataPath;
+            Game.AutoSave = settings.enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
             Game.Encrypt = settings.encryption;
-            Game.Cryptographer.SetSettings(settings.encryptionSettings);
-        }
-
-
-        private static void SetAuthSettings (SaveSystemSettings settings) {
-            if (settings.authenticationSettings == null) {
-                if (settings.authentication)
-                    Logger.LogError(nameof(SaveSystem), "Authentication enabled but settings not set");
-                return;
-            }
-
             Game.Authenticate = settings.authentication;
-            Game.AuthManager.SetSettings(settings.authenticationSettings);
+
+            settings.Dispose();
         }
 
 
@@ -187,28 +155,6 @@ namespace SaveSystemPackage {
         }
 
 
-        internal static async UniTask SaveScope (SerializationScope scope, CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await SynchronizationPoint.ExecuteTask(async () => await scope.Serialize(token));
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(scope.Name, "Data saving canceled");
-            }
-        }
-
-
-        internal static async UniTask LoadScope (SerializationScope scope, CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await SynchronizationPoint.ExecuteTask(async () => await scope.Deserialize(token));
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(scope.Name, "Data loading canceled");
-            }
-        }
-
-
         private static void UpdateSystem () {
             if (m_exitCancellation.IsCancellationRequested)
                 return;
@@ -229,8 +175,8 @@ namespace SaveSystemPackage {
                 QuickSave();
         #endif
 
-            if (m_autoSaveEnabled)
-                AutoSave();
+            if (m_periodicSaveEnabled)
+                PeriodicSave();
         }
 
 
@@ -239,17 +185,16 @@ namespace SaveSystemPackage {
         }
 
 
-        private static void AutoSave () {
+        private static void PeriodicSave () {
             if (m_autoSaveLastTime + SavePeriod < Time.time) {
-                ScheduleSave(SaveType.AutoSave);
+                ScheduleSave(SaveType.PeriodicSave);
                 m_autoSaveLastTime = Time.time;
             }
         }
 
 
         private static void SetupEvents (SaveEvents enabledSaveEvents) {
-            m_autoSaveEnabled = false;
-            Application.wantsToQuit -= SaveBeforeExit;
+            m_periodicSaveEnabled = false;
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
 
@@ -257,50 +202,17 @@ namespace SaveSystemPackage {
                 case SaveEvents.None:
                     break;
                 case not SaveEvents.All:
-                    m_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
-                    if (enabledSaveEvents.HasFlag(SaveEvents.OnExit))
-                        Application.wantsToQuit += SaveBeforeExit;
+                    m_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
                         Application.focusChanged += OnFocusLost;
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                         Application.lowMemory += OnLowMemory;
                     break;
                 case SaveEvents.All:
-                    m_autoSaveEnabled = true;
-                    Application.wantsToQuit += SaveBeforeExit;
+                    m_periodicSaveEnabled = true;
                     Application.focusChanged += OnFocusLost;
                     Application.lowMemory += OnLowMemory;
                     break;
-            }
-        }
-
-
-        private static bool SaveBeforeExit () {
-            if (m_savedBeforeExit)
-                return true;
-
-            m_exitCancellation.Cancel();
-
-            if (Application.isEditor) {
-                Logger.LogWarning(nameof(SaveSystem), "Saving before the quitting is not supported in the editor");
-                return m_savedBeforeExit = true;
-            }
-            else {
-                OnSaveStart?.Invoke(SaveType.OnExit);
-                SaveData().ContinueWith(Continuation).Forget();
-                return false;
-            }
-
-            void Continuation (HandlingResult result) {
-                OnSaveEnd?.Invoke(SaveType.OnExit);
-                m_savedBeforeExit = true;
-                if (result is HandlingResult.Success)
-                    Logger.Log(nameof(SaveSystem), "Successful saving before the quitting");
-                else if (result is HandlingResult.Canceled)
-                    Logger.LogWarning(nameof(SaveSystem), "The saving before the quitting was canceled");
-                else if (result is HandlingResult.Error)
-                    Logger.LogError(nameof(SaveSystem), "Some error was occured");
-                Application.Quit();
             }
         }
 
@@ -323,9 +235,21 @@ namespace SaveSystemPackage {
 
         private static async UniTask CommonSavingTask (SaveType saveType, CancellationToken token) {
             OnSaveStart?.Invoke(saveType);
-            HandlingResult result = await SaveData(token);
-            OnSaveEnd?.Invoke(saveType);
+            HandlingResult result;
 
+            try {
+                token.ThrowIfCancellationRequested();
+                await Game.Save(token);
+                result = HandlingResult.Success;
+            }
+            catch (OperationCanceledException) {
+                result = HandlingResult.Canceled;
+            }
+            catch {
+                result = HandlingResult.Error;
+            }
+
+            OnSaveEnd?.Invoke(saveType);
             LogResult(saveType, result);
         }
 
@@ -337,32 +261,6 @@ namespace SaveSystemPackage {
                 Logger.LogWarning(nameof(SaveSystem), $"{saveType}: canceled");
             else if (result is HandlingResult.Error)
                 Logger.LogError(nameof(SaveSystem), $"{saveType}: error");
-        }
-
-
-        private static async UniTask<HandlingResult> SaveData (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await Game.Save(token);
-                return HandlingResult.Success;
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystem), "Saving operation canceled");
-                return HandlingResult.Canceled;
-            }
-        }
-
-
-        private static async UniTask<HandlingResult> LoadData (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await Game.Load(token);
-                return HandlingResult.Success;
-            }
-            catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SaveSystem), "Loading operation canceled");
-                return HandlingResult.Canceled;
-            }
         }
 
 
@@ -392,9 +290,12 @@ namespace SaveSystemPackage {
 
             foreach (string path in paths) {
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                var profile = new SaveProfile(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                var profile = new SaveProfile(
+                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                );
 
                 writer.Write(profile.Name);
+                writer.Write(profile.AutoSave);
                 writer.Write(profile.Encrypt);
                 writer.Write(profile.Authenticate);
                 writer.Write(await profile.ExportProfileData(token));
@@ -427,17 +328,15 @@ namespace SaveSystemPackage {
 
             foreach (string path in paths) {
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-                var profile = new SaveProfile(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                var profile = new SaveProfile(
+                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                );
                 writer.Write(profile.Name);
+                writer.Write(profile.AutoSave);
                 writer.Write(profile.Encrypt);
                 writer.Write(profile.Authenticate);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
-        }
-
-
-        private static async UniTask ExecuteOnSceneLoadSaving (CancellationToken token) {
-            await SynchronizationPoint.ExecuteTask(async () => await CommonSavingTask(SaveType.OnSceneLoad, token));
         }
 
     }

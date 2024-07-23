@@ -49,9 +49,13 @@ namespace SaveSystemPackage {
             set {
                 m_encrypt = value;
 
-                if (m_encrypt && Cryptographer == null) {
+                if (m_encrypt) {
                     using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-                    Cryptographer = new Cryptographer(settings.encryptionSettings);
+
+                    if (Cryptographer == null)
+                        Cryptographer = new Cryptographer(settings.encryptionSettings);
+                    else
+                        Cryptographer.SetSettings(settings.encryptionSettings);
                 }
             }
         }
@@ -67,9 +71,13 @@ namespace SaveSystemPackage {
             set {
                 m_authenticate = value;
 
-                if (m_authenticate && AuthManager == null) {
+                if (m_authenticate) {
                     using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-                    AuthManager = new AuthenticationManager(settings.authenticationSettings);
+
+                    if (AuthManager == null)
+                        AuthManager = new AuthenticationManager(settings.authenticationSettings);
+                    else
+                        AuthManager.SetSettings(settings.authenticationSettings);
                 }
             }
         }
@@ -90,7 +98,6 @@ namespace SaveSystemPackage {
         private bool m_authenticate;
         private AuthenticationManager m_authManager;
 
-        private SerializationScope m_nestedScope;
         private DataBuffer m_dataBuffer = new();
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
@@ -168,11 +175,6 @@ namespace SaveSystemPackage {
         }
 
 
-        internal void AttachNestedScope ([NotNull] SerializationScope serializationScope) {
-            m_nestedScope = serializationScope ?? throw new ArgumentNullException(nameof(serializationScope));
-        }
-
-
         /// <summary>
         /// Registers an serializable object to save
         /// </summary>
@@ -229,11 +231,8 @@ namespace SaveSystemPackage {
             if (Authenticate && AuthManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (ObjectsCount == 0 && m_dataBuffer.Count == 0) {
-                if (m_nestedScope != null)
-                    await m_nestedScope.Serialize(token);
+            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
                 return;
-            }
 
             m_registrationClosed = true;
 
@@ -253,9 +252,6 @@ namespace SaveSystemPackage {
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
-
-            if (m_nestedScope != null)
-                await m_nestedScope.Serialize(token);
         }
 
 
@@ -269,8 +265,6 @@ namespace SaveSystemPackage {
 
             if (!File.Exists(DataPath)) {
                 SetDefaults();
-                if (m_nestedScope != null)
-                    await m_nestedScope.Deserialize(token);
                 return;
             }
 
@@ -286,9 +280,6 @@ namespace SaveSystemPackage {
                 DeserializeObjects(reader);
                 Logger.Log(Name, "Data loaded");
             }
-
-            if (m_nestedScope != null)
-                await m_nestedScope.Deserialize(token);
         }
 
 

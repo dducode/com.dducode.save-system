@@ -11,6 +11,7 @@ using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 using UnityEngine;
+using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
@@ -56,7 +57,7 @@ namespace SaveSystemPackage {
             set => SceneScope.AuthManager = value;
         }
 
-        internal SerializationScope SceneScope { get; private set; }
+        private SerializationScope SceneScope { get; set; }
 
         private string DataPath {
             get => SceneScope.DataPath;
@@ -66,7 +67,7 @@ namespace SaveSystemPackage {
 
         private void Awake () {
             SceneScope = new SerializationScope {
-                Name = $"{name} scope"
+                Name = $"{gameObject.scene.name} scene scope"
             };
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
@@ -127,12 +128,24 @@ namespace SaveSystemPackage {
 
 
         public async UniTask Save (CancellationToken token = default) {
-            await SaveSystem.SaveScope(SceneScope, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                await SceneScope.Serialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(SceneScope.Name, "Data saving canceled");
+            }
         }
 
 
         public async UniTask Load (CancellationToken token = default) {
-            await SaveSystem.LoadScope(SceneScope, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                await SceneScope.Deserialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(SceneScope.Name, "Data loading canceled");
+            }
         }
 
 

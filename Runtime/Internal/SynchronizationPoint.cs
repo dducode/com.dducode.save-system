@@ -51,20 +51,6 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal async UniTask<TResult> ExecuteTask<TResult> (Func<UniTask<TResult>> task) {
-            await WaitCurrentExecution();
-
-            IsPerformed = true;
-
-            try {
-                return await task();
-            }
-            finally {
-                IsPerformed = false;
-            }
-        }
-
-
         private async UniTask WaitCurrentExecution (CancellationToken token = default) {
             while (IsPerformed)
                 await UniTask.Yield(token);
