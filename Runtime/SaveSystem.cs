@@ -7,11 +7,14 @@ using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Templates;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 using Logger = SaveSystemPackage.Internal.Logger;
 using MemoryStream = System.IO.MemoryStream;
+
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 // ReSharper disable SuspiciousTypeConversion.Global
 

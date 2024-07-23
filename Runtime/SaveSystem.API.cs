@@ -10,8 +10,11 @@ using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Logger = SaveSystemPackage.Internal.Logger;
+
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 #if UNITY_EDITOR
 using UnityEditor;
