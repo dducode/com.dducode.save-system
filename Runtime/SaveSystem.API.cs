@@ -110,6 +110,9 @@ namespace SaveSystemPackage {
         }
 
 
+        /// <summary>
+        /// Creates new save profile and stores it in the internal storage
+        /// </summary>
         public static SaveProfile CreateProfile ([NotNull] string name, bool encrypt = true, bool authenticate = true) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
@@ -138,6 +141,9 @@ namespace SaveSystemPackage {
         }
 
 
+        /// <summary>
+        /// Get saving profile by its name
+        /// </summary>
         [Pure]
         public static SaveProfile LoadProfile ([NotNull] string name) {
             if (string.IsNullOrEmpty(name))

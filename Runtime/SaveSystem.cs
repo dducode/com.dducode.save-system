@@ -69,7 +69,7 @@ namespace SaveSystemPackage {
         private static InputAction m_quickSaveAction;
     #endif
 
-        private static readonly SynchronizationPoint SynchronizationPoint = new();
+        internal static readonly SynchronizationPoint SynchronizationPoint = new();
 
         private static string m_profilesFolder;
         private static string m_scenesFolder;
@@ -184,6 +184,28 @@ namespace SaveSystemPackage {
             writer.Write(newName);
             writer.Write(profile.Encrypt);
             writer.Write(profile.Authenticate);
+        }
+
+
+        internal static async UniTask SaveScope (SerializationScope scope, CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await SynchronizationPoint.ExecuteTask(async () => await scope.Serialize(token));
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(scope.Name, "Data saving canceled");
+            }
+        }
+
+
+        internal static async UniTask LoadScope (SerializationScope scope, CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await SynchronizationPoint.ExecuteTask(async () => await scope.Deserialize(token));
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(scope.Name, "Data loading canceled");
+            }
         }
 
 
@@ -321,7 +343,7 @@ namespace SaveSystemPackage {
         private static async UniTask<HandlingResult> SaveData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await Game.SaveGameData(token);
+                await Game.Save(token);
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -334,7 +356,7 @@ namespace SaveSystemPackage {
         private static async UniTask<HandlingResult> LoadData (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await Game.LoadGameData(token);
+                await Game.Load(token);
                 return HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -347,21 +369,17 @@ namespace SaveSystemPackage {
         private static async UniTask PushToCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            if (File.Exists(Game.DataPath)) {
-                await cloudStorage.Push(new StorageData(
-                    await File.ReadAllBytesAsync(Game.DataPath, token), Path.GetFileName(Game.DataPath))
-                );
-            }
+            StorageData gameData = await Game.ExportGameData(token);
+            if (gameData != null)
+                await cloudStorage.Push(gameData);
 
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
             if (paths.Length > 0)
                 await PushProfiles(cloudStorage, paths, token);
 
-            if (File.Exists(DataTable.Path)) {
-                await cloudStorage.Push(new StorageData(
-                    await File.ReadAllBytesAsync(DataTable.Path, token), Path.GetFileName(DataTable.Path))
-                );
-            }
+            StorageData dataTable = await DataTable.Export(token);
+            if (dataTable != null)
+                await cloudStorage.Push(dataTable);
         }
 
 
@@ -389,9 +407,9 @@ namespace SaveSystemPackage {
         private static async UniTask PullFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData globalData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
-            if (globalData != null)
-                await File.WriteAllBytesAsync(Game.DataPath, globalData.rawData, token);
+            StorageData gameData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
+            if (gameData != null)
+                await Game.ImportGameData(gameData.rawData, token);
 
             StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
             if (profiles != null)
@@ -399,7 +417,7 @@ namespace SaveSystemPackage {
 
             StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DataTable.Path));
             if (dataTable != null)
-                await File.WriteAllBytesAsync(DataTable.Path, dataTable.rawData, token);
+                await DataTable.Import(dataTable.rawData, token);
         }
 
 

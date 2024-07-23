@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
@@ -65,6 +68,19 @@ namespace SaveSystemPackage {
             }
 
             return table;
+        }
+
+
+        internal static async UniTask<StorageData> Export (CancellationToken token = default) {
+            return File.Exists(Path)
+                ? new StorageData(await File.ReadAllBytesAsync(Path, token), System.IO.Path.GetFileName(Path))
+                : null;
+        }
+
+
+        internal static async UniTask Import (byte[] data, CancellationToken token = default) {
+            if (data.Length > 0)
+                await File.WriteAllBytesAsync(Path, data, token);
         }
 
 

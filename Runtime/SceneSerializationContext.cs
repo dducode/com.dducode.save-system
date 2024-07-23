@@ -5,6 +5,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
@@ -125,26 +126,20 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask SaveSceneData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await SceneScope.Serialize(token),
-                name, "Scene data saving canceled", this, token
-            );
+        public async UniTask Save (CancellationToken token = default) {
+            await SaveSystem.SaveScope(SceneScope, token);
         }
 
 
-        public async UniTask LoadSceneData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await SceneScope.Deserialize(token),
-                name, "Scene data loading canceled", this, token
-            );
+        public async UniTask Load (CancellationToken token = default) {
+            await SaveSystem.LoadScope(SceneScope, token);
         }
 
 
-        internal async UniTask<byte[]> ExportSceneData (CancellationToken token = default) {
-            if (!File.Exists(DataPath))
-                return Array.Empty<byte>();
-            return await File.ReadAllBytesAsync(DataPath, token);
+        internal async UniTask<StorageData> ExportSceneData (CancellationToken token = default) {
+            return File.Exists(DataPath)
+                ? new StorageData(await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+                : null;
         }
 
 

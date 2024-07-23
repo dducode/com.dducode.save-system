@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
+using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.Internal;
+using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Security;
 
 // ReSharper disable UnusedMember.Global
@@ -140,19 +141,26 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask SaveGameData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_globalScope.Serialize(token),
-                nameof(Game), "Game data saving canceled", token: token
-            );
+        public async UniTask Save (CancellationToken token = default) {
+            await SaveSystem.SaveScope(m_globalScope, token);
         }
 
 
-        public async UniTask LoadGameData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await m_globalScope.Deserialize(token),
-                nameof(Game), "Game data loading canceled", token: token
-            );
+        public async UniTask Load (CancellationToken token = default) {
+            await SaveSystem.LoadScope(m_globalScope, token);
+        }
+
+
+        internal async UniTask<StorageData> ExportGameData (CancellationToken token = default) {
+            return File.Exists(DataPath)
+                ? new StorageData(await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+                : null;
+        }
+
+
+        internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
+            if (data.Length > 0)
+                await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
     }

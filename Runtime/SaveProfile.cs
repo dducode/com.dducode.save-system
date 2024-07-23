@@ -5,7 +5,6 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 
@@ -179,19 +178,13 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask SaveProfileData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await ProfileScope.Serialize(token),
-                Name, "Profile data saving canceled", token: token
-            );
+        public async UniTask Save (CancellationToken token = default) {
+            await SaveSystem.SaveScope(ProfileScope, token);
         }
 
 
-        public async UniTask LoadProfileData (CancellationToken token = default) {
-            await CancelableOperationsHandler.Execute(
-                async () => await ProfileScope.Deserialize(token),
-                Name, "Profile data loading canceled", token: token
-            );
+        public async UniTask Load (CancellationToken token = default) {
+            await SaveSystem.LoadScope(ProfileScope, token);
         }
 
 
