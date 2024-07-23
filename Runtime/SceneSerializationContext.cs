@@ -30,7 +30,12 @@ namespace SaveSystemPackage {
         private bool authentication;
 
         [SerializeField]
+        private bool autoSave;
+
+        [SerializeField]
         private string fileName;
+
+        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => SceneScope.Encrypt;
@@ -97,6 +102,46 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             SceneScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+
+            SceneScope.WriteData(key, array);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData ([NotNull] string key, [NotNull] string value) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentNullException(nameof(value));
+
+            SceneScope.WriteData(key, value);
+
+            if (AutoSave)
+                ScheduleAutoSave();
+        }
+
+
+        public void WriteData ([NotNull] string key, MeshData meshData) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            SceneScope.WriteData(key, meshData);
+
+            if (AutoSave)
+                ScheduleAutoSave();
         }
 
 
@@ -106,6 +151,33 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             return SceneScope.ReadData(key, defaultValue);
+        }
+
+
+        [Pure]
+        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return SceneScope.ReadArray<TValue>(key);
+        }
+
+
+        [Pure]
+        public string ReadData ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return SceneScope.ReadData(key, defaultValue);
+        }
+
+
+        [Pure]
+        public MeshData ReadMeshData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return SceneScope.ReadMeshData(key);
         }
 
 
@@ -168,6 +240,7 @@ namespace SaveSystemPackage {
 
 
         private void SetupSettings () {
+            AutoSave = autoSave;
             Encrypt = encrypt;
             Authenticate = authentication;
 
@@ -194,6 +267,11 @@ namespace SaveSystemPackage {
                 "mesh-filter-recorders",
                 FindObjectsByType<MeshFilterRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
             );
+        }
+
+
+        private void ScheduleAutoSave () {
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await SceneScope.Serialize(token), true);
         }
 
     }

@@ -257,7 +257,7 @@ namespace SaveSystemPackage {
 
 
         private void ScheduleAutoSave () {
-            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await ProfileScope.Serialize(token));
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await ProfileScope.Serialize(token), true);
         }
 
     }

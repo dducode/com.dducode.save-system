@@ -197,7 +197,7 @@ namespace SaveSystemPackage {
 
 
         private void ScheduleAutoSave () {
-            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await GameScope.Serialize(token));
+            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await GameScope.Serialize(token), true);
         }
 
     }
