@@ -153,7 +153,7 @@ namespace SaveSystemPackage.Tests {
         }
 
 
-        [UnityTest]
+        [Test]
         public async Task Quitting () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Cube), new TestObjectProvider()

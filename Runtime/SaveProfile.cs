@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -40,8 +41,6 @@ namespace SaveSystemPackage {
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
-
-        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => ProfileScope.Encrypt;
@@ -97,12 +96,13 @@ namespace SaveSystemPackage {
             }
         }
 
-        private SerializationScope ProfileScope { get; }
-
         internal string DataPath {
             get => ProfileScope.DataPath;
             private set => ProfileScope.DataPath = value;
         }
+
+        internal bool HasChanges => ProfileScope.HasChanges;
+        private SerializationScope ProfileScope { get; }
 
         private string m_name;
         private string m_dataFolder;
@@ -110,7 +110,7 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal SaveProfile ([NotNull] string name, bool autoSave, bool encrypt, bool authenticate) {
+        internal SaveProfile ([NotNull] string name, bool encrypt, bool authenticate) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
@@ -121,46 +121,39 @@ namespace SaveSystemPackage {
             DataFolder = name;
             DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
 
-            AutoSave = autoSave;
             Encrypt = encrypt;
             Authenticate = authenticate;
         }
 
 
-        public void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
+        public SaveProfile WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
             ProfileScope.WriteData(key, value);
-
-            if (AutoSave)
-                ScheduleAutoSave();
+            return this;
         }
 
 
-        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
+        public SaveProfile WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
 
             ProfileScope.WriteData(key, array);
-
-            if (AutoSave)
-                ScheduleAutoSave();
+            return this;
         }
 
 
-        public void WriteData ([NotNull] string key, [NotNull] string value) {
+        public SaveProfile WriteData ([NotNull] string key, [NotNull] string value) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
             if (string.IsNullOrEmpty(value))
                 throw new ArgumentNullException(nameof(value));
 
             ProfileScope.WriteData(key, value);
-
-            if (AutoSave)
-                ScheduleAutoSave();
+            return this;
         }
 
 
@@ -188,6 +181,22 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             return ProfileScope.ReadData(key, defaultValue);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
+        public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
+            ProfileScope.RegisterSerializable(key, serializable);
+            return this;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
+        public SaveProfile RegisterSerializables (
+            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
+        ) {
+            ProfileScope.RegisterSerializables(key, serializables);
+            return this;
         }
 
 
@@ -253,11 +262,6 @@ namespace SaveSystemPackage {
 
         internal void Clear () {
             ProfileScope.Clear();
-        }
-
-
-        private void ScheduleAutoSave () {
-            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await ProfileScope.Serialize(token), true);
         }
 
     }

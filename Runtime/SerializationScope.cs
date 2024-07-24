@@ -88,6 +88,7 @@ namespace SaveSystemPackage {
             set => m_authManager = value ?? throw new ArgumentNullException(nameof(AuthManager));
         }
 
+        internal bool HasChanges { get; private set; }
 
         private string m_name;
         private string m_dataPath;
@@ -109,6 +110,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             m_dataBuffer.Write(key, value);
+            HasChanges = true;
         }
 
 
@@ -117,6 +119,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             m_dataBuffer.Write(key, array);
+            HasChanges = true;
         }
 
 
@@ -127,6 +130,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(value));
 
             m_dataBuffer.Write(key, value);
+            HasChanges = true;
         }
 
 
@@ -135,6 +139,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             m_dataBuffer.Write(key, meshData);
+            HasChanges = true;
         }
 
 
@@ -252,6 +257,8 @@ namespace SaveSystemPackage {
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
+
+            HasChanges = false;
         }
 
 
@@ -275,15 +282,15 @@ namespace SaveSystemPackage {
             if (Encrypt)
                 data = Cryptographer.Decrypt(data);
 
-            await using (var reader = new SaveReader(new MemoryStream(data))) {
-                m_dataBuffer = reader.ReadDataBuffer();
-                DeserializeObjects(reader);
-                Logger.Log(Name, "Data loaded");
-            }
+            await using var reader = new SaveReader(new MemoryStream(data));
+
+            m_dataBuffer = reader.ReadDataBuffer();
+            DeserializeObjects(reader);
+            Logger.Log(Name, "Data loaded");
         }
 
 
-        internal void SetDefaults () {
+        private void SetDefaults () {
             m_registrationClosed = true;
 
             foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))

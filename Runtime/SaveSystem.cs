@@ -56,6 +56,7 @@ namespace SaveSystemPackage {
         // Common settings
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
+        private static float m_autoSaveTime;
         private static string m_dataPath;
 
         // Checkpoints settings
@@ -78,6 +79,9 @@ namespace SaveSystemPackage {
         private static string m_scenesFolder;
 
         private static bool m_periodicSaveEnabled;
+        private static float m_periodicSaveLastTime;
+
+        private static bool m_autoSaveEnabled;
         private static float m_autoSaveLastTime;
 
 
@@ -117,10 +121,10 @@ namespace SaveSystemPackage {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
+            AutoSaveTime = settings.autoSaveTime;
             PlayerTag = settings.playerTag;
 
             Game.DataPath = settings.dataPath;
-            Game.AutoSave = settings.enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
             Game.Encrypt = settings.encryption;
             Game.Authenticate = settings.authentication;
 
@@ -180,6 +184,9 @@ namespace SaveSystemPackage {
 
             if (m_periodicSaveEnabled)
                 PeriodicSave();
+
+            if (m_autoSaveEnabled)
+                AutoSave();
         }
 
 
@@ -189,8 +196,30 @@ namespace SaveSystemPackage {
 
 
         private static void PeriodicSave () {
-            if (m_autoSaveLastTime + SavePeriod < Time.time) {
+            if (m_periodicSaveLastTime + SavePeriod < Time.time) {
                 ScheduleSave(SaveType.PeriodicSave);
+                m_periodicSaveLastTime = Time.time;
+            }
+        }
+
+
+        private static void AutoSave () {
+            if (m_autoSaveLastTime + AutoSaveTime < Time.time) {
+                if (Game.HasChanges) {
+                    ScheduleSave(SaveType.AutoSave);
+                    return;
+                }
+
+                if (Game.SaveProfile != null) {
+                    if (Game.SaveProfile.HasChanges)
+                        ScheduleSave(SaveType.AutoSave);
+                    else if (Game.SaveProfile.SceneContext != null && Game.SaveProfile.SceneContext.HasChanges)
+                        ScheduleSave(SaveType.AutoSave);
+                }
+                else if (Game.SceneContext != null && Game.SceneContext.HasChanges) {
+                    ScheduleSave(SaveType.AutoSave);
+                }
+
                 m_autoSaveLastTime = Time.time;
             }
         }
@@ -198,6 +227,7 @@ namespace SaveSystemPackage {
 
         private static void SetupEvents (SaveEvents enabledSaveEvents) {
             m_periodicSaveEnabled = false;
+            m_autoSaveEnabled = false;
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
 
@@ -206,6 +236,7 @@ namespace SaveSystemPackage {
                     break;
                 case not SaveEvents.All:
                     m_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
+                    m_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
                         Application.focusChanged += OnFocusLost;
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
@@ -213,6 +244,7 @@ namespace SaveSystemPackage {
                     break;
                 case SaveEvents.All:
                     m_periodicSaveEnabled = true;
+                    m_autoSaveEnabled = true;
                     Application.focusChanged += OnFocusLost;
                     Application.lowMemory += OnLowMemory;
                     break;
@@ -294,11 +326,10 @@ namespace SaveSystemPackage {
             foreach (string path in paths) {
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
                 var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
                 );
 
                 writer.Write(profile.Name);
-                writer.Write(profile.AutoSave);
                 writer.Write(profile.Encrypt);
                 writer.Write(profile.Authenticate);
                 writer.Write(await profile.ExportProfileData(token));
@@ -332,10 +363,9 @@ namespace SaveSystemPackage {
             foreach (string path in paths) {
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
                 var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
                 );
                 writer.Write(profile.Name);
-                writer.Write(profile.AutoSave);
                 writer.Write(profile.Encrypt);
                 writer.Write(profile.Authenticate);
                 await profile.ImportProfileData(reader.ReadArray<byte>());

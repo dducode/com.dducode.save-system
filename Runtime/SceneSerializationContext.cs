@@ -30,12 +30,7 @@ namespace SaveSystemPackage {
         private bool authentication;
 
         [SerializeField]
-        private bool autoSave;
-
-        [SerializeField]
         private string fileName;
-
-        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => SceneScope.Encrypt;
@@ -62,6 +57,7 @@ namespace SaveSystemPackage {
             set => SceneScope.AuthManager = value;
         }
 
+        internal bool HasChanges => SceneScope.HasChanges;
         private SerializationScope SceneScope { get; set; }
 
         private string DataPath {
@@ -102,9 +98,6 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             SceneScope.WriteData(key, value);
-
-            if (AutoSave)
-                ScheduleAutoSave();
         }
 
 
@@ -115,9 +108,6 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(array));
 
             SceneScope.WriteData(key, array);
-
-            if (AutoSave)
-                ScheduleAutoSave();
         }
 
 
@@ -128,9 +118,6 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(value));
 
             SceneScope.WriteData(key, value);
-
-            if (AutoSave)
-                ScheduleAutoSave();
         }
 
 
@@ -139,9 +126,6 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             SceneScope.WriteData(key, meshData);
-
-            if (AutoSave)
-                ScheduleAutoSave();
         }
 
 
@@ -190,7 +174,7 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables(string, IEnumerable{IRuntimeSerializable})"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
         public SceneSerializationContext RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
@@ -240,7 +224,6 @@ namespace SaveSystemPackage {
 
 
         private void SetupSettings () {
-            AutoSave = autoSave;
             Encrypt = encrypt;
             Authenticate = authentication;
 
@@ -267,11 +250,6 @@ namespace SaveSystemPackage {
                 "mesh-filter-recorders",
                 FindObjectsByType<MeshFilterRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
             );
-        }
-
-
-        private void ScheduleAutoSave () {
-            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await SceneScope.Serialize(token), true);
         }
 
     }
