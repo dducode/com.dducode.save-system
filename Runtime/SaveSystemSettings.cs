@@ -16,6 +16,10 @@ namespace SaveSystemPackage {
         [Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 15;
 
+        [Min(0)]
+        [Tooltip(Tooltips.AutoSaveTime)]
+        public float autoSaveTime = 5;
+
         [Tooltip(Tooltips.DataPath)]
         public string dataPath;
 
@@ -49,6 +53,8 @@ namespace SaveSystemPackage {
             result.Append($"\nEnabled Logs: {enabledLogs}");
             if (enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave))
                 result.Append($"\nSave Period: {savePeriod} sec");
+            if (enabledSaveEvents.HasFlag(SaveEvents.AutoSave))
+                result.Append($"\nAuto Save Time: {autoSaveTime} sec");
             result.Append($"\nData Path: {dataPath}");
             result.Append($"\nPlayer Tag: {playerTag}");
         }

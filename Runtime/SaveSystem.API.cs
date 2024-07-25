@@ -50,7 +50,7 @@ namespace SaveSystemPackage {
         }
 
         /// <summary>
-        /// It's used into autosave loop to determine saving frequency
+        /// It's used to determine periodic saving frequency
         /// </summary>
         /// <value> Saving period in seconds </value>
         /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
@@ -64,6 +64,24 @@ namespace SaveSystemPackage {
                 }
 
                 m_savePeriod = value;
+            }
+        }
+
+        /// <summary>
+        /// It's used to determine auto save frequency
+        /// </summary>
+        /// <value> Saving period in seconds </value>
+        /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
+        public static float AutoSaveTime {
+            get => m_autoSaveTime;
+            set {
+                if (value < 0) {
+                    throw new ArgumentException(
+                        "Auto save time cannot be less than 0.", nameof(AutoSaveTime)
+                    );
+                }
+
+                m_autoSaveTime = value;
             }
         }
 
@@ -126,11 +144,10 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
-            string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profilemetadata");
-            var profile = new SaveProfile(name, autoSave, encrypt, authenticate);
+            string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profile");
+            var profile = new SaveProfile(name, encrypt, authenticate);
             using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
             writer.Write(name);
-            writer.Write(autoSave);
             writer.Write(encrypt);
             writer.Write(authenticate);
             return profile;
@@ -142,12 +159,12 @@ namespace SaveSystemPackage {
         /// </summary>
         [Pure]
         public static async IAsyncEnumerable<SaveProfile> LoadAllProfiles () {
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
 
             foreach (string path in paths) {
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
                 var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
                 );
                 await profile.Load();
                 yield return profile;
@@ -163,14 +180,14 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
 
             foreach (string path in paths) {
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
 
                 if (string.Equals(reader.ReadString(), name)) {
                     var profile = new SaveProfile(
-                        name, reader.Read<bool>(), reader.Read<bool>(), reader.Read<bool>()
+                        name, reader.Read<bool>(), reader.Read<bool>()
                     );
                     await profile.Load();
                     return profile;
@@ -188,7 +205,7 @@ namespace SaveSystemPackage {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.profilemetadata");
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
             if (!File.Exists(path))
                 return;
 

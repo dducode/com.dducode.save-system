@@ -21,6 +21,7 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
+        private SerializedProperty m_autoSaveTimeProperty;
         private SerializedProperty m_dataPathProperty;
 
         private SerializedProperty m_playerTagProperty;
@@ -101,6 +102,7 @@ namespace SaveSystemPackage.Editor {
             m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
             m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
+            m_autoSaveTimeProperty = m_serializedSettings.FindProperty("autoSaveTime");
             m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
         }
 
@@ -129,8 +131,11 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
 
             var saveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
-            if (saveEvents.HasFlag(SaveEvents.PeriodicSave))
-                EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
+            GUI.enabled = saveEvents.HasFlag(SaveEvents.PeriodicSave);
+            EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
+            GUI.enabled = saveEvents.HasFlag(SaveEvents.AutoSave);
+            EditorGUILayout.PropertyField(m_autoSaveTimeProperty, GUILayout.MaxWidth(300));
+            GUI.enabled = true;
 
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
             if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))

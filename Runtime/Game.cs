@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -30,7 +31,7 @@ namespace SaveSystemPackage {
         }
 
         /// <summary>
-        /// Set the global data path
+        /// Set the game data path
         /// </summary>
         [NotNull]
         public string DataPath {
@@ -42,8 +43,6 @@ namespace SaveSystemPackage {
                 GameScope.DataPath = Storage.PrepareBeforeUsing(value);
             }
         }
-
-        public bool AutoSave { get; set; }
 
         public bool Encrypt {
             get => GameScope.Encrypt;
@@ -79,6 +78,8 @@ namespace SaveSystemPackage {
             }
         }
 
+        internal bool HasChanges => GameScope.HasChanges;
+
         private SerializationScope GameScope { get; } = new() {
             Name = "Game scope"
         };
@@ -87,40 +88,34 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        public void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
+        public Game WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
             GameScope.WriteData(key, value);
-
-            if (AutoSave)
-                ScheduleAutoSave();
+            return this;
         }
 
 
-        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
+        public Game WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
 
             GameScope.WriteData(key, array);
-
-            if (AutoSave)
-                ScheduleAutoSave();
+            return this;
         }
 
 
-        public void WriteData ([NotNull] string key, [NotNull] string value) {
+        public Game WriteData ([NotNull] string key, [NotNull] string value) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
             if (string.IsNullOrEmpty(value))
                 throw new ArgumentNullException(nameof(value));
 
             GameScope.WriteData(key, value);
-
-            if (AutoSave)
-                ScheduleAutoSave();
+            return this;
         }
 
 
@@ -148,6 +143,22 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             return GameScope.ReadData(key, defaultValue);
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
+        public Game RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
+            GameScope.RegisterSerializable(key, serializable);
+            return this;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
+        public Game RegisterSerializables (
+            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
+        ) {
+            GameScope.RegisterSerializables(key, serializables);
+            return this;
         }
 
 
@@ -193,11 +204,6 @@ namespace SaveSystemPackage {
         internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
                 await File.WriteAllBytesAsync(DataPath, data, token);
-        }
-
-
-        private void ScheduleAutoSave () {
-            SaveSystem.SynchronizationPoint.ScheduleTask(async token => await GameScope.Serialize(token), true);
         }
 
     }

@@ -54,7 +54,7 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
 
 
         private void DrawFolderEntry (string entryPath) {
-            if (!m_showInternal && entryPath == SaveSystemPackage.SaveSystem.InternalFolder)
+            if (!m_showInternal && entryPath == SaveSystem.InternalFolder)
                 return;
 
             m_folders.TryAdd(entryPath, false);
