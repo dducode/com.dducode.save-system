@@ -7,6 +7,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
+using SaveSystemPackage.Profiles;
 
 namespace SaveSystemPackage {
 
@@ -72,6 +73,17 @@ namespace SaveSystemPackage {
             }
 
             return null;
+        }
+
+
+        [Pure]
+        public static IEnumerable<SaveProfileRef> GetProfileRefs () {
+            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
+
+            foreach (string path in paths) {
+                using var reader = new SaveReader(File.Open(path, FileMode.Open));
+                yield return new SaveProfileRef(reader.ReadString());
+            }
         }
 
 

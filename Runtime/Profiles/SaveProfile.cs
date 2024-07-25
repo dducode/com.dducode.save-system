@@ -13,7 +13,7 @@ using SaveSystemPackage.Security;
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystemPackage {
+namespace SaveSystemPackage.Profiles {
 
     public sealed class SaveProfile {
 

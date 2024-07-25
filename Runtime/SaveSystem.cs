@@ -10,6 +10,7 @@ using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Profiles;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
