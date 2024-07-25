@@ -63,24 +63,6 @@ namespace SaveSystemPackage {
         }
 
         /// <summary>
-        /// It's used to determine auto save frequency
-        /// </summary>
-        /// <value> Saving period in seconds </value>
-        /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
-        public static float AutoSaveTime {
-            get => m_autoSaveTime;
-            set {
-                if (value < 0) {
-                    throw new ArgumentException(
-                        "Auto save time cannot be less than 0.", nameof(AutoSaveTime)
-                    );
-                }
-
-                m_autoSaveTime = value;
-            }
-        }
-
-        /// <summary>
         /// Player tag is used to filtering messages from triggered checkpoints
         /// </summary>
         /// <value> Tag of the player object </value>

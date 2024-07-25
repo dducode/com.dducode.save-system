@@ -81,7 +81,6 @@ namespace SaveSystemPackage {
         private static float m_periodicSaveLastTime;
 
         private static bool m_autoSaveEnabled;
-        private static float m_autoSaveLastTime;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -120,7 +119,6 @@ namespace SaveSystemPackage {
             EnabledSaveEvents = settings.enabledSaveEvents;
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
-            AutoSaveTime = settings.autoSaveTime;
             PlayerTag = settings.playerTag;
 
             SetupUserInputs(settings);
@@ -275,23 +273,19 @@ namespace SaveSystemPackage {
 
 
         private static void AutoSave () {
-            if (m_autoSaveLastTime + AutoSaveTime < Time.time) {
-                if (Game.HasChanges) {
-                    ScheduleSave(SaveType.AutoSave);
-                    return;
-                }
+            if (Game.HasChanges) {
+                ScheduleSave(SaveType.AutoSave);
+                return;
+            }
 
-                if (Game.SaveProfile != null) {
-                    if (Game.SaveProfile.HasChanges)
-                        ScheduleSave(SaveType.AutoSave);
-                    else if (Game.SaveProfile.SceneContext != null && Game.SaveProfile.SceneContext.HasChanges)
-                        ScheduleSave(SaveType.AutoSave);
-                }
-                else if (Game.SceneContext != null && Game.SceneContext.HasChanges) {
+            if (Game.SaveProfile != null) {
+                if (Game.SaveProfile.HasChanges)
                     ScheduleSave(SaveType.AutoSave);
-                }
-
-                m_autoSaveLastTime = Time.time;
+                else if (Game.SaveProfile.SceneContext != null && Game.SaveProfile.SceneContext.HasChanges)
+                    ScheduleSave(SaveType.AutoSave);
+            }
+            else if (Game.SceneContext != null && Game.SceneContext.HasChanges) {
+                ScheduleSave(SaveType.AutoSave);
             }
         }
 

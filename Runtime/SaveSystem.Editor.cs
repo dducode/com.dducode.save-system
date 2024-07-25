@@ -34,7 +34,6 @@
             #endif
 
                 m_periodicSaveLastTime = 0;
-                m_autoSaveLastTime = 0;
                 Game = null;
                 DiagnosticService.Clear();
 
