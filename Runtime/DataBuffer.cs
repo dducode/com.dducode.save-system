@@ -20,6 +20,7 @@ namespace SaveSystemPackage {
         private readonly Dictionary<string, MeshData> m_meshDataBuffer;
 
         public int Count => m_commonBuffer.Count + m_arrayBuffer.Count + m_stringBuffer.Count + m_meshDataBuffer.Count;
+        public bool HasChanges { get; private set; }
 
 
         public DataBuffer () {
@@ -43,6 +44,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             m_commonBuffer[key] = MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray();
+            HasChanges = true;
         }
 
 
@@ -56,6 +58,7 @@ namespace SaveSystemPackage {
                 array.Length,
                 MemoryMarshal.AsBytes((ReadOnlySpan<TArray>)array).ToArray()
             );
+            HasChanges = true;
         }
 
 
@@ -66,6 +69,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             m_stringBuffer[key] = value;
+            HasChanges = true;
         }
 
 
@@ -74,11 +78,12 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(key));
 
             m_meshDataBuffer[key] = value;
+            HasChanges = true;
         }
 
 
         [Pure]
-        public TValue Get<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
+        public TValue Read<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
@@ -87,7 +92,7 @@ namespace SaveSystemPackage {
 
 
         [Pure]
-        public TArray[] GetArray<TArray> ([NotNull] string key) where TArray : unmanaged {
+        public TArray[] ReadArray<TArray> ([NotNull] string key) where TArray : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
@@ -106,7 +111,7 @@ namespace SaveSystemPackage {
 
 
         [Pure]
-        public string GetString ([NotNull] string key, string defaultValue) {
+        public string ReadString ([NotNull] string key, string defaultValue = null) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
@@ -115,7 +120,7 @@ namespace SaveSystemPackage {
 
 
         [Pure]
-        public MeshData GetMeshData ([NotNull] string key) {
+        public MeshData ReadMeshData ([NotNull] string key) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
@@ -128,6 +133,7 @@ namespace SaveSystemPackage {
             WriteBuffer(m_arrayBuffer, writer);
             WriteBuffer(m_stringBuffer, writer);
             WriteBuffer(m_meshDataBuffer, writer);
+            HasChanges = false;
         }
 
 

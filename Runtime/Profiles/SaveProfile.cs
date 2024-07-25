@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -16,6 +15,10 @@ using SaveSystemPackage.Security;
 namespace SaveSystemPackage.Profiles {
 
     public sealed class SaveProfile {
+
+        private const string NameKey = "profile-name";
+        private const string EncryptKey = "profile-encrypt";
+        private const string AuthenticateKey = "profile-authenticate";
 
         [NotNull]
         public string Name {
@@ -38,13 +41,18 @@ namespace SaveSystemPackage.Profiles {
                 if (File.Exists(oldPath))
                     File.Move(oldPath, DataPath);
 
+                Metadata.Write(NameKey, value);
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
 
         public bool Encrypt {
             get => ProfileScope.Encrypt;
-            set => ProfileScope.Encrypt = value;
+            set {
+                ProfileScope.Encrypt = value;
+                Metadata.Write(EncryptKey, value);
+                CommitChanges();
+            }
         }
 
         [NotNull]
@@ -55,7 +63,11 @@ namespace SaveSystemPackage.Profiles {
 
         public bool Authenticate {
             get => ProfileScope.Authenticate;
-            set => ProfileScope.Authenticate = value;
+            set {
+                ProfileScope.Authenticate = value;
+                Metadata.Write(AuthenticateKey, value);
+                CommitChanges();
+            }
         }
 
         [NotNull]
@@ -63,6 +75,10 @@ namespace SaveSystemPackage.Profiles {
             get => ProfileScope.AuthManager;
             set => ProfileScope.AuthManager = value;
         }
+
+        public DataBuffer Metadata { get; }
+
+        public DataBuffer Data => ProfileScope.DataBuffer;
 
         [NotNull]
         internal string DataFolder {
@@ -101,13 +117,23 @@ namespace SaveSystemPackage.Profiles {
             private set => ProfileScope.DataPath = value;
         }
 
-        internal bool HasChanges => ProfileScope.HasChanges;
+        internal bool HasChanges => Data.HasChanges;
         private SerializationScope ProfileScope { get; }
 
         private string m_name;
         private string m_dataFolder;
         private string m_scenesFolder;
+
         private SceneSerializationContext m_sceneContext;
+
+
+        internal SaveProfile (DataBuffer metadata) : this(
+            metadata.ReadString(NameKey),
+            metadata.Read<bool>(EncryptKey),
+            metadata.Read<bool>(AuthenticateKey)
+        ) {
+            Metadata = metadata;
+        }
 
 
         internal SaveProfile ([NotNull] string name, bool encrypt, bool authenticate) {
@@ -115,72 +141,24 @@ namespace SaveSystemPackage.Profiles {
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-            ProfileScope = new SerializationScope {
-                Name = $"{m_name} profile scope"
-            };
             DataFolder = name;
-            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
 
-            Encrypt = encrypt;
-            Authenticate = authenticate;
+            ProfileScope = new SerializationScope {
+                Name = $"{name} profile scope",
+                Encrypt = encrypt,
+                Authenticate = authenticate,
+                DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
+            };
+
+            Metadata = new DataBuffer();
+            Metadata.Write(NameKey, Name);
+            Metadata.Write(EncryptKey, Encrypt);
+            Metadata.Write(AuthenticateKey, Authenticate);
         }
 
 
-        public SaveProfile WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            ProfileScope.WriteData(key, value);
-            return this;
-        }
-
-
-        public SaveProfile WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (array == null)
-                throw new ArgumentNullException(nameof(array));
-
-            ProfileScope.WriteData(key, array);
-            return this;
-        }
-
-
-        public SaveProfile WriteData ([NotNull] string key, [NotNull] string value) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentNullException(nameof(value));
-
-            ProfileScope.WriteData(key, value);
-            return this;
-        }
-
-
-        [Pure]
-        public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return ProfileScope.ReadData(key, defaultValue);
-        }
-
-
-        [Pure]
-        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return ProfileScope.ReadArray<TValue>(key);
-        }
-
-
-        [Pure]
-        public string ReadData ([NotNull] string key, string defaultValue = null) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return ProfileScope.ReadData(key, defaultValue);
+        public void CommitChanges () {
+            SaveSystem.UpdateProfile(this);
         }
 
 

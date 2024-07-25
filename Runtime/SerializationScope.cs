@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -88,7 +87,7 @@ namespace SaveSystemPackage {
             set => m_authManager = value ?? throw new ArgumentNullException(nameof(AuthManager));
         }
 
-        internal bool HasChanges { get; private set; }
+        internal DataBuffer DataBuffer { get; private set; } = new();
 
         private string m_name;
         private string m_dataPath;
@@ -99,85 +98,9 @@ namespace SaveSystemPackage {
         private bool m_authenticate;
         private AuthenticationManager m_authManager;
 
-        private DataBuffer m_dataBuffer = new();
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
         private bool m_registrationClosed;
-
-
-        internal void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            m_dataBuffer.Write(key, value);
-            HasChanges = true;
-        }
-
-
-        internal void WriteData<TValue> ([NotNull] string key, TValue[] array) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            m_dataBuffer.Write(key, array);
-            HasChanges = true;
-        }
-
-
-        internal void WriteData ([NotNull] string key, [NotNull] string value) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentNullException(nameof(value));
-
-            m_dataBuffer.Write(key, value);
-            HasChanges = true;
-        }
-
-
-        internal void WriteData ([NotNull] string key, MeshData meshData) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            m_dataBuffer.Write(key, meshData);
-            HasChanges = true;
-        }
-
-
-        [Pure]
-        internal TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default)
-            where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_dataBuffer.Count == 0 ? defaultValue : m_dataBuffer.Get(key, defaultValue);
-        }
-
-
-        [Pure]
-        internal TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_dataBuffer.Count == 0 ? Array.Empty<TValue>() : m_dataBuffer.GetArray<TValue>(key);
-        }
-
-
-        [Pure]
-        internal string ReadData ([NotNull] string key, string defaultValue = null) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_dataBuffer.Count == 0 ? defaultValue : m_dataBuffer.GetString(key, defaultValue);
-        }
-
-
-        [Pure]
-        internal MeshData ReadMeshData ([NotNull] string key) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_dataBuffer.Count == 0 ? default : m_dataBuffer.GetMeshData(key);
-        }
 
 
         /// <summary>
@@ -236,7 +159,7 @@ namespace SaveSystemPackage {
             if (Authenticate && AuthManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (ObjectsCount == 0 && m_dataBuffer.Count == 0)
+            if (ObjectsCount == 0 && DataBuffer.Count == 0)
                 return;
 
             m_registrationClosed = true;
@@ -245,7 +168,7 @@ namespace SaveSystemPackage {
 
             using (var memoryStream = new MemoryStream()) {
                 await using var writer = new SaveWriter(memoryStream);
-                writer.Write(m_dataBuffer);
+                writer.Write(DataBuffer);
                 SerializeObjects(writer);
                 data = memoryStream.ToArray();
             }
@@ -257,8 +180,6 @@ namespace SaveSystemPackage {
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
-
-            HasChanges = false;
         }
 
 
@@ -284,7 +205,7 @@ namespace SaveSystemPackage {
 
             await using var reader = new SaveReader(new MemoryStream(data));
 
-            m_dataBuffer = reader.ReadDataBuffer();
+            DataBuffer = reader.ReadDataBuffer();
             DeserializeObjects(reader);
             Logger.Log(Name, "Data loaded");
         }
@@ -299,7 +220,7 @@ namespace SaveSystemPackage {
 
 
         internal void Clear () {
-            m_dataBuffer.Clear();
+            DataBuffer.Clear();
             m_serializables.Clear();
         }
 

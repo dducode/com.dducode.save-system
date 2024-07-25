@@ -192,18 +192,6 @@ namespace SaveSystemPackage {
         }
 
 
-        internal static void UpdateProfile (SaveProfile profile, string oldName, string newName) {
-            string path = Path.Combine(InternalFolder, $"{newName}.profilemetadata");
-            if (!string.IsNullOrEmpty(oldName))
-                File.Move(Path.Combine(InternalFolder, $"{oldName}.profilemetadata"), path);
-
-            using var writer = new SaveWriter(File.Open(path, FileMode.Open));
-            writer.Write(newName);
-            writer.Write(profile.Encrypt);
-            writer.Write(profile.Authenticate);
-        }
-
-
         private static void UpdateSystem () {
             if (m_exitCancellation.IsCancellationRequested)
                 return;

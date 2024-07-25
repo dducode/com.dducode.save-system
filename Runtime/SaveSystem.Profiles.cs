@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
-using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Profiles;
+using ArgumentNullException = System.ArgumentNullException;
 
 namespace SaveSystemPackage {
 
@@ -23,11 +22,10 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(name));
 
             string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profile");
-            var profile = new SaveProfile(name, encrypt, authenticate);
             using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-            writer.Write(name);
-            writer.Write(encrypt);
-            writer.Write(authenticate);
+            var profile = new SaveProfile(name, encrypt, authenticate);
+            writer.Write(profile.Metadata);
+            writer.Write(profile.Name);
             return profile;
         }
 
@@ -36,53 +34,12 @@ namespace SaveSystemPackage {
         /// Get all previously created saving profiles
         /// </summary>
         [Pure]
-        public static async IAsyncEnumerable<SaveProfile> LoadProfiles () {
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-
-            foreach (string path in paths) {
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
-                );
-                await profile.Load();
-                yield return profile;
-            }
-        }
-
-
-        /// <summary>
-        /// Get saving profile by its name
-        /// </summary>
-        [Pure]
-        public static async UniTask<SaveProfile> LoadProfile ([NotNull] string name) {
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-
-            foreach (string path in paths) {
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-
-                if (string.Equals(reader.ReadString(), name)) {
-                    var profile = new SaveProfile(
-                        name, reader.Read<bool>(), reader.Read<bool>()
-                    );
-                    await profile.Load();
-                    return profile;
-                }
-            }
-
-            return null;
-        }
-
-
-        [Pure]
-        public static IEnumerable<SaveProfileRef> GetProfileRefs () {
+        public static IEnumerable<SaveProfile> LoadProfiles () {
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
 
             foreach (string path in paths) {
                 using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                yield return new SaveProfileRef(reader.ReadString());
+                yield return new SaveProfile(reader.ReadDataBuffer());
             }
         }
 
@@ -101,6 +58,25 @@ namespace SaveSystemPackage {
             File.Delete(path);
             Directory.Delete(profile.DataFolder, true);
             Logger.Log(nameof(SaveSystem), $"Profile <b>{profile}</b> deleted");
+        }
+
+
+        internal static void UpdateProfile (SaveProfile profile) {
+            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
+            using var writer = new SaveWriter(File.Open(path, FileMode.Open));
+            writer.Write(profile.Metadata);
+            writer.Write(profile.Name);
+        }
+
+
+        internal static void UpdateProfile (SaveProfile profile, string oldName, string newName) {
+            string path = Path.Combine(InternalFolder, $"{newName}.profile");
+            if (!string.IsNullOrEmpty(oldName))
+                File.Move(Path.Combine(InternalFolder, $"{oldName}.profile"), path);
+
+            using var writer = new SaveWriter(File.Open(path, FileMode.Open));
+            writer.Write(profile.Metadata);
+            writer.Write(newName);
         }
 
     }

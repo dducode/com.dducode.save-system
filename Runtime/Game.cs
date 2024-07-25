@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -70,6 +69,8 @@ namespace SaveSystemPackage {
             set => GameScope.AuthManager = value;
         }
 
+        public DataBuffer Data => GameScope.DataBuffer;
+
         internal SceneSerializationContext SceneContext {
             get => m_sceneContext;
             set {
@@ -79,7 +80,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal bool HasChanges => GameScope.HasChanges;
+        internal bool HasChanges => Data.HasChanges;
 
         private SerializationScope GameScope { get; } = new() {
             Name = "Game scope"
@@ -87,64 +88,6 @@ namespace SaveSystemPackage {
 
         private SaveProfile m_saveProfile;
         private SceneSerializationContext m_sceneContext;
-
-
-        public Game WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            GameScope.WriteData(key, value);
-            return this;
-        }
-
-
-        public Game WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (array == null)
-                throw new ArgumentNullException(nameof(array));
-
-            GameScope.WriteData(key, array);
-            return this;
-        }
-
-
-        public Game WriteData ([NotNull] string key, [NotNull] string value) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentNullException(nameof(value));
-
-            GameScope.WriteData(key, value);
-            return this;
-        }
-
-
-        [Pure]
-        public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return GameScope.ReadData(key, defaultValue);
-        }
-
-
-        [Pure]
-        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return GameScope.ReadArray<TValue>(key);
-        }
-
-
-        [Pure]
-        public string ReadData ([NotNull] string key, string defaultValue = null) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return GameScope.ReadData(key, defaultValue);
-        }
 
 
         /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>

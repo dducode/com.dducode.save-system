@@ -36,7 +36,7 @@ namespace SaveSystemPackage.Tests {
         public void ReadArray () {
             using var reader = new SaveReader(File.Open(m_filePath, FileMode.Open));
             DataBuffer buffer = reader.ReadDataBuffer();
-            Vector3[] positions = buffer.GetArray<Vector3>(PositionsKey);
+            Vector3[] positions = buffer.ReadArray<Vector3>(PositionsKey);
 
             var message = new StringBuilder();
             foreach (Vector3 vector3 in positions)

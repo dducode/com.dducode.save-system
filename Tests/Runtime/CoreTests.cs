@@ -249,7 +249,7 @@ namespace SaveSystemPackage.Tests {
             public async Task WriteToDataBuffer () {
                 var factory = new TestObjectFactory(PrimitiveType.Sphere);
                 TestObject testObject = factory.CreateObject();
-                SaveSystem.Game.WriteData("position", testObject.transform.position);
+                SaveSystem.Game.Data.Write("position", testObject.transform.position);
                 Debug.Log(testObject.transform.position);
                 await SaveSystem.Game.Save();
             }
@@ -258,7 +258,7 @@ namespace SaveSystemPackage.Tests {
             [Test, Order(1)]
             public async Task ReadFromDataBuffer () {
                 await SaveSystem.Game.Load();
-                Debug.Log(SaveSystem.Game.ReadData<Vector3>("position"));
+                Debug.Log(SaveSystem.Game.Data.Read<Vector3>("position"));
             }
 
         }

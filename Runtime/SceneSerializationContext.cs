@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -58,7 +57,8 @@ namespace SaveSystemPackage {
             set => SceneScope.AuthManager = value;
         }
 
-        internal bool HasChanges => SceneScope.HasChanges;
+        public DataBuffer Data => SceneScope.DataBuffer;
+        internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
 
         private string DataPath {
@@ -91,78 +91,6 @@ namespace SaveSystemPackage {
         private void OnValidate () {
             if (string.IsNullOrEmpty(fileName))
                 fileName = gameObject.scene.name.ToPathFormat();
-        }
-
-
-        public void WriteData<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            SceneScope.WriteData(key, value);
-        }
-
-
-        public void WriteData<TValue> ([NotNull] string key, [NotNull] TValue[] array) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (array == null)
-                throw new ArgumentNullException(nameof(array));
-
-            SceneScope.WriteData(key, array);
-        }
-
-
-        public void WriteData ([NotNull] string key, [NotNull] string value) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentNullException(nameof(value));
-
-            SceneScope.WriteData(key, value);
-        }
-
-
-        public void WriteData ([NotNull] string key, MeshData meshData) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            SceneScope.WriteData(key, meshData);
-        }
-
-
-        [Pure]
-        public TValue ReadData<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return SceneScope.ReadData(key, defaultValue);
-        }
-
-
-        [Pure]
-        public TValue[] ReadArray<TValue> ([NotNull] string key) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return SceneScope.ReadArray<TValue>(key);
-        }
-
-
-        [Pure]
-        public string ReadData ([NotNull] string key, string defaultValue = null) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return SceneScope.ReadData(key, defaultValue);
-        }
-
-
-        [Pure]
-        public MeshData ReadMeshData ([NotNull] string key) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return SceneScope.ReadMeshData(key);
         }
 
 

@@ -28,13 +28,13 @@ namespace SaveSystemPackage.Tests.TestObjects {
 
         public void Deserialize (SaveReader reader, int previousVersion) {
             DataBuffer buffer = reader.ReadDataBuffer();
-            Target.transform.rotation = buffer.Get<Quaternion>(nameof(Target.transform.rotation));
-            Target.transform.localRotation = buffer.Get<Quaternion>(nameof(Target.transform.localRotation));
-            Target.transform.localPosition = buffer.Get<Vector3>(nameof(Target.transform.localPosition));
-            Target.transform.position = buffer.Get<Vector3>(nameof(Target.transform.position));
+            Target.transform.rotation = buffer.Read<Quaternion>(nameof(Target.transform.rotation));
+            Target.transform.localRotation = buffer.Read<Quaternion>(nameof(Target.transform.localRotation));
+            Target.transform.localPosition = buffer.Read<Vector3>(nameof(Target.transform.localPosition));
+            Target.transform.position = buffer.Read<Vector3>(nameof(Target.transform.position));
 
-            Target.MeshFilter.mesh = buffer.GetMeshData(nameof(Target.MeshFilter.mesh));
-            Target.MeshRenderer.material.color = buffer.Get<Color>(nameof(Target.MeshRenderer.material.color));
+            Target.MeshFilter.mesh = buffer.ReadMeshData(nameof(Target.MeshFilter.mesh));
+            Target.MeshRenderer.material.color = buffer.Read<Color>(nameof(Target.MeshRenderer.material.color));
         }
 
     }
