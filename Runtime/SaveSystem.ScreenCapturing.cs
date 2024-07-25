@@ -20,7 +20,13 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Binds any key to screen capture
         /// </summary>
-        public static KeyCode ScreenCaptureKey { get; set; }
+        public static KeyCode ScreenCaptureKey {
+            get => m_screenCaptureKey;
+            set {
+                m_screenCaptureKey = value;
+                PlayerPrefs.SetInt(SaveSystemConstants.ScreenCaptureKeyCode, (int)m_screenCaptureKey);
+            }
+        }
     #endif
 
     #if ENABLE_INPUT_SYSTEM
@@ -52,6 +58,10 @@ namespace SaveSystemPackage {
         }
 
         private static string m_screenshotsFolder;
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
+        private static KeyCode m_screenCaptureKey;
+    #endif
 
 
         public static void CaptureScreenshot ([NotNull] string filename = "screenshot", int superSize = 1) {

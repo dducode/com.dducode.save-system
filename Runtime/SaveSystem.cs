@@ -28,9 +28,6 @@ namespace SaveSystemPackage {
     /// </summary>
     public static partial class SaveSystem {
 
-        private const string AllProfilesFile = "all-profiles.data";
-        private const string AllScreenshotsFile = "all-screenshots.data";
-
         internal static readonly string InternalFolder = SetInternalFolder();
 
         internal static string ProfilesFolder {
@@ -74,6 +71,10 @@ namespace SaveSystemPackage {
 
     #if ENABLE_BOTH_SYSTEMS
         private static UsedInputSystem m_usedInputSystem;
+    #endif
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
+        private static KeyCode m_quickSaveKey;
     #endif
 
         private static bool m_periodicSaveEnabled;
@@ -138,8 +139,12 @@ namespace SaveSystemPackage {
 
             switch (m_usedInputSystem) {
                 case UsedInputSystem.LegacyInputManager:
-                    QuickSaveKey = settings.quickSaveKey;
-                    ScreenCaptureKey = settings.screenCaptureKey;
+                    QuickSaveKey = (KeyCode)PlayerPrefs.GetInt(
+                        SaveSystemConstants.QuickSaveKeyCode, (int)settings.quickSaveKey
+                    );
+                    ScreenCaptureKey = (KeyCode)PlayerPrefs.GetInt(
+                        SaveSystemConstants.ScreenCaptureKeyCode, (int)settings.screenCaptureKey
+                    );
                     break;
                 case UsedInputSystem.InputSystem:
                     if (settings.inputActionAsset == null)
@@ -406,7 +411,7 @@ namespace SaveSystemPackage {
                 writer.Write(await profile.ExportProfileData(token));
             }
 
-            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllProfilesFile));
+            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllProfilesFile));
         }
 
 
@@ -422,7 +427,7 @@ namespace SaveSystemPackage {
                 writer.Write(await File.ReadAllBytesAsync(path, token));
             }
 
-            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllScreenshotsFile));
+            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllScreenshotsFile));
         }
 
 
@@ -433,7 +438,7 @@ namespace SaveSystemPackage {
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
 
-            StorageData profiles = await cloudStorage.Pull(AllProfilesFile);
+            StorageData profiles = await cloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
             if (profiles != null)
                 await DownloadProfiles(profiles);
 
@@ -441,7 +446,7 @@ namespace SaveSystemPackage {
             if (dataTable != null)
                 await DataTable.Import(dataTable.rawData, token);
 
-            StorageData screenshots = await cloudStorage.Pull(AllScreenshotsFile);
+            StorageData screenshots = await cloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
                 await DownloadScreenshots(screenshots);
         }

@@ -102,7 +102,13 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Binds any key to quick save
         /// </summary>
-        public static KeyCode QuickSaveKey { get; set; }
+        public static KeyCode QuickSaveKey {
+            get => m_quickSaveKey;
+            set {
+                m_quickSaveKey = value;
+                PlayerPrefs.SetInt(SaveSystemConstants.QuickSaveKeyCode, (int)m_quickSaveKey);
+            }
+        }
     #endif
 
     #if ENABLE_INPUT_SYSTEM
