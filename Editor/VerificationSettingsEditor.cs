@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace SaveSystemPackage.Editor {
 
-    [CustomPropertyDrawer(typeof(AuthenticationSettings))]
-    public class AuthenticationSettingsEditor : PropertyDrawer {
+    [CustomPropertyDrawer(typeof(VerificationSettings))]
+    public class VerificationSettingsEditor : PropertyDrawer {
 
         private bool m_editProperties;
 
@@ -17,9 +17,9 @@ namespace SaveSystemPackage.Editor {
 
 
         public override void OnGUI (Rect position, SerializedProperty property, GUIContent label) {
-            var settings = (AuthenticationSettings)property.boxedValue;
+            var settings = (VerificationSettings)property.boxedValue;
 
-            EditorGUILayout.LabelField("Authentication Settings", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Verification Settings", EditorStyles.boldLabel);
 
             EditorGUI.indentLevel++;
             m_editProperties = EditorGUILayout.ToggleLeft("Edit Properties", m_editProperties);

@@ -4,7 +4,7 @@ using SaveSystemPackage.Internal.Cryptography;
 namespace SaveSystemPackage.Security {
 
     [Serializable]
-    public class AuthenticationSettings {
+    public class VerificationSettings {
 
         public HashAlgorithmName hashAlgorithm;
         public string dataTablePassword = CryptoUtilities.GenerateKey();

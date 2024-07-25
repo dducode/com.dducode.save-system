@@ -43,7 +43,7 @@ namespace SaveSystemPackage {
             string password;
 
             using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
-                password = settings.authenticationSettings.dataTablePassword;
+                password = settings.verificationSettings.dataTablePassword;
             }
 
             using var aes = Aes.Create();
@@ -117,7 +117,7 @@ namespace SaveSystemPackage {
             string password;
 
             using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
-                password = settings.authenticationSettings.dataTablePassword;
+                password = settings.verificationSettings.dataTablePassword;
             }
 
             using (var memoryStream = new MemoryStream()) {

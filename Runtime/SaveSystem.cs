@@ -124,8 +124,8 @@ namespace SaveSystemPackage {
             SetupUserInputs(settings);
 
             Game.DataPath = settings.dataPath;
-            Game.Encrypt = settings.encryption;
-            Game.Authenticate = settings.authentication;
+            Game.Encrypt = settings.encrypt;
+            Game.VerifyChecksum = settings.verifyChecksum;
 
             settings.Dispose();
         }
@@ -145,14 +145,10 @@ namespace SaveSystemPackage {
                     );
                     break;
                 case UsedInputSystem.InputSystem:
-                    if (settings.inputActionAsset == null)
-                        throw new ArgumentNullException(nameof(settings.inputActionAsset));
-                    if (string.IsNullOrEmpty(settings.quickSaveId))
-                        throw new ArgumentNullException(nameof(settings.quickSaveId));
-                    if (string.IsNullOrEmpty(settings.screenCaptureId))
-                        throw new ArgumentNullException(nameof(settings.screenCaptureId));
-                    QuickSaveAction = settings.inputActionAsset.FindAction(settings.quickSaveId);
-                    ScreenCaptureAction = settings.inputActionAsset.FindAction(settings.screenCaptureId);
+                    QuickSaveAction = settings.quickSaveAction;
+                    QuickSaveAction.Enable();
+                    ScreenCaptureAction = settings.screenCaptureAction;
+                    ScreenCaptureAction.Enable();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -164,14 +160,10 @@ namespace SaveSystemPackage {
         #endif
 
         #if ENABLE_INPUT_SYSTEM
-            if (settings.inputActionAsset == null)
-                throw new ArgumentNullException(nameof(settings.inputActionAsset));
-            if (string.IsNullOrEmpty(settings.quickSaveId))
-                throw new ArgumentNullException(nameof(settings.quickSaveId));
-            if (string.IsNullOrEmpty(settings.screenCaptureId))
-                throw new ArgumentNullException(nameof(settings.screenCaptureId));
-            QuickSaveAction = settings.inputActionAsset.FindAction(settings.quickSaveId);
-            ScreenCaptureAction = settings.inputActionAsset.FindAction(settings.screenCaptureId);
+            QuickSaveAction = settings.quickSaveAction;
+            QuickSaveAction.Enable();
+            ScreenCaptureAction = settings.screenCaptureAction;
+            ScreenCaptureAction.Enable();
         #endif
         #endif
         }
@@ -379,9 +371,11 @@ namespace SaveSystemPackage {
             if (dataTable != null)
                 await cloudStorage.Push(dataTable);
 
-            string[] screenshots = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
-            if (screenshots.Length > 0)
-                await UploadScreenshots(cloudStorage, screenshots, token);
+            if (!string.IsNullOrEmpty(m_screenshotsFolder) && Directory.Exists(m_screenshotsFolder)) {
+                string[] screenshots = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
+                if (screenshots.Length > 0)
+                    await UploadScreenshots(cloudStorage, screenshots, token);
+            }
         }
 
 
@@ -401,7 +395,7 @@ namespace SaveSystemPackage {
 
                 writer.Write(profile.Name);
                 writer.Write(profile.Encrypt);
-                writer.Write(profile.Authenticate);
+                writer.Write(profile.VerifyChecksum);
                 writer.Write(await profile.ExportProfileData(token));
             }
 
@@ -458,7 +452,7 @@ namespace SaveSystemPackage {
                 );
                 writer.Write(profile.Name);
                 writer.Write(profile.Encrypt);
-                writer.Write(profile.Authenticate);
+                writer.Write(profile.VerifyChecksum);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }

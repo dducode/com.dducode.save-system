@@ -18,7 +18,7 @@ namespace SaveSystemPackage.Profiles {
 
         private const string NameKey = "profile-name";
         private const string EncryptKey = "profile-encrypt";
-        private const string AuthenticateKey = "profile-authenticate";
+        private const string VerifyKey = "profile-verify-checksum";
 
         [NotNull]
         public string Name {
@@ -61,19 +61,19 @@ namespace SaveSystemPackage.Profiles {
             set => ProfileScope.Cryptographer = value;
         }
 
-        public bool Authenticate {
-            get => ProfileScope.Authenticate;
+        public bool VerifyChecksum {
+            get => ProfileScope.VerifyChecksum;
             set {
-                ProfileScope.Authenticate = value;
-                Metadata.Write(AuthenticateKey, value);
+                ProfileScope.VerifyChecksum = value;
+                Metadata.Write(VerifyKey, value);
                 CommitChanges();
             }
         }
 
         [NotNull]
-        public AuthenticationManager AuthManager {
-            get => ProfileScope.AuthManager;
-            set => ProfileScope.AuthManager = value;
+        public VerificationManager VerificationManager {
+            get => ProfileScope.VerificationManager;
+            set => ProfileScope.VerificationManager = value;
         }
 
         public DataBuffer Metadata { get; }
@@ -130,7 +130,7 @@ namespace SaveSystemPackage.Profiles {
         internal SaveProfile (DataBuffer metadata) : this(
             metadata.ReadString(NameKey),
             metadata.Read<bool>(EncryptKey),
-            metadata.Read<bool>(AuthenticateKey)
+            metadata.Read<bool>(VerifyKey)
         ) {
             Metadata = metadata;
         }
@@ -146,14 +146,14 @@ namespace SaveSystemPackage.Profiles {
             ProfileScope = new SerializationScope {
                 Name = $"{name} profile scope",
                 Encrypt = encrypt,
-                Authenticate = authenticate,
+                VerifyChecksum = authenticate,
                 DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
             };
 
             Metadata = new DataBuffer();
             Metadata.Write(NameKey, Name);
             Metadata.Write(EncryptKey, Encrypt);
-            Metadata.Write(AuthenticateKey, Authenticate);
+            Metadata.Write(VerifyKey, VerifyChecksum);
         }
 
 

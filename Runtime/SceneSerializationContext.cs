@@ -46,15 +46,15 @@ namespace SaveSystemPackage {
             set => SceneScope.Cryptographer = value;
         }
 
-        public bool Authenticate {
-            get => SceneScope.Authenticate;
-            set => SceneScope.Authenticate = value;
+        public bool VerifyChecksum {
+            get => SceneScope.VerifyChecksum;
+            set => SceneScope.VerifyChecksum = value;
         }
 
         [NotNull]
-        public AuthenticationManager AuthManager {
-            get => SceneScope.AuthManager;
-            set => SceneScope.AuthManager = value;
+        public VerificationManager VerificationManager {
+            get => SceneScope.VerificationManager;
+            set => SceneScope.VerificationManager = value;
         }
 
         public DataBuffer Data => SceneScope.DataBuffer;
@@ -154,15 +154,15 @@ namespace SaveSystemPackage {
 
         private void SetupSettings () {
             Encrypt = encrypt;
-            Authenticate = authentication;
+            VerifyChecksum = authentication;
 
             using SaveSystemSettings settings = ResourcesManager.LoadSettings();
 
             if (Encrypt)
                 Cryptographer = new Cryptographer(settings.encryptionSettings);
 
-            if (Authenticate)
-                AuthManager = new AuthenticationManager(settings.authenticationSettings);
+            if (VerifyChecksum)
+                VerificationManager = new VerificationManager(settings.verificationSettings);
         }
 
 

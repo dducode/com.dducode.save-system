@@ -9,6 +9,7 @@ namespace SaveSystemPackage.Editor {
     public class EncryptionSettingsEditor : PropertyDrawer {
 
         private bool m_editProperties;
+        private bool m_foldout;
 
 
         public override float GetPropertyHeight (SerializedProperty property, GUIContent label) {
@@ -45,23 +46,24 @@ namespace SaveSystemPackage.Editor {
                 );
             }
 
-            EditorGUILayout.LabelField("Key Generation Parameters");
-            KeyGenerationParams keyParams = settings.keyGenerationParams;
-            keyParams.keyLength = (AESKeyLength)EditorGUILayout.EnumPopup(
-                "Key Length", keyParams.keyLength, GUILayout.MaxWidth(300)
-            );
-            keyParams.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
-                "Hash Algorithm", keyParams.hashAlgorithm, GUILayout.MaxWidth(300)
-            );
-            keyParams.iterations = EditorGUILayout.IntField(
-                "Iterations", keyParams.iterations, GUILayout.MaxWidth(500)
-            );
-            settings.keyGenerationParams = keyParams;
+            m_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_foldout, "Key Generation Parameters");
+
+            if (m_foldout) {
+                KeyGenerationParams keyParams = settings.keyGenerationParams;
+                keyParams.keyLength = (AESKeyLength)EditorGUILayout.EnumPopup(
+                    "Key Length", keyParams.keyLength
+                );
+                keyParams.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
+                    "Hash Algorithm", keyParams.hashAlgorithm
+                );
+                keyParams.iterations = EditorGUILayout.IntField("Iterations", keyParams.iterations);
+                settings.keyGenerationParams = keyParams;
+            }
+
+            EditorGUILayout.EndFoldoutHeaderGroup();
 
             GUI.enabled = true;
             EditorGUI.indentLevel--;
-
-            EditorGUILayout.EndFoldoutHeaderGroup();
 
             property.boxedValue = settings;
         }

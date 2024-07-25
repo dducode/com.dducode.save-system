@@ -21,7 +21,7 @@ namespace SaveSystemPackage.Tests {
 
         private const string Password = "password";
         private const string SaltKey = "salt";
-        private const string AuthHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
+        private const string VerifyHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
 
         private SceneSerializationContext m_sceneContext;
 
@@ -125,9 +125,9 @@ namespace SaveSystemPackage.Tests {
 
             m_sceneContext.RegisterSerializables(nameof(spheres), spheres);
             var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
-            settings.encryption = false;
-            settings.authentication = false;
-            settings.enabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusLost;
+            settings.encrypt = false;
+            settings.verifyChecksum = false;
+            settings.enabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
             settings.savePeriod = 3;
             settings.enabledLogs = LogLevel.All;
             settings.playerTag = sphereTag;
@@ -216,8 +216,8 @@ namespace SaveSystemPackage.Tests {
             );
             sphereFactory.CreateObjects(250);
 
-            SaveSystem.Game.Authenticate = true;
-            SaveSystem.Game.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Game.VerifyChecksum = true;
+            SaveSystem.Game.VerificationManager = new VerificationManager(HashAlgorithmName.SHA1);
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Save();
@@ -231,14 +231,14 @@ namespace SaveSystemPackage.Tests {
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
-            SaveSystem.Game.Authenticate = true;
-            SaveSystem.Game.AuthManager = new AuthenticationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Game.VerifyChecksum = true;
+            SaveSystem.Game.VerificationManager = new VerificationManager(HashAlgorithmName.SHA1);
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Load();
             await UniTask.WaitForSeconds(1);
 
-            PlayerPrefs.DeleteKey(AuthHashKey);
+            PlayerPrefs.DeleteKey(VerifyHashKey);
         }
 
 

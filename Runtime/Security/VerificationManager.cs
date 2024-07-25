@@ -12,27 +12,27 @@ using SaveSystemPackage.Internal.Templates;
 
 namespace SaveSystemPackage.Security {
 
-    public class AuthenticationManager {
+    public class VerificationManager {
 
         public HashAlgorithmName Algorithm { get; set; }
 
 
-        public AuthenticationManager (AuthenticationSettings settings) {
+        public VerificationManager (VerificationSettings settings) {
             SetSettings(settings);
         }
 
 
-        internal AuthenticationManager (HashAlgorithmName algorithm) {
+        internal VerificationManager (HashAlgorithmName algorithm) {
             Algorithm = algorithm;
         }
 
 
-        public void SetSettings (AuthenticationSettings settings) {
+        public void SetSettings (VerificationSettings settings) {
             Algorithm = settings.hashAlgorithm;
         }
 
 
-        public void AuthenticateData ([NotNull] string filePath, [NotNull] byte[] data) {
+        public void VerifyData ([NotNull] string filePath, [NotNull] byte[] data) {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (data == null)
@@ -48,7 +48,7 @@ namespace SaveSystemPackage.Security {
         }
 
 
-        public void SetAuthHash ([NotNull] string filePath, [NotNull] byte[] data) {
+        public void SetChecksum ([NotNull] string filePath, [NotNull] byte[] data) {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (data == null)

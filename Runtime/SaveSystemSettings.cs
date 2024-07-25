@@ -17,8 +17,8 @@ namespace SaveSystemPackage {
     public class SaveSystemSettings : ScriptableObject, IDisposable {
 
         public bool automaticInitialize = true;
-        public SaveEvents enabledSaveEvents = SaveEvents.AutoSave;
         public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
+        public SaveEvents enabledSaveEvents = SaveEvents.AutoSave;
 
         [Min(0)]
         [Tooltip(Tooltips.SavePeriod)]
@@ -37,18 +37,17 @@ namespace SaveSystemPackage {
     #endif
 
     #if ENABLE_INPUT_SYSTEM
-        public InputActionAsset inputActionAsset;
-        public string quickSaveId;
-        public string screenCaptureId;
+        public InputActionReference quickSaveAction;
+        public InputActionReference screenCaptureAction;
     #endif
 
         public string playerTag = "Player";
 
-        public bool encryption = true;
+        public bool encrypt = true;
         public EncryptionSettings encryptionSettings;
 
-        public bool authentication = true;
-        public AuthenticationSettings authenticationSettings;
+        public bool verifyChecksum = true;
+        public VerificationSettings verificationSettings;
 
 
         public override string ToString () {
@@ -78,16 +77,16 @@ namespace SaveSystemPackage {
 
 
         private void AppendEncryptionSettings (StringBuilder result) {
-            result.Append($"\nEncryption: {(encryption ? "Enable" : "Disable")}");
-            if (encryption)
+            result.Append($"\nEncryption: {(encrypt ? "Enable" : "Disable")}");
+            if (encrypt)
                 result.Append($"\nEncryption Settings: {{{encryptionSettings}}}");
         }
 
 
         private void AppendAuthSettings (StringBuilder result) {
-            result.Append($"\nAuthentication: {(authentication ? "Enable" : "Disable")}");
-            if (authentication)
-                result.Append($"\nAuthentication settings: {authenticationSettings}");
+            result.Append($"\nAuthentication: {(verifyChecksum ? "Enable" : "Disable")}");
+            if (verifyChecksum)
+                result.Append($"\nAuthentication settings: {verificationSettings}");
         }
 
     }

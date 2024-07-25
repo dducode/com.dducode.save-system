@@ -65,26 +65,26 @@ namespace SaveSystemPackage {
             set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
         }
 
-        internal bool Authenticate {
-            get => m_authenticate;
+        internal bool VerifyChecksum {
+            get => m_verifyChecksum;
             set {
-                m_authenticate = value;
+                m_verifyChecksum = value;
 
-                if (m_authenticate) {
+                if (m_verifyChecksum) {
                     using SaveSystemSettings settings = ResourcesManager.LoadSettings();
 
-                    if (AuthManager == null)
-                        AuthManager = new AuthenticationManager(settings.authenticationSettings);
+                    if (VerificationManager == null)
+                        VerificationManager = new VerificationManager(settings.verificationSettings);
                     else
-                        AuthManager.SetSettings(settings.authenticationSettings);
+                        VerificationManager.SetSettings(settings.verificationSettings);
                 }
             }
         }
 
         [NotNull]
-        internal AuthenticationManager AuthManager {
-            get => m_authManager;
-            set => m_authManager = value ?? throw new ArgumentNullException(nameof(AuthManager));
+        internal VerificationManager VerificationManager {
+            get => m_verificationManager;
+            set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
         }
 
         internal DataBuffer DataBuffer { get; private set; } = new();
@@ -95,8 +95,8 @@ namespace SaveSystemPackage {
         private bool m_encrypt;
         private Cryptographer m_cryptographer;
 
-        private bool m_authenticate;
-        private AuthenticationManager m_authManager;
+        private bool m_verifyChecksum;
+        private VerificationManager m_verificationManager;
 
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
@@ -156,7 +156,7 @@ namespace SaveSystemPackage {
         internal async UniTask Serialize (CancellationToken token) {
             if (Encrypt && Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (Authenticate && AuthManager == null)
+            if (VerifyChecksum && VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             if (ObjectsCount == 0 && DataBuffer.Count == 0)
@@ -175,8 +175,8 @@ namespace SaveSystemPackage {
 
             if (Encrypt)
                 data = Cryptographer.Encrypt(data);
-            if (Authenticate)
-                AuthManager.SetAuthHash(DataPath, data);
+            if (VerifyChecksum)
+                VerificationManager.SetChecksum(DataPath, data);
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
@@ -186,7 +186,7 @@ namespace SaveSystemPackage {
         internal async UniTask Deserialize (CancellationToken token) {
             if (Encrypt && Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (Authenticate && AuthManager == null)
+            if (VerifyChecksum && VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             m_registrationClosed = true;
@@ -198,8 +198,8 @@ namespace SaveSystemPackage {
 
             byte[] data = await File.ReadAllBytesAsync(DataPath, token);
 
-            if (Authenticate)
-                AuthManager.AuthenticateData(DataPath, data);
+            if (VerifyChecksum)
+                VerificationManager.VerifyData(DataPath, data);
             if (Encrypt)
                 data = Cryptographer.Decrypt(data);
 

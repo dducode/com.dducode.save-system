@@ -58,15 +58,15 @@ namespace SaveSystemPackage {
             set => GameScope.Cryptographer = value;
         }
 
-        public bool Authenticate {
-            get => GameScope.Authenticate;
-            set => GameScope.Authenticate = value;
+        public bool VerifyChecksum {
+            get => GameScope.VerifyChecksum;
+            set => GameScope.VerifyChecksum = value;
         }
 
         [NotNull]
-        public AuthenticationManager AuthManager {
-            get => GameScope.AuthManager;
-            set => GameScope.AuthManager = value;
+        public VerificationManager VerificationManager {
+            get => GameScope.VerificationManager;
+            set => GameScope.VerificationManager = value;
         }
 
         public DataBuffer Data => GameScope.DataBuffer;

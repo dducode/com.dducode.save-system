@@ -36,9 +36,8 @@ namespace SaveSystemPackage.Editor {
     #endif
 
     #if ENABLE_INPUT_SYSTEM
-        private SerializedProperty m_inputActionAssetProperty;
-        private SerializedProperty m_quickSaveIdProperty;
-        private SerializedProperty m_screenCaptureIdProperty;
+        private SerializedProperty m_quickSaveActionProperty;
+        private SerializedProperty m_screenCaptureActionProperty;
     #endif
 
         private SerializedProperty m_savePeriodProperty;
@@ -113,7 +112,7 @@ namespace SaveSystemPackage.Editor {
             InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
             InitializeEncryptionSettings();
-            InitializeAuthSettings();
+            InitializeVerificationSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -139,9 +138,8 @@ namespace SaveSystemPackage.Editor {
         #endif
 
         #if ENABLE_INPUT_SYSTEM
-            m_inputActionAssetProperty = m_serializedSettings.FindProperty("inputActionAsset");
-            m_quickSaveIdProperty = m_serializedSettings.FindProperty("quickSaveId");
-            m_screenCaptureIdProperty = m_serializedSettings.FindProperty("screenCaptureId");
+            m_quickSaveActionProperty = m_serializedSettings.FindProperty("quickSaveAction");
+            m_screenCaptureActionProperty = m_serializedSettings.FindProperty("screenCaptureAction");
         #endif
         }
 
@@ -152,29 +150,29 @@ namespace SaveSystemPackage.Editor {
 
 
         private void InitializeEncryptionSettings () {
-            m_encryptProperty = m_serializedSettings.FindProperty("encryption");
+            m_encryptProperty = m_serializedSettings.FindProperty("encrypt");
             m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
         }
 
 
-        private void InitializeAuthSettings () {
-            m_authenticationProperty = m_serializedSettings.FindProperty("authentication");
-            m_authenticationSettingsProperty = m_serializedSettings.FindProperty("authenticationSettings");
+        private void InitializeVerificationSettings () {
+            m_authenticationProperty = m_serializedSettings.FindProperty("verifyChecksum");
+            m_authenticationSettingsProperty = m_serializedSettings.FindProperty("verificationSettings");
         }
 
 
         private void DrawCommonSettings () {
             EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(m_automaticInitializeProperty, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_enabledSaveEventsProperty, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_enabledLogsProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_automaticInitializeProperty);
+            EditorGUILayout.PropertyField(m_enabledLogsProperty);
+            EditorGUILayout.PropertyField(m_enabledSaveEventsProperty);
 
             var saveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
             GUI.enabled = saveEvents.HasFlag(SaveEvents.PeriodicSave);
-            EditorGUILayout.PropertyField(m_savePeriodProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_savePeriodProperty);
             GUI.enabled = true;
 
-            EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
+            EditorGUILayout.PropertyField(m_dataPathProperty);
             if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))
                 m_dataPathProperty.stringValue = $"{Application.productName.ToPathFormat()}.data";
 
@@ -186,31 +184,29 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.LabelField("User Actions", EditorStyles.boldLabel);
 
         #if ENABLE_BOTH_SYSTEMS
-            EditorGUILayout.PropertyField(m_usedInputSystemProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_usedInputSystemProperty);
 
             switch ((UsedInputSystem)m_usedInputSystemProperty.enumValueIndex) {
                 case UsedInputSystem.LegacyInputManager:
-                    EditorGUILayout.PropertyField(m_quickSaveKeyProperty, GUILayout.MaxWidth(300));
-                    EditorGUILayout.PropertyField(m_screenCaptureKeyProperty, GUILayout.MaxWidth(300));
+                    EditorGUILayout.PropertyField(m_quickSaveKeyProperty);
+                    EditorGUILayout.PropertyField(m_screenCaptureKeyProperty);
                     break;
                 case UsedInputSystem.InputSystem:
-                    EditorGUILayout.PropertyField(m_inputActionAssetProperty, GUILayout.MaxWidth(300));
-                    EditorGUILayout.PropertyField(m_quickSaveIdProperty, GUILayout.MaxWidth(300));
-                    EditorGUILayout.PropertyField(m_screenCaptureIdProperty, GUILayout.MaxWidth(300));
+                    EditorGUILayout.PropertyField(m_quickSaveActionProperty);
+                    EditorGUILayout.PropertyField(m_screenCaptureActionProperty);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
         #else
         #if ENABLE_LEGACY_INPUT_MANAGER
-            EditorGUILayout.PropertyField(m_quickSaveKeyProperty, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_screenCaptureKeyProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_quickSaveKeyProperty);
+            EditorGUILayout.PropertyField(m_screenCaptureKeyProperty);
         #endif
 
         #if ENABLE_INPUT_SYSTEM
-            EditorGUILayout.PropertyField(m_inputActionAssetProperty, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_quickSaveActionNameProperty, GUILayout.MaxWidth(300));
-            EditorGUILayout.PropertyField(m_screenCaptureActionNameProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_quickSaveActionNameProperty);
+            EditorGUILayout.PropertyField(m_screenCaptureActionNameProperty);
         #endif
         #endif
 
@@ -221,7 +217,7 @@ namespace SaveSystemPackage.Editor {
         private void DrawCheckpointsSettings () {
             EditorGUILayout.LabelField("Checkpoints settings", EditorStyles.boldLabel);
             m_playerTagProperty.stringValue = EditorGUILayout.TagField(
-                m_playerTagContent, m_playerTagProperty.stringValue, GUILayout.MaxWidth(300)
+                m_playerTagContent, m_playerTagProperty.stringValue
             );
 
             EditorGUILayout.Space(15);
