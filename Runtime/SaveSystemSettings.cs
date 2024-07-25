@@ -1,8 +1,16 @@
-﻿using System;
+﻿#if ENABLE_LEGACY_INPUT_MANAGER && ENABLE_INPUT_SYSTEM
+#define ENABLE_BOTH_SYSTEMS
+#endif
+
+using System;
 using System.Text;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using UnityEngine;
+
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace SaveSystemPackage {
 
@@ -14,14 +22,29 @@ namespace SaveSystemPackage {
 
         [Min(0)]
         [Tooltip(Tooltips.SavePeriod)]
-        public float savePeriod = 15;
+        public float savePeriod = 5;
 
         [Min(0)]
         [Tooltip(Tooltips.AutoSaveTime)]
-        public float autoSaveTime = 5;
+        public float autoSaveTime = 1;
 
         [Tooltip(Tooltips.DataPath)]
         public string dataPath;
+
+    #if ENABLE_BOTH_SYSTEMS
+        public UsedInputSystem usedInputSystem;
+    #endif
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
+        public KeyCode quickSaveKey = KeyCode.S;
+        public KeyCode screenCaptureKey = KeyCode.Print;
+    #endif
+
+    #if ENABLE_INPUT_SYSTEM
+        public InputActionAsset inputActionAsset;
+        public string quickSaveId;
+        public string screenCaptureId;
+    #endif
 
         public string playerTag = "Player";
 

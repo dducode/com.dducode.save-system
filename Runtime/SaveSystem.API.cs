@@ -1,14 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Contracts;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -103,20 +98,34 @@ namespace SaveSystemPackage {
             }
         }
 
+    #if ENABLE_LEGACY_INPUT_MANAGER
         /// <summary>
-        /// Event that is called before saving. It can be useful when you use async saving
+        /// Binds any key to quick save
+        /// </summary>
+        public static KeyCode QuickSaveKey { get; set; }
+    #endif
+
+    #if ENABLE_INPUT_SYSTEM
+        /// <summary>
+        /// Binds any input action to quick save
+        /// </summary>
+        public static InputAction QuickSaveAction { get; set; }
+    #endif
+
+        /// <summary>
+        /// The event is called before saving. It can be useful when you use async saving
         /// </summary>
         /// <value>
-        /// Listeners that will be called when core will start saving.
+        /// Listeners will be called when the system starts saving.
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
         public static event Action<SaveType> OnSaveStart;
 
         /// <summary>
-        /// Event that is called after saving
+        /// The event is called after saving
         /// </summary>
         /// <value>
-        /// Listeners that will be called when core will finish saving.
+        /// Listeners will be called when the system completes saving.
         /// Listeners must accept <see cref="SaveType"/> enumeration
         /// </value>
         public static event Action<SaveType> OnSaveEnd;
@@ -136,86 +145,6 @@ namespace SaveSystemPackage {
 
 
         /// <summary>
-        /// Creates new save profile and stores it in the internal storage
-        /// </summary>
-        public static SaveProfile CreateProfile (
-            [NotNull] string name, bool autoSave = true, bool encrypt = true, bool authenticate = true
-        ) {
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-
-            string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profile");
-            var profile = new SaveProfile(name, encrypt, authenticate);
-            using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-            writer.Write(name);
-            writer.Write(encrypt);
-            writer.Write(authenticate);
-            return profile;
-        }
-
-
-        /// <summary>
-        /// Get all previously created saving profiles
-        /// </summary>
-        [Pure]
-        public static async IAsyncEnumerable<SaveProfile> LoadAllProfiles () {
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-
-            foreach (string path in paths) {
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
-                );
-                await profile.Load();
-                yield return profile;
-            }
-        }
-
-
-        /// <summary>
-        /// Get saving profile by its name
-        /// </summary>
-        [Pure]
-        public static async UniTask<SaveProfile> LoadProfile ([NotNull] string name) {
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-
-            foreach (string path in paths) {
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-
-                if (string.Equals(reader.ReadString(), name)) {
-                    var profile = new SaveProfile(
-                        name, reader.Read<bool>(), reader.Read<bool>()
-                    );
-                    await profile.Load();
-                    return profile;
-                }
-            }
-
-            return null;
-        }
-
-
-        /// <summary>
-        /// Removes profile from the internal persistent storage
-        /// </summary>
-        public static void DeleteSaveProfile ([NotNull] SaveProfile profile) {
-            if (profile == null)
-                throw new ArgumentNullException(nameof(profile));
-
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
-            if (!File.Exists(path))
-                return;
-
-            File.Delete(path);
-            Directory.Delete(profile.DataFolder, true);
-            Logger.Log(nameof(SaveSystem), $"Profile {{{profile}}} deleted");
-        }
-
-
-        /// <summary>
         /// Configures all the Core parameters
         /// </summary>
         /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
@@ -223,28 +152,6 @@ namespace SaveSystemPackage {
             SetSettings(settings);
             Logger.Log(nameof(SaveSystem), $"Parameters was configured: {settings}");
         }
-
-
-    #if ENABLE_LEGACY_INPUT_MANAGER
-        /// <summary>
-        /// Binds any key with quick save
-        /// </summary>
-        public static void BindKey (KeyCode keyCode) {
-            m_quickSaveKey = keyCode;
-            Logger.Log(nameof(SaveSystem), $"Key \"{keyCode}\" was bind with quick save");
-        }
-    #endif
-
-
-    #if ENABLE_INPUT_SYSTEM
-        /// <summary>
-        /// Binds any input action with quick save
-        /// </summary>
-        public static void BindAction (InputAction action) {
-            m_quickSaveAction = action;
-            Logger.Log(nameof(SaveSystem), $"Action \"{action}\" was bind with quick save");
-        }
-    #endif
 
 
         /// <summary>

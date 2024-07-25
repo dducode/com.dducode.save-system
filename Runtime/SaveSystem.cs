@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if ENABLE_LEGACY_INPUT_MANAGER && ENABLE_INPUT_SYSTEM
+#define ENABLE_BOTH_SYSTEMS
+#endif
+
+using System;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -12,10 +16,6 @@ using UnityEngine.PlayerLoop;
 using Logger = SaveSystemPackage.Internal.Logger;
 using MemoryStream = System.IO.MemoryStream;
 
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
 // ReSharper disable SuspiciousTypeConversion.Global
 
 namespace SaveSystemPackage {
@@ -28,6 +28,7 @@ namespace SaveSystemPackage {
     public static partial class SaveSystem {
 
         private const string AllProfilesFile = "all-profiles.data";
+        private const string AllScreenshotsFile = "all-screenshots.data";
 
         internal static readonly string InternalFolder = SetInternalFolder();
 
@@ -65,18 +66,14 @@ namespace SaveSystemPackage {
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
-    #if ENABLE_LEGACY_INPUT_MANAGER
-        private static KeyCode m_quickSaveKey;
-    #endif
-
-    #if ENABLE_INPUT_SYSTEM
-        private static InputAction m_quickSaveAction;
-    #endif
-
-        internal static readonly SynchronizationPoint SynchronizationPoint = new();
+        private static readonly SynchronizationPoint SynchronizationPoint = new();
 
         private static string m_profilesFolder;
         private static string m_scenesFolder;
+
+    #if ENABLE_BOTH_SYSTEMS
+        private static UsedInputSystem m_usedInputSystem;
+    #endif
 
         private static bool m_periodicSaveEnabled;
         private static float m_periodicSaveLastTime;
@@ -124,11 +121,55 @@ namespace SaveSystemPackage {
             AutoSaveTime = settings.autoSaveTime;
             PlayerTag = settings.playerTag;
 
+            SetupUserInputs(settings);
+
             Game.DataPath = settings.dataPath;
             Game.Encrypt = settings.encryption;
             Game.Authenticate = settings.authentication;
 
             settings.Dispose();
+        }
+
+
+        private static void SetupUserInputs (SaveSystemSettings settings) {
+        #if ENABLE_BOTH_SYSTEMS
+            m_usedInputSystem = settings.usedInputSystem;
+
+            switch (m_usedInputSystem) {
+                case UsedInputSystem.LegacyInputManager:
+                    QuickSaveKey = settings.quickSaveKey;
+                    ScreenCaptureKey = settings.screenCaptureKey;
+                    break;
+                case UsedInputSystem.InputSystem:
+                    if (settings.inputActionAsset == null)
+                        throw new ArgumentNullException(nameof(settings.inputActionAsset));
+                    if (string.IsNullOrEmpty(settings.quickSaveId))
+                        throw new ArgumentNullException(nameof(settings.quickSaveId));
+                    if (string.IsNullOrEmpty(settings.screenCaptureId))
+                        throw new ArgumentNullException(nameof(settings.screenCaptureId));
+                    QuickSaveAction = settings.inputActionAsset.FindAction(settings.quickSaveId);
+                    ScreenCaptureAction = settings.inputActionAsset.FindAction(settings.screenCaptureId);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        #else
+        #if ENABLE_LEGACY_INPUT_MANAGER
+            QuickSaveKey = settings.quickSaveKey;
+            ScreenCaptureKey = settings.screenCaptureKey;
+        #endif
+
+        #if ENABLE_INPUT_SYSTEM
+            if (settings.inputActionAsset == null)
+                throw new ArgumentNullException(nameof(settings.inputActionAsset));
+            if (string.IsNullOrEmpty(settings.quickSaveId))
+                throw new ArgumentNullException(nameof(settings.quickSaveId));
+            if (string.IsNullOrEmpty(settings.screenCaptureId))
+                throw new ArgumentNullException(nameof(settings.screenCaptureId));
+            QuickSaveAction = settings.inputActionAsset.FindAction(settings.quickSaveId);
+            ScreenCaptureAction = settings.inputActionAsset.FindAction(settings.screenCaptureId);
+        #endif
+        #endif
         }
 
 
@@ -172,15 +213,7 @@ namespace SaveSystemPackage {
              */
             SynchronizationPoint.ExecuteScheduledTask(m_exitCancellation.Token);
 
-        #if ENABLE_LEGACY_INPUT_MANAGER
-            if (Input.GetKeyDown(m_quickSaveKey))
-                QuickSave();
-        #endif
-
-        #if ENABLE_INPUT_SYSTEM
-            if (m_quickSaveAction != null && m_quickSaveAction.WasPerformedThisFrame())
-                QuickSave();
-        #endif
+            UpdateUserInputs();
 
             if (m_periodicSaveEnabled)
                 PeriodicSave();
@@ -188,6 +221,50 @@ namespace SaveSystemPackage {
             if (m_autoSaveEnabled)
                 AutoSave();
         }
+
+
+        private static void UpdateUserInputs () {
+        #if ENABLE_BOTH_SYSTEMS
+            switch (m_usedInputSystem) {
+                case UsedInputSystem.LegacyInputManager:
+                    CheckPressedKeys();
+                    break;
+                case UsedInputSystem.InputSystem:
+                    CheckPerformedActions();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        #else
+        #if ENABLE_LEGACY_INPUT_MANAGER
+            CheckPressedKeys();
+        #endif
+
+        #if ENABLE_INPUT_SYSTEM
+            CheckPerformedActions();
+        #endif
+        #endif
+        }
+
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
+        private static void CheckPressedKeys () {
+            if (Input.GetKeyDown(QuickSaveKey))
+                QuickSave();
+            if (Input.GetKeyDown(ScreenCaptureKey))
+                CaptureScreenshot();
+        }
+    #endif
+
+
+    #if ENABLE_INPUT_SYSTEM
+        private static void CheckPerformedActions () {
+            if (QuickSaveAction != null && QuickSaveAction.WasPerformedThisFrame())
+                QuickSave();
+            if (ScreenCaptureAction != null && ScreenCaptureAction.WasPerformedThisFrame())
+                CaptureScreenshot();
+        }
+    #endif
 
 
         private static void QuickSave () {
@@ -306,13 +383,17 @@ namespace SaveSystemPackage {
             if (gameData != null)
                 await cloudStorage.Push(gameData);
 
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
-            if (paths.Length > 0)
-                await UploadProfiles(cloudStorage, paths, token);
+            string[] profiles = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
+            if (profiles.Length > 0)
+                await UploadProfiles(cloudStorage, profiles, token);
 
             StorageData dataTable = await DataTable.Export(token);
             if (dataTable != null)
                 await cloudStorage.Push(dataTable);
+
+            string[] screenshots = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
+            if (screenshots.Length > 0)
+                await UploadScreenshots(cloudStorage, screenshots, token);
         }
 
 
@@ -321,9 +402,10 @@ namespace SaveSystemPackage {
         ) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(paths);
+            writer.Write(paths.Length);
 
             foreach (string path in paths) {
+                writer.Write(Path.GetFileName(path));
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
                 var profile = new SaveProfile(
                     reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
@@ -336,6 +418,22 @@ namespace SaveSystemPackage {
             }
 
             await cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllProfilesFile));
+        }
+
+
+        private static async UniTask UploadScreenshots (
+            ICloudStorage cloudStorage, string[] paths, CancellationToken token
+        ) {
+            var memoryStream = new MemoryStream();
+            await using var writer = new SaveWriter(memoryStream);
+            writer.Write(paths.Length);
+
+            foreach (string path in paths) {
+                writer.Write(Path.GetFileName(path));
+                writer.Write(await File.ReadAllBytesAsync(path, token));
+            }
+
+            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), AllScreenshotsFile));
         }
 
 
@@ -353,14 +451,19 @@ namespace SaveSystemPackage {
             StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DataTable.Path));
             if (dataTable != null)
                 await DataTable.Import(dataTable.rawData, token);
+
+            StorageData screenshots = await cloudStorage.Pull(AllScreenshotsFile);
+            if (screenshots != null)
+                await DownloadScreenshots(screenshots);
         }
 
 
         private static async UniTask DownloadProfiles (StorageData profiles) {
             await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
-            string[] paths = reader.ReadStringArray();
+            var count = reader.Read<int>();
 
-            foreach (string path in paths) {
+            for (var i = 0; i < count; i++) {
+                string path = Path.Combine(InternalFolder, reader.ReadString());
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
                 var profile = new SaveProfile(
                     reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
@@ -369,6 +472,18 @@ namespace SaveSystemPackage {
                 writer.Write(profile.Encrypt);
                 writer.Write(profile.Authenticate);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
+            }
+        }
+
+
+        private static async UniTask DownloadScreenshots (StorageData screenshots) {
+            await using var reader = new SaveReader(new MemoryStream(screenshots.rawData));
+            var count = reader.Read<int>();
+
+            for (var i = 0; i < count; i++) {
+                await File.WriteAllBytesAsync(
+                    Path.Combine(ScreenshotsFolder, reader.ReadString()), reader.ReadArray<byte>()
+                );
             }
         }
 

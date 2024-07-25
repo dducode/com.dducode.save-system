@@ -24,11 +24,13 @@
                 Application.lowMemory -= OnLowMemory;
 
             #if ENABLE_LEGACY_INPUT_MANAGER
-                m_quickSaveKey = default;
+                QuickSaveKey = default;
+                ScreenCaptureKey = default;
             #endif
 
             #if ENABLE_INPUT_SYSTEM
-                m_quickSaveAction = null;
+                QuickSaveAction = null;
+                ScreenCaptureAction = null;
             #endif
 
                 m_periodicSaveLastTime = 0;

@@ -1,4 +1,9 @@
-﻿using SaveSystemPackage.Internal;
+﻿#if ENABLE_LEGACY_INPUT_MANAGER && ENABLE_INPUT_SYSTEM
+#define ENABLE_BOTH_SYSTEMS
+#endif
+
+using System;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEditor;
 using UnityEngine;
@@ -20,6 +25,22 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_automaticInitializeProperty;
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
+
+    #if ENABLE_BOTH_SYSTEMS
+        private SerializedProperty m_usedInputSystemProperty;
+    #endif
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
+        private SerializedProperty m_quickSaveKeyProperty;
+        private SerializedProperty m_screenCaptureKeyProperty;
+    #endif
+
+    #if ENABLE_INPUT_SYSTEM
+        private SerializedProperty m_inputActionAssetProperty;
+        private SerializedProperty m_quickSaveIdProperty;
+        private SerializedProperty m_screenCaptureIdProperty;
+    #endif
+
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_autoSaveTimeProperty;
         private SerializedProperty m_dataPathProperty;
@@ -64,6 +85,7 @@ namespace SaveSystemPackage.Editor {
             m_serializedSettings.Update();
 
             DrawCommonSettings();
+            DrawUserActionsProperties();
             DrawCheckpointsSettings();
             DrawEncryptionSettings();
             DrawAuthenticationSettings();
@@ -89,6 +111,7 @@ namespace SaveSystemPackage.Editor {
             m_serializedSettings = new SerializedObject(settings);
 
             InitializeCommonSettings();
+            InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
             InitializeEncryptionSettings();
             InitializeAuthSettings();
@@ -104,6 +127,24 @@ namespace SaveSystemPackage.Editor {
             m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
             m_autoSaveTimeProperty = m_serializedSettings.FindProperty("autoSaveTime");
             m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
+        }
+
+
+        private void InitializeUserActionsProperties () {
+        #if ENABLE_BOTH_SYSTEMS
+            m_usedInputSystemProperty = m_serializedSettings.FindProperty("usedInputSystem");
+        #endif
+
+        #if ENABLE_LEGACY_INPUT_MANAGER
+            m_quickSaveKeyProperty = m_serializedSettings.FindProperty("quickSaveKey");
+            m_screenCaptureKeyProperty = m_serializedSettings.FindProperty("screenCaptureKey");
+        #endif
+
+        #if ENABLE_INPUT_SYSTEM
+            m_inputActionAssetProperty = m_serializedSettings.FindProperty("inputActionAsset");
+            m_quickSaveIdProperty = m_serializedSettings.FindProperty("quickSaveId");
+            m_screenCaptureIdProperty = m_serializedSettings.FindProperty("screenCaptureId");
+        #endif
         }
 
 
@@ -140,6 +181,42 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_dataPathProperty, GUILayout.MaxWidth(500));
             if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))
                 m_dataPathProperty.stringValue = $"{Application.productName.ToPathFormat()}.data";
+
+            EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawUserActionsProperties () {
+            EditorGUILayout.LabelField("User Actions", EditorStyles.boldLabel);
+
+        #if ENABLE_BOTH_SYSTEMS
+            EditorGUILayout.PropertyField(m_usedInputSystemProperty, GUILayout.MaxWidth(300));
+
+            switch ((UsedInputSystem)m_usedInputSystemProperty.enumValueIndex) {
+                case UsedInputSystem.LegacyInputManager:
+                    EditorGUILayout.PropertyField(m_quickSaveKeyProperty, GUILayout.MaxWidth(300));
+                    EditorGUILayout.PropertyField(m_screenCaptureKeyProperty, GUILayout.MaxWidth(300));
+                    break;
+                case UsedInputSystem.InputSystem:
+                    EditorGUILayout.PropertyField(m_inputActionAssetProperty, GUILayout.MaxWidth(300));
+                    EditorGUILayout.PropertyField(m_quickSaveIdProperty, GUILayout.MaxWidth(300));
+                    EditorGUILayout.PropertyField(m_screenCaptureIdProperty, GUILayout.MaxWidth(300));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        #else
+        #if ENABLE_LEGACY_INPUT_MANAGER
+            EditorGUILayout.PropertyField(m_quickSaveKeyProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_screenCaptureKeyProperty, GUILayout.MaxWidth(300));
+        #endif
+
+        #if ENABLE_INPUT_SYSTEM
+            EditorGUILayout.PropertyField(m_inputActionAssetProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_quickSaveActionNameProperty, GUILayout.MaxWidth(300));
+            EditorGUILayout.PropertyField(m_screenCaptureActionNameProperty, GUILayout.MaxWidth(300));
+        #endif
+        #endif
 
             EditorGUILayout.Space(15);
         }

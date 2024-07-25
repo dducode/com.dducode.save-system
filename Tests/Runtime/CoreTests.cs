@@ -64,7 +64,7 @@ namespace SaveSystemPackage.Tests {
             TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            SaveSystem.BindKey(KeyCode.S);
+            SaveSystem.QuickSaveKey = KeyCode.S;
         #elif ENABLE_INPUT_SYSTEM
             SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
         #else
@@ -136,11 +136,11 @@ namespace SaveSystemPackage.Tests {
             var testStopped = false;
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            SaveSystem.BindKey(KeyCode.S);
+            SaveSystem.QuickSaveKey = KeyCode.S;
         #elif ENABLE_INPUT_SYSTEM
-            SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
+            SaveSystemCore.QuickSaveAction = new InputAction("save", binding: "<Keyboard>/s");
         #else
-            #error Compile error: no unity inputs enabled
+            #warning: no unity inputs enabled
         #endif
 
             SaveSystem.OnSaveEnd += saveType => {
