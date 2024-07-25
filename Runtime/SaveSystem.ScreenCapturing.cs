@@ -65,6 +65,11 @@ namespace SaveSystemPackage {
 
 
         public static void CaptureScreenshot ([NotNull] string filename = "screenshot", int superSize = 1) {
+            SaveScreenshot(ScreenCapture.CaptureScreenshotAsTexture(superSize), filename);
+        }
+
+
+        public static void SaveScreenshot (Texture2D screenshot, [NotNull] string filename = "screenshot") {
             if (string.IsNullOrEmpty(filename))
                 throw new ArgumentNullException(nameof(filename));
 
@@ -76,7 +81,6 @@ namespace SaveSystemPackage {
                     ++index;
             }
 
-            Texture2D screenshot = ScreenCapture.CaptureScreenshotAsTexture(superSize);
             SynchronizationPoint.ScheduleTask(async token => {
                 await File.WriteAllBytesAsync(path, screenshot.EncodeToPNG(), token);
                 OnScreenCaptured?.Invoke(screenshot);
