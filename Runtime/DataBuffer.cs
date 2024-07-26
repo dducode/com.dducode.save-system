@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Internal;
 
 // ReSharper disable UnusedMember.Global
 namespace SaveSystemPackage {
@@ -52,6 +53,14 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
+            bool containsKey = m_arrayBuffer.ContainsKey(key) || m_stringBuffer.ContainsKey(key) ||
+                               m_meshDataBuffer.ContainsKey(key);
+
+            if (containsKey) {
+                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
+                return;
+            }
+
             m_commonBuffer[key] = Encode(
                 MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray()
             );
@@ -75,6 +84,14 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(array));
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
+
+            bool containsKey = m_commonBuffer.ContainsKey(key) || m_stringBuffer.ContainsKey(key) ||
+                               m_meshDataBuffer.ContainsKey(key);
+
+            if (containsKey) {
+                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
+                return;
+            }
 
             m_arrayBuffer[key] = new KeyValuePair<int, byte[]>(
                 array.Length,
@@ -109,6 +126,14 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
+            bool containsKey = m_commonBuffer.ContainsKey(key) || m_arrayBuffer.ContainsKey(key) ||
+                               m_meshDataBuffer.ContainsKey(key);
+
+            if (containsKey) {
+                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
+                return;
+            }
+
             m_stringBuffer[key] = Convert.ToBase64String(Encode(Encoding.Default.GetBytes(value)));
             HasChanges = true;
         }
@@ -129,6 +154,14 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
+            bool containsKey = m_commonBuffer.ContainsKey(key) || m_arrayBuffer.ContainsKey(key) ||
+                               m_stringBuffer.ContainsKey(key);
+
+            if (containsKey) {
+                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
+                return;
+            }
+
             m_meshDataBuffer[key] = value;
             HasChanges = true;
         }
@@ -143,11 +176,25 @@ namespace SaveSystemPackage {
         }
 
 
-        internal void DeleteArrayData ([NotNull] string key) {
+        public bool Delete ([NotNull] string key) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            m_arrayBuffer.Remove(key);
+            return m_commonBuffer.Remove(key) ||
+                   m_arrayBuffer.Remove(key) ||
+                   m_stringBuffer.Remove(key) ||
+                   m_meshDataBuffer.Remove(key);
+        }
+
+
+        public bool ContainsKey ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_commonBuffer.ContainsKey(key) ||
+                   m_arrayBuffer.ContainsKey(key) ||
+                   m_stringBuffer.ContainsKey(key) ||
+                   m_meshDataBuffer.ContainsKey(key);
         }
 
 

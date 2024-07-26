@@ -111,10 +111,10 @@ namespace SaveSystemPackage {
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
-            if (Buffer.Count > 0) {
+            if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
                 serializable.Deserialize(reader, reader.Read<int>());
-                Buffer.DeleteArrayData(key);
+                Buffer.Delete(key);
             }
 
             m_serializables.Add(key, serializable);
@@ -142,10 +142,10 @@ namespace SaveSystemPackage {
             for (var i = 0; i < objects.Length; i++) {
                 var singleKey = $"{key}_{i}";
 
-                if (Buffer.Count > 0) {
+                if (Buffer.Count > 0 && Buffer.ContainsKey(singleKey)) {
                     using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(singleKey)));
                     objects[i].Deserialize(reader, reader.Read<int>());
-                    Buffer.DeleteArrayData(singleKey);
+                    Buffer.Delete(singleKey);
                 }
 
                 m_serializables.Add(singleKey, objects[i]);
