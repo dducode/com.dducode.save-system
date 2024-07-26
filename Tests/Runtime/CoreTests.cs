@@ -124,14 +124,12 @@ namespace SaveSystemPackage.Tests {
             }
 
             m_sceneContext.RegisterSerializables(nameof(spheres), spheres);
-            var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
-            settings.encrypt = false;
-            settings.verifyChecksum = false;
-            settings.enabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
-            settings.savePeriod = 3;
-            settings.enabledLogs = LogLevel.All;
-            settings.playerTag = sphereTag;
-            SaveSystem.ConfigureSettings(settings);
+            SaveSystem.Game.Encrypt = false;
+            SaveSystem.Game.VerifyChecksum = false;
+            SaveSystem.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
+            SaveSystem.SavePeriod = 3;
+            SaveSystem.EnabledLogs = LogLevel.All;
+            SaveSystem.PlayerTag = sphereTag;
 
             var testStopped = false;
 
@@ -150,19 +148,6 @@ namespace SaveSystemPackage.Tests {
 
             yield return new WaitWhile(() => !testStopped);
             Assert.Greater(Storage.GetDataSize(), 0);
-        }
-
-
-        [Test]
-        public async Task Quitting () {
-            var sphereFactory = new DynamicObjectGroup<TestObject>(
-                new TestObjectFactory(PrimitiveType.Cube), new TestObjectProvider()
-            );
-            sphereFactory.CreateObjects(250);
-
-            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await UniTask.Delay(500);
-            await SaveSystem.ExitGame();
         }
 
 

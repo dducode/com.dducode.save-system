@@ -9,7 +9,6 @@ using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Diagnostic;
-using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -87,7 +86,8 @@ namespace SaveSystemPackage {
             set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
         }
 
-        internal DataBuffer DataBuffer { get; private set; } = new();
+        internal DataBuffer Data { get; private set; } = new();
+        private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
         private string m_dataPath;
@@ -100,23 +100,22 @@ namespace SaveSystemPackage {
 
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
-        private bool m_registrationClosed;
 
 
         /// <summary>
         /// Registers an serializable object to save
         /// </summary>
         internal void RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
-            if (m_registrationClosed) {
-                Logger.LogError(Name, Messages.RegistrationClosed);
-                return;
-            }
-
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
-
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
+
+            if (Buffer.Count > 0) {
+                using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
+                serializable.Deserialize(reader, reader.Read<int>());
+                Buffer.DeleteArrayData(key);
+            }
 
             m_serializables.Add(key, serializable);
             DiagnosticService.AddObject(serializable);
@@ -130,11 +129,6 @@ namespace SaveSystemPackage {
         internal void RegisterSerializables (
             [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
         ) {
-            if (m_registrationClosed) {
-                Logger.LogError(Name, Messages.RegistrationClosed);
-                return;
-            }
-
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
             if (serializables == null)
@@ -145,8 +139,17 @@ namespace SaveSystemPackage {
             if (objects.Length == 0)
                 return;
 
-            for (var i = 0; i < objects.Length; i++)
-                m_serializables.Add($"{key}_{i}", objects[i]);
+            for (var i = 0; i < objects.Length; i++) {
+                var singleKey = $"{key}_{i}";
+
+                if (Buffer.Count > 0) {
+                    using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(singleKey)));
+                    objects[i].Deserialize(reader, reader.Read<int>());
+                    Buffer.DeleteArrayData(singleKey);
+                }
+
+                m_serializables.Add(singleKey, objects[i]);
+            }
 
             DiagnosticService.AddObjects(objects);
             Logger.Log(Name, $"Serializable objects was registered in {Name}");
@@ -159,16 +162,14 @@ namespace SaveSystemPackage {
             if (VerifyChecksum && VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (ObjectsCount == 0 && DataBuffer.Count == 0)
+            if (ObjectsCount == 0 && Data.Count == 0)
                 return;
-
-            m_registrationClosed = true;
 
             byte[] data;
 
             using (var memoryStream = new MemoryStream()) {
                 await using var writer = new SaveWriter(memoryStream);
-                writer.Write(DataBuffer);
+                writer.Write(Data);
                 SerializeObjects(writer);
                 data = memoryStream.ToArray();
             }
@@ -189,8 +190,6 @@ namespace SaveSystemPackage {
             if (VerifyChecksum && VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            m_registrationClosed = true;
-
             if (!File.Exists(DataPath)) {
                 SetDefaults();
                 return;
@@ -205,39 +204,53 @@ namespace SaveSystemPackage {
 
             await using var reader = new SaveReader(new MemoryStream(data));
 
-            DataBuffer = reader.ReadDataBuffer();
+            Data = reader.ReadDataBuffer();
             DeserializeObjects(reader);
             Logger.Log(Name, "Data loaded");
         }
 
 
         private void SetDefaults () {
-            m_registrationClosed = true;
-
             foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))
                 serializable?.SetDefaults();
         }
 
 
         internal void Clear () {
-            DataBuffer.Clear();
+            Data.Clear();
             m_serializables.Clear();
         }
 
 
         private void SerializeObjects (SaveWriter writer) {
+            writer.Write(ObjectsCount);
+
             foreach ((string key, IRuntimeSerializable serializable) in m_serializables) {
+                using var stream = new MemoryStream();
+                using var localWriter = new SaveWriter(stream);
+                localWriter.Write(serializable.Version);
+                serializable.Serialize(localWriter);
+
+                writer.Write(stream.ToArray());
                 writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(serializable.Version);
-                serializable.Serialize(writer);
             }
         }
 
 
         private void DeserializeObjects (SaveReader reader) {
+            var count = reader.Read<int>();
+
             foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
+                using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                m_serializables[key].Deserialize(reader, reader.Read<int>());
+                m_serializables[key].Deserialize(localReader, localReader.Read<int>());
+                --count;
+            }
+
+            for (var i = 0; i < count; i++) {
+                byte[] bytes = reader.ReadArray<byte>();
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
+                Buffer.Write(key, bytes);
             }
         }
 

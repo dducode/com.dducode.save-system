@@ -120,25 +120,23 @@ namespace SaveSystemPackage {
 
 
         public static void Initialize () {
-            Game = new Game();
+            try {
+                Game = new Game();
 
-            SetPlayerLoop();
-            SetSettings(ResourcesManager.LoadSettings());
-            SetInternalFolder();
-            SetOnExitPlayModeCallback();
+                SetSettings(ResourcesManager.LoadSettings());
+                SetInternalFolder();
+                SetOnExitPlayModeCallback();
+                SetPlayerLoop();
 
-            m_exitCancellation = new CancellationTokenSource();
-            Logger.Log(nameof(SaveSystem), "Initialized");
-        }
-
-
-        /// <summary>
-        /// Configures all the Core parameters
-        /// </summary>
-        /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
-        public static void ConfigureSettings (SaveSystemSettings settings) {
-            SetSettings(settings);
-            Logger.Log(nameof(SaveSystem), $"Parameters was configured: {settings}");
+                m_exitCancellation = new CancellationTokenSource();
+                Logger.Log(nameof(SaveSystem), "Initialized");
+            }
+            catch (Exception ex) {
+                Logger.LogError(nameof(SaveSystem),
+                    "Error while save system initialization. See console for more information"
+                );
+                Debug.LogException(ex);
+            }
         }
 
 

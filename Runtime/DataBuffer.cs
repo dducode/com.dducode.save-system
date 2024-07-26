@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using SaveSystemPackage.BinaryHandlers;
 
@@ -18,6 +19,7 @@ namespace SaveSystemPackage {
         private readonly Dictionary<string, KeyValuePair<int, byte[]>> m_arrayBuffer;
         private readonly Dictionary<string, string> m_stringBuffer;
         private readonly Dictionary<string, MeshData> m_meshDataBuffer;
+        private readonly byte[] m_encodingKey = GenerateKey();
 
         public int Count => m_commonBuffer.Count + m_arrayBuffer.Count + m_stringBuffer.Count + m_meshDataBuffer.Count;
         public bool HasChanges { get; private set; }
@@ -39,12 +41,32 @@ namespace SaveSystemPackage {
         }
 
 
+        private static byte[] GenerateKey () {
+            var key = new byte[16];
+            RandomNumberGenerator.Fill(key);
+            return key;
+        }
+
+
         public void Write<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            m_commonBuffer[key] = MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray();
+            m_commonBuffer[key] = Encode(
+                MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray()
+            );
             HasChanges = true;
+        }
+
+
+        [Pure]
+        public TValue Read<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return m_commonBuffer.TryGetValue(key, out byte[] value)
+                ? MemoryMarshal.Read<TValue>(Encode(value))
+                : defaultValue;
         }
 
 
@@ -56,9 +78,28 @@ namespace SaveSystemPackage {
 
             m_arrayBuffer[key] = new KeyValuePair<int, byte[]>(
                 array.Length,
-                MemoryMarshal.AsBytes((ReadOnlySpan<TArray>)array).ToArray()
+                Encode(MemoryMarshal.AsBytes((ReadOnlySpan<TArray>)array).ToArray())
             );
             HasChanges = true;
+        }
+
+
+        [Pure]
+        public TArray[] ReadArray<TArray> ([NotNull] string key) where TArray : unmanaged {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            if (m_arrayBuffer.ContainsKey(key)) {
+                var array = new TArray[m_arrayBuffer[key].Key];
+                Span<byte> span = MemoryMarshal.AsBytes((Span<TArray>)array);
+                byte[] data = Encode(m_arrayBuffer[key].Value);
+                for (var i = 0; i < span.Length; i++)
+                    span[i] = data[i];
+                return array;
+            }
+            else {
+                return Array.Empty<TArray>();
+            }
         }
 
 
@@ -68,8 +109,19 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            m_stringBuffer[key] = value;
+            m_stringBuffer[key] = Convert.ToBase64String(Encode(Encoding.Default.GetBytes(value)));
             HasChanges = true;
+        }
+
+
+        [Pure]
+        public string ReadString ([NotNull] string key, string defaultValue = null) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            return Encoding.Default.GetString(
+                Encode(Convert.FromBase64String(m_stringBuffer.GetValueOrDefault(key, defaultValue)))
+            );
         }
 
 
@@ -83,48 +135,19 @@ namespace SaveSystemPackage {
 
 
         [Pure]
-        public TValue Read<TValue> ([NotNull] string key, TValue defaultValue = default) where TValue : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_commonBuffer.TryGetValue(key, out byte[] value) ? MemoryMarshal.Read<TValue>(value) : defaultValue;
-        }
-
-
-        [Pure]
-        public TArray[] ReadArray<TArray> ([NotNull] string key) where TArray : unmanaged {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            if (m_arrayBuffer.ContainsKey(key)) {
-                var array = new TArray[m_arrayBuffer[key].Key];
-                Span<byte> span = MemoryMarshal.AsBytes((Span<TArray>)array);
-                byte[] data = m_arrayBuffer[key].Value;
-                for (var i = 0; i < span.Length; i++)
-                    span[i] = data[i];
-                return array;
-            }
-            else {
-                return Array.Empty<TArray>();
-            }
-        }
-
-
-        [Pure]
-        public string ReadString ([NotNull] string key, string defaultValue = null) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_stringBuffer.GetValueOrDefault(key, defaultValue);
-        }
-
-
-        [Pure]
         public MeshData ReadMeshData ([NotNull] string key) {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
             return m_meshDataBuffer.GetValueOrDefault(key);
+        }
+
+
+        internal void DeleteArrayData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_arrayBuffer.Remove(key);
         }
 
 
@@ -150,7 +173,7 @@ namespace SaveSystemPackage {
 
             foreach (string key in buffer.Keys) {
                 writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(buffer[key]);
+                writer.Write(Encode(buffer[key]));
             }
         }
 
@@ -160,7 +183,7 @@ namespace SaveSystemPackage {
             var buffer = new Dictionary<string, byte[]>();
 
             for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), Encode(reader.ReadArray<byte>()));
 
             return buffer;
         }
@@ -172,7 +195,7 @@ namespace SaveSystemPackage {
             foreach (string key in buffer.Keys) {
                 writer.Write(Encoding.UTF8.GetBytes(key));
                 writer.Write(buffer[key].Key);
-                writer.Write(buffer[key].Value);
+                writer.Write(Encode(buffer[key].Value));
             }
         }
 
@@ -184,8 +207,34 @@ namespace SaveSystemPackage {
             for (var i = 0; i < count; i++) {
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 var length = reader.Read<int>();
-                byte[] array = reader.ReadArray<byte>();
+                byte[] array = Encode(reader.ReadArray<byte>());
                 buffer.Add(key, new KeyValuePair<int, byte[]>(length, array));
+            }
+
+            return buffer;
+        }
+
+
+        private void WriteBuffer (Dictionary<string, string> buffer, SaveWriter writer) {
+            writer.Write(buffer.Count);
+
+            foreach (string key in buffer.Keys) {
+                writer.Write(Encoding.UTF8.GetBytes(key));
+                writer.Write(Encoding.Default.GetString(Encode(Convert.FromBase64String(buffer[key]))));
+            }
+        }
+
+
+        private Dictionary<string, string> ReadStringBuffer (SaveReader reader) {
+            var count = reader.Read<int>();
+
+            var buffer = new Dictionary<string, string>();
+
+            for (var i = 0; i < count; i++) {
+                buffer.Add(
+                    Encoding.UTF8.GetString(reader.ReadArray<byte>()),
+                    Convert.ToBase64String(Encode(Encoding.Default.GetBytes(reader.ReadString())))
+                );
             }
 
             return buffer;
@@ -213,24 +262,17 @@ namespace SaveSystemPackage {
         }
 
 
-        private void WriteBuffer (Dictionary<string, string> buffer, SaveWriter writer) {
-            writer.Write(buffer.Count);
+        private byte[] Encode (byte[] bytes) {
+            var encodedBytes = new byte[bytes.Length];
+            Array.Copy(bytes, encodedBytes, encodedBytes.Length);
 
-            foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(buffer[key]);
+            for (int i = 0, j = 0; i < bytes.Length; i++, j++) {
+                if (j == m_encodingKey.Length)
+                    j = 0;
+                encodedBytes[i] ^= m_encodingKey[j];
             }
-        }
 
-
-        private Dictionary<string, string> ReadStringBuffer (SaveReader reader) {
-            var count = reader.Read<int>();
-
-            var buffer = new Dictionary<string, string>();
-            for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadString());
-
-            return buffer;
+            return encodedBytes;
         }
 
     }

@@ -4,6 +4,7 @@
 
 using System;
 using System.Text;
+using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using UnityEngine;
@@ -48,6 +49,12 @@ namespace SaveSystemPackage {
 
         public bool verifyChecksum = true;
         public VerificationSettings verificationSettings;
+
+
+        private void OnEnable () {
+            if (string.IsNullOrEmpty(dataPath))
+                dataPath = $"{Application.productName.ToPathFormat()}.data";
+        }
 
 
         public override string ToString () {

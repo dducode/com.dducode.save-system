@@ -69,7 +69,7 @@ namespace SaveSystemPackage {
             set => GameScope.VerificationManager = value;
         }
 
-        public DataBuffer Data => GameScope.DataBuffer;
+        public DataBuffer Data => GameScope.Data;
 
         internal SceneSerializationContext SceneContext {
             get => m_sceneContext;

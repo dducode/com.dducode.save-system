@@ -78,7 +78,7 @@ namespace SaveSystemPackage.Profiles {
 
         public DataBuffer Metadata { get; }
 
-        public DataBuffer Data => ProfileScope.DataBuffer;
+        public DataBuffer Data => ProfileScope.Data;
 
         [NotNull]
         internal string DataFolder {

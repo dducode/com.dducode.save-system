@@ -6,7 +6,7 @@ namespace SaveSystemPackage.ComponentsRecording {
     [RequireComponent(typeof(MeshFilter))]
     [DisallowMultipleComponent]
     [AddComponentMenu("Save System/Mesh Filter Recorder")]
-    public class MeshFilterRecorder : MonoBehaviour, ISerializationAdapter<MeshFilter> {
+    public class MeshFilterRecorder : ComponentRecorder, ISerializationAdapter<MeshFilter> {
 
         public MeshFilter Target { get; private set; }
 
@@ -16,13 +16,18 @@ namespace SaveSystemPackage.ComponentsRecording {
         }
 
 
-        public void Serialize (SaveWriter writer) {
+        public override void Serialize (SaveWriter writer) {
             writer.Write(Target.mesh);
         }
 
 
-        public void Deserialize (SaveReader reader, int previousVersion) {
+        public override void Deserialize (SaveReader reader, int previousVersion) {
             Target.mesh = reader.ReadMeshData();
+        }
+
+
+        public override string ToString () {
+            return $"{gameObject.name} Mesh Filter Recorder";
         }
 
     }
