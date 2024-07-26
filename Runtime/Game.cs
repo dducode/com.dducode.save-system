@@ -8,6 +8,7 @@ using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Verification;
 
 // ReSharper disable UnusedMember.Global
 

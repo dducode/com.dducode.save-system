@@ -7,6 +7,7 @@ using System.Text;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Verification;
 using UnityEngine;
 
 #if ENABLE_INPUT_SYSTEM

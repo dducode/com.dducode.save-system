@@ -1,5 +1,6 @@
 ﻿using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Verification;
 using UnityEditor;
 using UnityEngine;
 
@@ -33,11 +34,19 @@ namespace SaveSystemPackage.Editor {
             }
 
             settings.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
-                "Hash Algorithm", settings.hashAlgorithm, GUILayout.MaxWidth(300)
+                "Hash Algorithm", settings.hashAlgorithm
             );
-            settings.dataTablePassword = DrawingUtilities.DrawKeyProperty(
-                settings.dataTablePassword, "Data Table Password", "Generate Password", CryptoUtilities.GenerateKey
-            );
+            settings.useCustomStorage = EditorGUILayout.Toggle("Use Custom Storage", settings.useCustomStorage);
+
+            if (!settings.useCustomStorage) {
+                settings.hashStoragePassword = DrawingUtilities.DrawKeyProperty(
+                    settings.hashStoragePassword, "Hash Storage Password", "Generate Password",
+                    CryptoUtilities.GenerateKey
+                );
+                if (string.IsNullOrEmpty(settings.hashStoragePath))
+                    settings.hashStoragePath = "hash-storage.data";
+                settings.hashStoragePath = EditorGUILayout.TextField("Hash Storage Path", settings.hashStoragePath);
+            }
 
             GUI.enabled = true;
             EditorGUI.indentLevel--;

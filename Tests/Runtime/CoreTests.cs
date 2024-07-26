@@ -7,6 +7,7 @@ using SaveSystemPackage.CheckPoints;
 using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Tests.TestObjects;
+using SaveSystemPackage.Verification;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
@@ -202,7 +203,9 @@ namespace SaveSystemPackage.Tests {
             sphereFactory.CreateObjects(250);
 
             SaveSystem.Game.VerifyChecksum = true;
-            SaveSystem.Game.VerificationManager = new VerificationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Game.VerificationManager = new VerificationManager(
+                new DefaultHashStorage(), HashAlgorithmName.SHA1
+            );
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Save();
@@ -217,7 +220,9 @@ namespace SaveSystemPackage.Tests {
             );
 
             SaveSystem.Game.VerifyChecksum = true;
-            SaveSystem.Game.VerificationManager = new VerificationManager(HashAlgorithmName.SHA1);
+            SaveSystem.Game.VerificationManager = new VerificationManager(
+                new DefaultHashStorage(), HashAlgorithmName.SHA1
+            );
 
             m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Load();

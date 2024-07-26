@@ -2,19 +2,23 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security;
 using System.Security.Cryptography;
+using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
+using HashAlgorithmName = SaveSystemPackage.Security.HashAlgorithmName;
 
+// ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
-namespace SaveSystemPackage.Security {
+namespace SaveSystemPackage.Verification {
 
     public class VerificationManager {
 
         public HashAlgorithmName Algorithm { get; set; }
+        public HashStorage Storage { get; set; }
 
 
         public VerificationManager (VerificationSettings settings) {
@@ -22,17 +26,20 @@ namespace SaveSystemPackage.Security {
         }
 
 
-        internal VerificationManager (HashAlgorithmName algorithm) {
+        internal VerificationManager (HashStorage storage, HashAlgorithmName algorithm) {
+            Storage = storage;
             Algorithm = algorithm;
         }
 
 
         public void SetSettings (VerificationSettings settings) {
+            if (!settings.useCustomStorage)
+                Storage = new DefaultHashStorage();
             Algorithm = settings.hashAlgorithm;
         }
 
 
-        public void VerifyData ([NotNull] string filePath, [NotNull] byte[] data) {
+        public virtual async UniTask VerifyData ([NotNull] string filePath, [NotNull] byte[] data) {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (data == null)
@@ -40,15 +47,16 @@ namespace SaveSystemPackage.Security {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            using DataTable table = DataTable.Open();
-            byte[] storedHash = table[filePath];
+            await Storage.Open();
+            byte[] storedHash = Storage[filePath];
             byte[] computedHash = ComputeHash(data, Algorithm);
             if (!storedHash.EqualsBytes(computedHash))
                 throw new SecurityException(Messages.DataIsCorrupted);
+            await Storage.Close();
         }
 
 
-        public void SetChecksum ([NotNull] string filePath, [NotNull] byte[] data) {
+        public virtual async UniTask SetChecksum ([NotNull] string filePath, [NotNull] byte[] data) {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             if (data == null)
@@ -56,8 +64,9 @@ namespace SaveSystemPackage.Security {
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
-            using DataTable table = DataTable.Open();
-            table[filePath] = ComputeHash(data, Algorithm);
+            await Storage.Open();
+            Storage[filePath] = ComputeHash(data, Algorithm);
+            await Storage.Close();
         }
 
 

@@ -1,49 +1,44 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
-using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
 
-namespace SaveSystemPackage {
+namespace SaveSystemPackage.Verification {
 
-    public class DataTable : IDisposable {
+    public class DefaultHashStorage : HashStorage {
 
         private const int IVLength = 16;
-        internal static string Path => System.IO.Path.Combine(SaveSystem.InternalFolder, "datatable.data");
+        private string StoragePath => SaveSystem.DefaultHashStoragePath;
 
-        public byte[] this [string key] {
+        public override byte[] this [string key] {
             get {
-                if (!m_map.ContainsKey(key))
+                if (!map.ContainsKey(key))
                     throw new ArgumentException($"Data table doesn't contain given key: {key}");
-                return m_map[key];
+                return map[key];
             }
             set {
-                if (!m_map.TryAdd(key, value))
-                    m_map[key] = value;
+                if (!map.TryAdd(key, value))
+                    map[key] = value;
             }
         }
 
-        private readonly Dictionary<string, byte[]> m_map = new();
 
+        public override UniTask Open () {
+            if (!File.Exists(StoragePath))
+                return UniTask.CompletedTask;
 
-        public static DataTable Open () {
-            if (!File.Exists(Path))
-                return new DataTable();
-
-            byte[] data = File.ReadAllBytes(Path);
+            byte[] data = File.ReadAllBytes(StoragePath);
             byte[] buffer;
 
             string password;
 
             using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
-                password = settings.verificationSettings.dataTablePassword;
+                password = settings.verificationSettings.hashStoragePassword;
             }
 
             using var aes = Aes.Create();
@@ -59,54 +54,25 @@ namespace SaveSystemPackage {
                 aes.Clear();
             }
 
-            var table = new DataTable();
-
             using (var reader = new SaveReader(new MemoryStream(buffer))) {
                 var rows = reader.Read<int>();
                 for (var i = 0; i < rows; i++)
-                    table.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
+                    map.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadArray<byte>());
             }
 
-            return table;
+            return UniTask.CompletedTask;
         }
 
 
-        internal static async UniTask<StorageData> Export (CancellationToken token = default) {
-            return File.Exists(Path)
-                ? new StorageData(await File.ReadAllBytesAsync(Path, token), System.IO.Path.GetFileName(Path))
-                : null;
-        }
-
-
-        internal static async UniTask Import (byte[] data, CancellationToken token = default) {
-            if (data.Length > 0)
-                await File.WriteAllBytesAsync(Path, data, token);
-        }
-
-
-        private static byte[] GetIV () {
-            var vi = new byte[IVLength];
-            RandomNumberGenerator.Fill(vi);
-            return vi;
-        }
-
-
-        private static byte[] GetKey (string password) {
-            return new Rfc2898DeriveBytes(
-                password, SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password)), 10, HashAlgorithmName.SHA1
-            ).GetBytes((int)AESKeyLength._128Bit);
-        }
-
-
-        public void Close () {
+        public override UniTask Close () {
             byte[] buffer;
 
             using (var memoryStream = new MemoryStream()) {
                 using var writer = new SaveWriter(memoryStream);
 
-                writer.Write(m_map.Count);
+                writer.Write(map.Count);
 
-                foreach ((string key, byte[] bytes) in m_map) {
+                foreach ((string key, byte[] bytes) in map) {
                     writer.Write(Encoding.UTF8.GetBytes(key));
                     writer.Write(bytes);
                 }
@@ -114,10 +80,12 @@ namespace SaveSystemPackage {
                 buffer = memoryStream.ToArray();
             }
 
+            map.Clear();
+
             string password;
 
             using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
-                password = settings.verificationSettings.dataTablePassword;
+                password = settings.verificationSettings.hashStoragePassword;
             }
 
             using (var memoryStream = new MemoryStream()) {
@@ -134,18 +102,24 @@ namespace SaveSystemPackage {
                 cryptoStream.FlushFinalBlock();
                 aes.Clear();
 
-                File.WriteAllBytes(Path, memoryStream.ToArray());
+                File.WriteAllBytes(StoragePath, memoryStream.ToArray());
             }
+
+            return UniTask.CompletedTask;
         }
 
 
-        public void Dispose () {
-            Close();
+        private byte[] GetIV () {
+            var vi = new byte[IVLength];
+            RandomNumberGenerator.Fill(vi);
+            return vi;
         }
 
 
-        private void Add (string key, byte[] hash) {
-            m_map.Add(key, hash);
+        private byte[] GetKey (string password) {
+            return new Rfc2898DeriveBytes(
+                password, SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password)), 10, HashAlgorithmName.SHA1
+            ).GetBytes((int)AESKeyLength._128Bit);
         }
 
     }

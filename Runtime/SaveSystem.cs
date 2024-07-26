@@ -52,6 +52,8 @@ namespace SaveSystemPackage {
             }
         }
 
+        internal static string DefaultHashStoragePath { get; private set; }
+
         // Common settings
         private static SaveEvents m_enabledSaveEvents;
         private static float m_savePeriod;
@@ -120,6 +122,7 @@ namespace SaveSystemPackage {
             Logger.EnabledLogs = settings.enabledLogs;
             SavePeriod = settings.savePeriod;
             PlayerTag = settings.playerTag;
+            DefaultHashStoragePath = Path.Combine(InternalFolder, settings.verificationSettings.hashStoragePath);
 
             SetupUserInputs(settings);
 
@@ -363,13 +366,17 @@ namespace SaveSystemPackage {
             if (gameData != null)
                 await cloudStorage.Push(gameData);
 
-            string[] profiles = Directory.GetFileSystemEntries(InternalFolder, "*.profilemetadata");
+            string[] profiles = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
             if (profiles.Length > 0)
                 await UploadProfiles(cloudStorage, profiles, token);
 
-            StorageData dataTable = await DataTable.Export(token);
-            if (dataTable != null)
+            if (File.Exists(DefaultHashStoragePath)) {
+                var dataTable = new StorageData(
+                    await File.ReadAllBytesAsync(DefaultHashStoragePath, token),
+                    Path.GetFileName(DefaultHashStoragePath)
+                );
                 await cloudStorage.Push(dataTable);
+            }
 
             if (!string.IsNullOrEmpty(m_screenshotsFolder) && Directory.Exists(m_screenshotsFolder)) {
                 string[] screenshots = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
@@ -389,13 +396,9 @@ namespace SaveSystemPackage {
             foreach (string path in paths) {
                 writer.Write(Path.GetFileName(path));
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
-                );
+                var profile = new SaveProfile(reader.ReadDataBuffer());
 
-                writer.Write(profile.Name);
-                writer.Write(profile.Encrypt);
-                writer.Write(profile.VerifyChecksum);
+                writer.Write(profile.Metadata);
                 writer.Write(await profile.ExportProfileData(token));
             }
 
@@ -430,9 +433,9 @@ namespace SaveSystemPackage {
             if (profiles != null)
                 await DownloadProfiles(profiles);
 
-            StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DataTable.Path));
+            StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DefaultHashStoragePath));
             if (dataTable != null)
-                await DataTable.Import(dataTable.rawData, token);
+                await File.WriteAllBytesAsync(DefaultHashStoragePath, dataTable.rawData, token);
 
             StorageData screenshots = await cloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
@@ -447,12 +450,9 @@ namespace SaveSystemPackage {
             for (var i = 0; i < count; i++) {
                 string path = Path.Combine(InternalFolder, reader.ReadString());
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-                var profile = new SaveProfile(
-                    reader.ReadString(), reader.Read<bool>(), reader.Read<bool>()
-                );
-                writer.Write(profile.Name);
-                writer.Write(profile.Encrypt);
-                writer.Write(profile.VerifyChecksum);
+                var profile = new SaveProfile(reader.ReadDataBuffer());
+
+                writer.Write(profile.Metadata);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }

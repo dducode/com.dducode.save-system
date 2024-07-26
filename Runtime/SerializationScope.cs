@@ -10,6 +10,7 @@ using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Diagnostic;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Verification;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -177,7 +178,7 @@ namespace SaveSystemPackage {
             if (Encrypt)
                 data = Cryptographer.Encrypt(data);
             if (VerifyChecksum)
-                VerificationManager.SetChecksum(DataPath, data);
+                await VerificationManager.SetChecksum(DataPath, data);
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
@@ -198,7 +199,7 @@ namespace SaveSystemPackage {
             byte[] data = await File.ReadAllBytesAsync(DataPath, token);
 
             if (VerifyChecksum)
-                VerificationManager.VerifyData(DataPath, data);
+                await VerificationManager.VerifyData(DataPath, data);
             if (Encrypt)
                 data = Cryptographer.Decrypt(data);
 

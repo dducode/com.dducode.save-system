@@ -8,6 +8,7 @@ using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Verification;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global

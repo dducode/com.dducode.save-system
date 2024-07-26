@@ -1,7 +1,9 @@
 ﻿#if IN_UNITY_PACKAGES_PROJECT
 using System.IO;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Verification;
 using UnityEngine;
 
 namespace SaveSystemPackage.Tests {
@@ -13,16 +15,16 @@ namespace SaveSystemPackage.Tests {
 
 
         [Test, Order(0)]
-        public void SetLoremIpsumAuthHash () {
-            var verificationManager = new VerificationManager(HashAlgorithmName.SHA1);
-            verificationManager.SetChecksum(m_sourcePath, File.ReadAllBytes(m_sourcePath));
+        public async Task SetLoremIpsumAuthHash () {
+            var verificationManager = new VerificationManager(new DefaultHashStorage(), HashAlgorithmName.SHA1);
+            await verificationManager.SetChecksum(m_sourcePath, await File.ReadAllBytesAsync(m_sourcePath));
         }
 
 
         [Test, Order(1)]
-        public void AuthenticateLoremIpsumData () {
-            var verificationManager = new VerificationManager(HashAlgorithmName.SHA1);
-            verificationManager.VerifyData(m_sourcePath, File.ReadAllBytes(m_sourcePath));
+        public async Task AuthenticateLoremIpsumData () {
+            var verificationManager = new VerificationManager(new DefaultHashStorage(), HashAlgorithmName.SHA1);
+            await verificationManager.VerifyData(m_sourcePath, await File.ReadAllBytesAsync(m_sourcePath));
         }
 
     }
