@@ -44,6 +44,17 @@ namespace SaveSystemPackage.Tests {
             Debug.Log(message);
         }
 
+
+        [Test]
+        public void EncodingTest () {
+            const string key = "key";
+            const string str = "test-string";
+            var buffer = new DataBuffer();
+            buffer.Write(key, str);
+            string bufferString = buffer.ReadString(key);
+            Assert.IsTrue(string.Equals(str, bufferString));
+        }
+
     }
 
 }
