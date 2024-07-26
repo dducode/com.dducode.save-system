@@ -57,7 +57,7 @@ namespace SaveSystemPackage {
             set => SceneScope.VerificationManager = value;
         }
 
-        public DataBuffer Data => SceneScope.DataBuffer;
+        public DataBuffer Data => SceneScope.Data;
         internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
 

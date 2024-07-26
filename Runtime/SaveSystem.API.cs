@@ -141,16 +141,6 @@ namespace SaveSystemPackage {
 
 
         /// <summary>
-        /// Configures all the Core parameters
-        /// </summary>
-        /// <remarks> You can skip it if you have configured the settings in the editor </remarks>
-        public static void ConfigureSettings (SaveSystemSettings settings) {
-            SetSettings(settings);
-            Logger.Log(nameof(SaveSystem), $"Parameters was configured: {settings}");
-        }
-
-
-        /// <summary>
         /// Save the game and load a scene
         /// </summary>
         public static async UniTask LoadSceneAsync (

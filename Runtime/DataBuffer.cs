@@ -128,6 +128,14 @@ namespace SaveSystemPackage {
         }
 
 
+        internal void DeleteArrayData ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
+            m_arrayBuffer.Remove(key);
+        }
+
+
         internal void WriteData (SaveWriter writer) {
             WriteBuffer(m_commonBuffer, writer);
             WriteBuffer(m_arrayBuffer, writer);
