@@ -167,18 +167,8 @@ namespace SaveSystemPackage {
 
 
         private void RegisterRecorders () {
-            RegisterSerializables(
-                "transform-recorders",
-                FindObjectsByType<TransformRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
-            );
-            RegisterSerializables(
-                "rigidbody-recorders",
-                FindObjectsByType<RigidbodyRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
-            );
-            RegisterSerializables(
-                "mesh-filter-recorders",
-                FindObjectsByType<MeshFilterRecorder>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
-            );
+            foreach (ComponentRecorder recorder in FindObjectsByType<ComponentRecorder>(FindObjectsSortMode.None))
+                RegisterSerializable(recorder.Id, recorder);
         }
 
     }

@@ -120,15 +120,23 @@ namespace SaveSystemPackage {
 
 
         public static void Initialize () {
-            Game = new Game();
+            try {
+                Game = new Game();
 
-            SetPlayerLoop();
-            SetSettings(ResourcesManager.LoadSettings());
-            SetInternalFolder();
-            SetOnExitPlayModeCallback();
+                SetSettings(ResourcesManager.LoadSettings());
+                SetInternalFolder();
+                SetOnExitPlayModeCallback();
+                SetPlayerLoop();
 
-            m_exitCancellation = new CancellationTokenSource();
-            Logger.Log(nameof(SaveSystem), "Initialized");
+                m_exitCancellation = new CancellationTokenSource();
+                Logger.Log(nameof(SaveSystem), "Initialized");
+            }
+            catch (Exception ex) {
+                Logger.LogError(nameof(SaveSystem),
+                    "Error while save system initialization. See console for more information"
+                );
+                Debug.LogException(ex);
+            }
         }
 
 

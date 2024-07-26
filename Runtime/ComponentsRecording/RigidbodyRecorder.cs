@@ -7,7 +7,7 @@ namespace SaveSystemPackage.ComponentsRecording {
     [RequireComponent(typeof(Rigidbody))]
     [DisallowMultipleComponent]
     [AddComponentMenu("Save System/Rigidbody Recorder")]
-    public class RigidbodyRecorder : MonoBehaviour, ISerializationAdapter<Rigidbody> {
+    public class RigidbodyRecorder : ComponentRecorder, ISerializationAdapter<Rigidbody> {
 
         [SerializeField]
         private Properties includedProperties = Properties.All;
@@ -20,7 +20,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         }
 
 
-        public void Serialize (SaveWriter writer) {
+        public override void Serialize (SaveWriter writer) {
             if (includedProperties.HasFlag(Properties.Position))
                 writer.Write(Target.position);
             if (includedProperties.HasFlag(Properties.Rotation))
@@ -36,7 +36,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         }
 
 
-        public void Deserialize (SaveReader reader, int previousVersion) {
+        public override void Deserialize (SaveReader reader, int previousVersion) {
             if (includedProperties.HasFlag(Properties.Position))
                 Target.position = reader.Read<Vector3>();
             if (includedProperties.HasFlag(Properties.Rotation))
@@ -49,6 +49,11 @@ namespace SaveSystemPackage.ComponentsRecording {
 
             if (includedProperties.HasFlag(Properties.IsKinematic))
                 Target.isKinematic = reader.Read<bool>();
+        }
+
+
+        public override string ToString () {
+            return $"{gameObject.name} Rigidbody Recorder: {{ included properties: {includedProperties} }}";
         }
 
 

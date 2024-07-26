@@ -6,7 +6,7 @@ namespace SaveSystemPackage.ComponentsRecording {
 
     [DisallowMultipleComponent]
     [AddComponentMenu("Save System/Transform Recorder")]
-    public class TransformRecorder : MonoBehaviour, ISerializationAdapter<Transform> {
+    public class TransformRecorder : ComponentRecorder, ISerializationAdapter<Transform> {
 
         [SerializeField]
         private Properties includedProperties = Properties.Position | Properties.Rotation;
@@ -21,7 +21,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         }
 
 
-        public void Serialize (SaveWriter writer) {
+        public override void Serialize (SaveWriter writer) {
             if (includedProperties.HasFlag(Properties.Position))
                 writer.Write(Target.position);
             if (includedProperties.HasFlag(Properties.LocalPosition))
@@ -37,7 +37,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         }
 
 
-        public void Deserialize (SaveReader reader, int previousVersion) {
+        public override void Deserialize (SaveReader reader, int previousVersion) {
             if (m_characterController != null)
                 m_characterController.enabled = false;
 
@@ -56,6 +56,11 @@ namespace SaveSystemPackage.ComponentsRecording {
 
             if (m_characterController != null)
                 m_characterController.enabled = true;
+        }
+
+
+        public override string ToString () {
+            return $"{gameObject.name} Transform Recorder: {{ included properties: {includedProperties} }}";
         }
 
 
