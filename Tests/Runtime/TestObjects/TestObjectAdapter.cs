@@ -20,7 +20,7 @@ namespace SaveSystemPackage.Tests.TestObjects {
             buffer.Write(nameof(Target.transform.rotation), Target.transform.rotation);
             buffer.Write(nameof(Target.transform.localRotation), Target.transform.localRotation);
 
-            buffer.Write(nameof(Target.MeshFilter.mesh), Target.MeshFilter.mesh);
+            writer.Write(Target.MeshFilter.mesh);
             buffer.Write(nameof(Target.MeshRenderer.material.color), Target.MeshRenderer.material.color);
             writer.Write(buffer);
         }
@@ -33,7 +33,7 @@ namespace SaveSystemPackage.Tests.TestObjects {
             Target.transform.localPosition = buffer.Read<Vector3>(nameof(Target.transform.localPosition));
             Target.transform.position = buffer.Read<Vector3>(nameof(Target.transform.position));
 
-            Target.MeshFilter.mesh = buffer.ReadMeshData(nameof(Target.MeshFilter.mesh));
+            Target.MeshFilter.mesh = reader.ReadMeshData();
             Target.MeshRenderer.material.color = buffer.Read<Color>(nameof(Target.MeshRenderer.material.color));
         }
 

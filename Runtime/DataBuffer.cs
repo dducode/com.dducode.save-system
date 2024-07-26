@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using SaveSystemPackage.BinaryHandlers;
-using SaveSystemPackage.Internal;
+using SaveSystemPackage.Extensions;
 
 // ReSharper disable UnusedMember.Global
 namespace SaveSystemPackage {
@@ -17,28 +18,25 @@ namespace SaveSystemPackage {
     public record DataBuffer {
 
         private readonly Dictionary<string, byte[]> m_commonBuffer;
-        private readonly Dictionary<string, KeyValuePair<int, byte[]>> m_arrayBuffer;
-        private readonly Dictionary<string, string> m_stringBuffer;
-        private readonly Dictionary<string, MeshData> m_meshDataBuffer;
         private readonly byte[] m_encodingKey = GenerateKey();
 
-        public int Count => m_commonBuffer.Count + m_arrayBuffer.Count + m_stringBuffer.Count + m_meshDataBuffer.Count;
+        public int Count => m_commonBuffer.Count;
         public bool HasChanges { get; private set; }
 
 
         public DataBuffer () {
             m_commonBuffer = new Dictionary<string, byte[]>();
-            m_arrayBuffer = new Dictionary<string, KeyValuePair<int, byte[]>>();
-            m_stringBuffer = new Dictionary<string, string>();
-            m_meshDataBuffer = new Dictionary<string, MeshData>();
         }
 
 
         internal DataBuffer (SaveReader reader) {
-            m_commonBuffer = ReadCommonBuffer(reader);
-            m_arrayBuffer = ReadArrayBuffer(reader);
-            m_stringBuffer = ReadStringBuffer(reader);
-            m_meshDataBuffer = ReadMeshDataBuffer(reader);
+            var count = reader.Read<int>();
+            var buffer = new Dictionary<string, byte[]>();
+
+            for (var i = 0; i < count; i++)
+                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), Encode(reader.ReadArray<byte>()));
+
+            m_commonBuffer = buffer;
         }
 
 
@@ -52,14 +50,6 @@ namespace SaveSystemPackage {
         public void Write<TValue> ([NotNull] string key, TValue value) where TValue : unmanaged {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
-
-            bool containsKey = m_arrayBuffer.ContainsKey(key) || m_stringBuffer.ContainsKey(key) ||
-                               m_meshDataBuffer.ContainsKey(key);
-
-            if (containsKey) {
-                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
-                return;
-            }
 
             m_commonBuffer[key] = Encode(
                 MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1)).ToArray()
@@ -85,18 +75,13 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            bool containsKey = m_commonBuffer.ContainsKey(key) || m_stringBuffer.ContainsKey(key) ||
-                               m_meshDataBuffer.ContainsKey(key);
+            int length = array.Length;
+            byte[] arrayLength = MemoryMarshal.AsBytes(
+                MemoryMarshal.CreateReadOnlySpan(ref length, 1)
+            ).ToArray();
+            byte[] data = MemoryMarshal.AsBytes((ReadOnlySpan<TArray>)array).ToArray();
 
-            if (containsKey) {
-                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
-                return;
-            }
-
-            m_arrayBuffer[key] = new KeyValuePair<int, byte[]>(
-                array.Length,
-                Encode(MemoryMarshal.AsBytes((ReadOnlySpan<TArray>)array).ToArray())
-            );
+            m_commonBuffer[key] = Encode(arrayLength.Concat(data).ToArray());
             HasChanges = true;
         }
 
@@ -106,12 +91,12 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            if (m_arrayBuffer.ContainsKey(key)) {
-                var array = new TArray[m_arrayBuffer[key].Key];
+            if (m_commonBuffer.TryGetValue(key, out byte[] value)) {
+                (byte[] length, byte[] data) split = Encode(value).Split(sizeof(int));
+                var array = new TArray[MemoryMarshal.Read<int>(split.length)];
                 Span<byte> span = MemoryMarshal.AsBytes((Span<TArray>)array);
-                byte[] data = Encode(m_arrayBuffer[key].Value);
                 for (var i = 0; i < span.Length; i++)
-                    span[i] = data[i];
+                    span[i] = split.data[i];
                 return array;
             }
             else {
@@ -126,15 +111,7 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            bool containsKey = m_commonBuffer.ContainsKey(key) || m_arrayBuffer.ContainsKey(key) ||
-                               m_meshDataBuffer.ContainsKey(key);
-
-            if (containsKey) {
-                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
-                return;
-            }
-
-            m_stringBuffer[key] = Convert.ToBase64String(Encode(Encoding.Default.GetBytes(value)));
+            m_commonBuffer[key] = Encode(Encoding.Default.GetBytes(value));
             HasChanges = true;
         }
 
@@ -144,35 +121,9 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return Encoding.Default.GetString(
-                Encode(Convert.FromBase64String(m_stringBuffer.GetValueOrDefault(key, defaultValue)))
-            );
-        }
-
-
-        public void Write ([NotNull] string key, MeshData value) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            bool containsKey = m_commonBuffer.ContainsKey(key) || m_arrayBuffer.ContainsKey(key) ||
-                               m_stringBuffer.ContainsKey(key);
-
-            if (containsKey) {
-                Logger.LogError(nameof(DataBuffer), $"The buffer already contains data with given key: {key}");
-                return;
-            }
-
-            m_meshDataBuffer[key] = value;
-            HasChanges = true;
-        }
-
-
-        [Pure]
-        public MeshData ReadMeshData ([NotNull] string key) {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            return m_meshDataBuffer.GetValueOrDefault(key);
+            return m_commonBuffer.TryGetValue(key, out byte[] value)
+                ? Encoding.Default.GetString(Encode(value))
+                : defaultValue;
         }
 
 
@@ -180,10 +131,7 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_commonBuffer.Remove(key) ||
-                   m_arrayBuffer.Remove(key) ||
-                   m_stringBuffer.Remove(key) ||
-                   m_meshDataBuffer.Remove(key);
+            return m_commonBuffer.Remove(key);
         }
 
 
@@ -191,121 +139,24 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentNullException(nameof(key));
 
-            return m_commonBuffer.ContainsKey(key) ||
-                   m_arrayBuffer.ContainsKey(key) ||
-                   m_stringBuffer.ContainsKey(key) ||
-                   m_meshDataBuffer.ContainsKey(key);
+            return m_commonBuffer.ContainsKey(key);
         }
 
 
         internal void WriteData (SaveWriter writer) {
-            WriteBuffer(m_commonBuffer, writer);
-            WriteBuffer(m_arrayBuffer, writer);
-            WriteBuffer(m_stringBuffer, writer);
-            WriteBuffer(m_meshDataBuffer, writer);
+            writer.Write(m_commonBuffer.Count);
+
+            foreach (string key in m_commonBuffer.Keys) {
+                writer.Write(Encoding.UTF8.GetBytes(key));
+                writer.Write(Encode(m_commonBuffer[key]));
+            }
+
             HasChanges = false;
         }
 
 
         internal void Clear () {
             m_commonBuffer.Clear();
-            m_arrayBuffer.Clear();
-            m_stringBuffer.Clear();
-            m_meshDataBuffer.Clear();
-        }
-
-
-        private void WriteBuffer (Dictionary<string, byte[]> buffer, SaveWriter writer) {
-            writer.Write(buffer.Count);
-
-            foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(Encode(buffer[key]));
-            }
-        }
-
-
-        private Dictionary<string, byte[]> ReadCommonBuffer (SaveReader reader) {
-            var count = reader.Read<int>();
-            var buffer = new Dictionary<string, byte[]>();
-
-            for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), Encode(reader.ReadArray<byte>()));
-
-            return buffer;
-        }
-
-
-        private void WriteBuffer (Dictionary<string, KeyValuePair<int, byte[]>> buffer, SaveWriter writer) {
-            writer.Write(buffer.Count);
-
-            foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(buffer[key].Key);
-                writer.Write(Encode(buffer[key].Value));
-            }
-        }
-
-
-        private Dictionary<string, KeyValuePair<int, byte[]>> ReadArrayBuffer (SaveReader reader) {
-            var count = reader.Read<int>();
-            var buffer = new Dictionary<string, KeyValuePair<int, byte[]>>();
-
-            for (var i = 0; i < count; i++) {
-                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                var length = reader.Read<int>();
-                byte[] array = Encode(reader.ReadArray<byte>());
-                buffer.Add(key, new KeyValuePair<int, byte[]>(length, array));
-            }
-
-            return buffer;
-        }
-
-
-        private void WriteBuffer (Dictionary<string, string> buffer, SaveWriter writer) {
-            writer.Write(buffer.Count);
-
-            foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(Encoding.Default.GetString(Encode(Convert.FromBase64String(buffer[key]))));
-            }
-        }
-
-
-        private Dictionary<string, string> ReadStringBuffer (SaveReader reader) {
-            var count = reader.Read<int>();
-
-            var buffer = new Dictionary<string, string>();
-
-            for (var i = 0; i < count; i++) {
-                buffer.Add(
-                    Encoding.UTF8.GetString(reader.ReadArray<byte>()),
-                    Convert.ToBase64String(Encode(Encoding.Default.GetBytes(reader.ReadString())))
-                );
-            }
-
-            return buffer;
-        }
-
-
-        private void WriteBuffer (Dictionary<string, MeshData> buffer, SaveWriter writer) {
-            writer.Write(buffer.Count);
-
-            foreach (string key in buffer.Keys) {
-                writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(buffer[key]);
-            }
-        }
-
-
-        private Dictionary<string, MeshData> ReadMeshDataBuffer (SaveReader reader) {
-            var count = reader.Read<int>();
-            var buffer = new Dictionary<string, MeshData>();
-
-            for (var i = 0; i < count; i++)
-                buffer.Add(Encoding.UTF8.GetString(reader.ReadArray<byte>()), reader.ReadMeshData());
-
-            return buffer;
         }
 
 
