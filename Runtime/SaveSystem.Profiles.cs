@@ -24,7 +24,7 @@ namespace SaveSystemPackage {
             using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
             var profile = new SaveProfile(name, encrypt, authenticate);
             writer.Write(profile.Name);
-            writer.Write(profile.Settings.Data);
+            writer.Write(profile.SettingsData);
             return profile;
         }
 
@@ -64,7 +64,7 @@ namespace SaveSystemPackage {
             string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
             using var writer = new SaveWriter(File.Open(path, FileMode.Open));
             writer.Write(profile.Name);
-            writer.Write(profile.Settings.Data);
+            writer.Write(profile.SettingsData);
         }
 
 
@@ -75,7 +75,7 @@ namespace SaveSystemPackage {
 
             using var writer = new SaveWriter(File.Open(path, FileMode.Open));
             writer.Write(newName);
-            writer.Write(profile.Settings.Data);
+            writer.Write(profile.SettingsData);
         }
 
     }

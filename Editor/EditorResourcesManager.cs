@@ -17,7 +17,7 @@ namespace SaveSystemPackage.Editor {
             string settingsFilePath = Path.Combine(SaveSystemFolder, $"{nameof(SaveSystemSettings)}.asset");
 
             if (File.Exists(Path.Combine(Application.dataPath, settingsFilePath))) {
-                return ResourcesManager.LoadSettings();
+                return SaveSystemSettings.Load();
             }
             else {
                 var settings = ScriptableObject.CreateInstance<SaveSystemSettings>();

@@ -43,11 +43,14 @@ namespace SaveSystemPackage {
 
         public static void Initialize () {
             try {
-                SetSettings(ResourcesManager.LoadSettings());
+                using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
+                    SetSettings(settings);
+                    Game = new Game(settings);
+                }
+
                 SetInternalFolder();
                 SetOnExitPlayModeCallback();
                 SetPlayerLoop();
-
                 m_exitCancellation = new CancellationTokenSource();
                 Logger.Log(nameof(SaveSystem), "Initialized");
             }

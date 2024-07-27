@@ -7,21 +7,17 @@ using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Diagnostic;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Verification;
 using Logger = SaveSystemPackage.Internal.Logger;
 
-// ReSharper disable InconsistentNaming
-
 // ReSharper disable UnusedMember.Global
-
 // ReSharper disable SuspiciousTypeConversion.Global
 
 namespace SaveSystemPackage {
 
-    internal sealed class SerializationScope {
+    public sealed class SerializationScope {
 
         [NotNull]
         internal string Name {
@@ -34,11 +30,23 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal _Settings Settings { get; } = new();
+        [NotNull]
+        internal string DataPath {
+            get => m_dataPath;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(DataPath));
+
+                m_dataPath = value;
+            }
+        }
+
+        internal ScopeSettings Settings { get; } = new();
         internal DataBuffer Data { get; private set; } = new();
         private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
+        private string m_dataPath;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
 
@@ -118,9 +126,9 @@ namespace SaveSystemPackage {
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Encrypt(data);
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.SetChecksum(Settings.DataPath, data);
+                await Settings.VerificationManager.SetChecksum(DataPath, data);
 
-            await File.WriteAllBytesAsync(Settings.DataPath, data, token);
+            await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
         }
 
@@ -131,15 +139,15 @@ namespace SaveSystemPackage {
             if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (!File.Exists(Settings.DataPath)) {
+            if (!File.Exists(DataPath)) {
                 SetDefaults();
                 return;
             }
 
-            byte[] data = await File.ReadAllBytesAsync(Settings.DataPath, token);
+            byte[] data = await File.ReadAllBytesAsync(DataPath, token);
 
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.VerifyData(Settings.DataPath, data);
+                await Settings.VerificationManager.VerifyData(DataPath, data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Decrypt(data);
 
@@ -151,15 +159,15 @@ namespace SaveSystemPackage {
         }
 
 
-        private void SetDefaults () {
-            foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))
-                serializable?.SetDefaults();
-        }
-
-
         internal void Clear () {
             Data.Clear();
             m_serializables.Clear();
+        }
+
+
+        private void SetDefaults () {
+            foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))
+                serializable?.SetDefaults();
         }
 
 
@@ -196,18 +204,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal sealed class _Settings {
-
-            [NotNull]
-            internal string DataPath {
-                get => m_dataPath;
-                set {
-                    if (string.IsNullOrEmpty(value))
-                        throw new ArgumentNullException(nameof(DataPath));
-
-                    m_dataPath = value;
-                }
-            }
+        public sealed class ScopeSettings {
 
             internal bool Encrypt {
                 get => m_encrypt;
@@ -215,7 +212,7 @@ namespace SaveSystemPackage {
                     m_encrypt = value;
 
                     if (m_encrypt) {
-                        using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+                        using SaveSystemSettings settings = SaveSystemSettings.Load();
 
                         if (Cryptographer == null)
                             Cryptographer = new Cryptographer(settings.encryptionSettings);
@@ -237,7 +234,7 @@ namespace SaveSystemPackage {
                     m_verifyChecksum = value;
 
                     if (m_verifyChecksum) {
-                        using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+                        using SaveSystemSettings settings = SaveSystemSettings.Load();
 
                         if (VerificationManager == null)
                             VerificationManager = new VerificationManager(settings.verificationSettings);
@@ -253,7 +250,6 @@ namespace SaveSystemPackage {
                 set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
             }
 
-            private string m_dataPath;
             private bool m_encrypt;
             private Cryptographer m_cryptographer;
             private bool m_verifyChecksum;

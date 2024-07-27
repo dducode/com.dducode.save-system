@@ -37,7 +37,7 @@ namespace SaveSystemPackage.Verification {
 
             string password;
 
-            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                 password = settings.verificationSettings.hashStoragePassword;
             }
 
@@ -84,7 +84,7 @@ namespace SaveSystemPackage.Verification {
 
             string password;
 
-            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                 password = settings.verificationSettings.hashStoragePassword;
             }
 

@@ -6,10 +6,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.ComponentsRecording;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -27,49 +24,29 @@ namespace SaveSystemPackage {
         private bool encrypt;
 
         [SerializeField]
-        private bool authentication;
+        private bool verifyChecksum;
 
         [SerializeField]
         private string fileName;
 
-        public bool Encrypt {
-            get => SceneScope.Settings.Encrypt;
-            set => SceneScope.Settings.Encrypt = value;
-        }
-
-        /// <summary>
-        /// Cryptographer used to encrypt/decrypt serializable data
-        /// </summary>
-        [NotNull]
-        public Cryptographer Cryptographer {
-            get => SceneScope.Settings.Cryptographer;
-            set => SceneScope.Settings.Cryptographer = value;
-        }
-
-        public bool VerifyChecksum {
-            get => SceneScope.Settings.VerifyChecksum;
-            set => SceneScope.Settings.VerifyChecksum = value;
-        }
-
-        [NotNull]
-        public VerificationManager VerificationManager {
-            get => SceneScope.Settings.VerificationManager;
-            set => SceneScope.Settings.VerificationManager = value;
-        }
-
+        public SerializationScope.ScopeSettings Settings => SceneScope.Settings;
         public DataBuffer Data => SceneScope.Data;
         internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
 
         private string DataPath {
-            get => SceneScope.Settings.DataPath;
-            set => SceneScope.Settings.DataPath = value;
+            get => SceneScope.DataPath;
+            set => SceneScope.DataPath = value;
         }
 
 
         private void Awake () {
             SceneScope = new SerializationScope {
-                Name = $"{gameObject.scene.name} scene scope"
+                Name = $"{gameObject.scene.name} scene scope",
+                Settings = {
+                    Encrypt = encrypt,
+                    VerifyChecksum = verifyChecksum
+                }
             };
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
@@ -83,7 +60,6 @@ namespace SaveSystemPackage {
                 profile == null ? SaveSystem.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
             );
 
-            SetupSettings();
             RegisterRecorders();
         }
 
@@ -149,20 +125,6 @@ namespace SaveSystemPackage {
 
         internal void Clear () {
             SceneScope.Clear();
-        }
-
-
-        private void SetupSettings () {
-            Encrypt = encrypt;
-            VerifyChecksum = authentication;
-
-            using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-            if (Encrypt)
-                Cryptographer = new Cryptographer(settings.encryptionSettings);
-
-            if (VerifyChecksum)
-                VerificationManager = new VerificationManager(settings.verificationSettings);
         }
 
 

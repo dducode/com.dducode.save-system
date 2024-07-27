@@ -69,7 +69,7 @@ namespace SaveSystemPackage {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void AutoInit () {
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
+            SaveSystemSettings settings = SaveSystemSettings.Load();
 
             if (settings != null && settings.automaticInitialize) {
                 settings.Dispose();
@@ -102,9 +102,6 @@ namespace SaveSystemPackage {
 
             Settings = settings;
             DefaultHashStoragePath = Path.Combine(InternalFolder, settings.verificationSettings.hashStoragePath);
-            Game = new Game(settings);
-
-            settings.Dispose();
         }
 
 
@@ -337,7 +334,7 @@ namespace SaveSystemPackage {
                 var profile = new SaveProfile(reader.ReadString(), reader.ReadDataBuffer());
 
                 writer.Write(profile.Name);
-                writer.Write(profile.Settings.Data);
+                writer.Write(profile.SettingsData);
                 writer.Write(await profile.ExportProfileData(token));
             }
 
@@ -364,7 +361,7 @@ namespace SaveSystemPackage {
         private static async UniTask DownloadFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData gameData = await cloudStorage.Pull(Path.GetFileName(Game.Settings.DataPath));
+            StorageData gameData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
 
@@ -392,7 +389,7 @@ namespace SaveSystemPackage {
                 var profile = new SaveProfile(reader.ReadString(), reader.ReadDataBuffer());
 
                 writer.Write(profile.Name);
-                writer.Write(profile.Settings.Data);
+                writer.Write(profile.SettingsData);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }

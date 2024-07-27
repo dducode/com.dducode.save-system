@@ -6,8 +6,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 
 // ReSharper disable UnusedMember.Global
 
@@ -28,8 +26,21 @@ namespace SaveSystemPackage {
             }
         }
 
-        public GameSettings Settings { get; }
+        /// <summary>
+        /// Set the game data path
+        /// </summary>
+        [NotNull]
+        public string DataPath {
+            get => GameScope.DataPath;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
 
+                GameScope.DataPath = Storage.PrepareBeforeUsing(value);
+            }
+        }
+
+        public SerializationScope.ScopeSettings Settings => GameScope.Settings;
         public DataBuffer Data => GameScope.Data;
 
         internal SceneSerializationContext SceneContext {
@@ -42,7 +53,6 @@ namespace SaveSystemPackage {
         }
 
         internal bool HasChanges => Data.HasChanges;
-
         private SerializationScope GameScope { get; }
 
         private SaveProfile m_saveProfile;
@@ -51,14 +61,14 @@ namespace SaveSystemPackage {
 
         internal Game (SaveSystemSettings settings) {
             GameScope = new SerializationScope {
-                Name = "Game scope"
+                Name = "Game scope",
+                Settings = {
+                    Encrypt = settings.encrypt,
+                    VerifyChecksum = settings.verifyChecksum
+                }
             };
 
-            Settings = new GameSettings(GameScope) {
-                DataPath = settings.dataPath,
-                Encrypt = settings.encrypt,
-                VerifyChecksum = settings.verifyChecksum
-            };
+            DataPath = settings.dataPath;
         }
 
 
@@ -111,67 +121,16 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask<StorageData> ExportGameData (CancellationToken token = default) {
-            return File.Exists(Settings.DataPath)
+            return File.Exists(DataPath)
                 ? new StorageData(
-                    await File.ReadAllBytesAsync(Settings.DataPath, token), Path.GetFileName(Settings.DataPath))
+                    await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
                 : null;
         }
 
 
         internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
-                await File.WriteAllBytesAsync(Settings.DataPath, data, token);
-        }
-
-
-        public class GameSettings {
-
-            /// <summary>
-            /// Set the game data path
-            /// </summary>
-            [NotNull]
-            public string DataPath {
-                get => Scope.Settings.DataPath;
-                set {
-                    if (string.IsNullOrEmpty(value))
-                        throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
-
-                    Scope.Settings.DataPath = Storage.PrepareBeforeUsing(value);
-                }
-            }
-
-            public bool Encrypt {
-                get => Scope.Settings.Encrypt;
-                set => Scope.Settings.Encrypt = value;
-            }
-
-            /// <summary>
-            /// Cryptographer used to encrypt/decrypt serializable data
-            /// </summary>
-            [NotNull]
-            public Cryptographer Cryptographer {
-                get => Scope.Settings.Cryptographer;
-                set => Scope.Settings.Cryptographer = value;
-            }
-
-            public bool VerifyChecksum {
-                get => Scope.Settings.VerifyChecksum;
-                set => Scope.Settings.VerifyChecksum = value;
-            }
-
-            [NotNull]
-            public VerificationManager VerificationManager {
-                get => Scope.Settings.VerificationManager;
-                set => Scope.Settings.VerificationManager = value;
-            }
-
-            private SerializationScope Scope { get; }
-
-
-            internal GameSettings (SerializationScope scope) {
-                Scope = scope;
-            }
-
+                await File.WriteAllBytesAsync(DataPath, data, token);
         }
 
     }

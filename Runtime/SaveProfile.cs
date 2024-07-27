@@ -7,8 +7,6 @@ using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -45,7 +43,8 @@ namespace SaveSystemPackage {
             }
         }
 
-        public ProfileSettings Settings { get; }
+        public SerializationScope.ScopeSettings Settings => ProfileScope.Settings;
+        public DataBuffer SettingsData { get; }
         public DataBuffer Data => ProfileScope.Data;
 
         [NotNull]
@@ -83,8 +82,8 @@ namespace SaveSystemPackage {
         internal bool HasChanges => Data.HasChanges;
 
         private string DataPath {
-            get => ProfileScope.Settings.DataPath;
-            set => ProfileScope.Settings.DataPath = value;
+            get => ProfileScope.DataPath;
+            set => ProfileScope.DataPath = value;
         }
 
         private SerializationScope ProfileScope { get; }
@@ -101,42 +100,40 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-            DataFolder = name;
-
             ProfileScope = new SerializationScope {
                 Name = $"{name} profile scope",
                 Settings = {
                     Encrypt = settingsData.Read<bool>(EncryptKey),
                     VerifyChecksum = settingsData.Read<bool>(VerifyKey),
-                    DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
                 }
             };
 
-            Settings = new ProfileSettings(ProfileScope, settingsData);
-            Settings.OnSettingsChanged += CommitChanges;
+            DataFolder = name;
+            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
+
+            SettingsData = settingsData;
         }
 
 
-        internal SaveProfile ([NotNull] string name, bool encrypt, bool authenticate) {
+        internal SaveProfile ([NotNull] string name, bool encrypt, bool verify) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-            DataFolder = name;
-
             ProfileScope = new SerializationScope {
                 Name = $"{name} profile scope",
                 Settings = {
                     Encrypt = encrypt,
-                    VerifyChecksum = authenticate,
-                    DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
+                    VerifyChecksum = verify,
                 }
             };
 
-            Settings = new ProfileSettings(ProfileScope, new DataBuffer());
-            Settings.Data.Write(EncryptKey, encrypt);
-            Settings.Data.Write(VerifyKey, authenticate);
-            Settings.OnSettingsChanged += CommitChanges;
+            DataFolder = name;
+            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
+
+            SettingsData = new DataBuffer();
+            SettingsData.Write(EncryptKey, encrypt);
+            SettingsData.Write(VerifyKey, verify);
         }
 
 
@@ -223,51 +220,6 @@ namespace SaveSystemPackage {
 
         internal void Clear () {
             ProfileScope.Clear();
-        }
-
-
-        public class ProfileSettings {
-
-            public bool Encrypt {
-                get => Scope.Settings.Encrypt;
-                set {
-                    Scope.Settings.Encrypt = value;
-                    Data.Write(EncryptKey, value);
-                    OnSettingsChanged?.Invoke();
-                }
-            }
-
-            [NotNull]
-            public Cryptographer Cryptographer {
-                get => Scope.Settings.Cryptographer;
-                set => Scope.Settings.Cryptographer = value;
-            }
-
-            public bool VerifyChecksum {
-                get => Scope.Settings.VerifyChecksum;
-                set {
-                    Scope.Settings.VerifyChecksum = value;
-                    Data.Write(VerifyKey, value);
-                    OnSettingsChanged?.Invoke();
-                }
-            }
-
-            [NotNull]
-            public VerificationManager VerificationManager {
-                get => Scope.Settings.VerificationManager;
-                set => Scope.Settings.VerificationManager = value;
-            }
-
-            public DataBuffer Data { get; }
-            internal SerializationScope Scope { get; }
-            internal event Action OnSettingsChanged;
-
-
-            internal ProfileSettings (SerializationScope scope, DataBuffer data) {
-                Scope = scope;
-                Data = data;
-            }
-
         }
 
     }
