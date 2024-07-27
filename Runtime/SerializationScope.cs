@@ -8,8 +8,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal.Diagnostic;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -41,7 +39,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal ScopeSettings Settings { get; } = new();
+        internal SerializationSettings Settings { get; } = new();
         internal DataBuffer Data { get; private set; } = new();
         private DataBuffer Buffer { get; set; } = new();
 
@@ -201,60 +199,6 @@ namespace SaveSystemPackage {
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 Buffer.Write(key, bytes);
             }
-        }
-
-
-        public sealed class ScopeSettings {
-
-            internal bool Encrypt {
-                get => m_encrypt;
-                set {
-                    m_encrypt = value;
-
-                    if (m_encrypt) {
-                        using SaveSystemSettings settings = SaveSystemSettings.Load();
-
-                        if (Cryptographer == null)
-                            Cryptographer = new Cryptographer(settings.encryptionSettings);
-                        else
-                            Cryptographer.SetSettings(settings.encryptionSettings);
-                    }
-                }
-            }
-
-            [NotNull]
-            internal Cryptographer Cryptographer {
-                get => m_cryptographer;
-                set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
-            }
-
-            internal bool VerifyChecksum {
-                get => m_verifyChecksum;
-                set {
-                    m_verifyChecksum = value;
-
-                    if (m_verifyChecksum) {
-                        using SaveSystemSettings settings = SaveSystemSettings.Load();
-
-                        if (VerificationManager == null)
-                            VerificationManager = new VerificationManager(settings.verificationSettings);
-                        else
-                            VerificationManager.SetSettings(settings.verificationSettings);
-                    }
-                }
-            }
-
-            [NotNull]
-            internal VerificationManager VerificationManager {
-                get => m_verificationManager;
-                set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
-            }
-
-            private bool m_encrypt;
-            private Cryptographer m_cryptographer;
-            private bool m_verifyChecksum;
-            private VerificationManager m_verificationManager;
-
         }
 
     }

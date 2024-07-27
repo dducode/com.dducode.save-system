@@ -40,7 +40,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        public SerializationScope.ScopeSettings Settings => GameScope.Settings;
+        public SerializationSettings Settings => GameScope.Settings;
         public DataBuffer Data => GameScope.Data;
 
         internal SceneSerializationContext SceneContext {

@@ -43,7 +43,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        public SerializationScope.ScopeSettings Settings => ProfileScope.Settings;
+        public SerializationSettings Settings => ProfileScope.Settings;
         public DataBuffer SettingsData { get; }
         public DataBuffer Data => ProfileScope.Data;
 

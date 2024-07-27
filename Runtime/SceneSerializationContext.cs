@@ -29,7 +29,7 @@ namespace SaveSystemPackage {
         [SerializeField]
         private string fileName;
 
-        public SerializationScope.ScopeSettings Settings => SceneScope.Settings;
+        public SerializationSettings Settings => SceneScope.Settings;
         public DataBuffer Data => SceneScope.Data;
         internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
