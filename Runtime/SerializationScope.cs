@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
@@ -50,7 +51,7 @@ namespace SaveSystemPackage {
         private string m_dataPath;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private readonly Dictionary<string, object> m_objects = new();
-        private int ObjectsCount => m_serializables.Count;
+        private int ObjectsCount => m_serializables.Count + m_objects.Count;
 
 
         /// <summary>
@@ -86,7 +87,7 @@ namespace SaveSystemPackage {
 
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
-                obj = reader.ReadObject(obj.GetType());
+                DeserializeGraph(reader, obj);
                 Buffer.Delete(key);
             }
 
@@ -207,6 +208,15 @@ namespace SaveSystemPackage {
                 writer.Write(stream.ToArray());
                 writer.Write(Encoding.UTF8.GetBytes(key));
             }
+
+            foreach ((string key, object graph) in m_objects) {
+                using var stream = new MemoryStream();
+                using var localWriter = new SaveWriter(stream);
+                SerializeGraph(localWriter, graph);
+
+                writer.Write(stream.ToArray());
+                writer.Write(Encoding.UTF8.GetBytes(key));
+            }
         }
 
 
@@ -220,11 +230,148 @@ namespace SaveSystemPackage {
                 --count;
             }
 
+            foreach (KeyValuePair<string, object> unused in m_objects) {
+                using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
+                DeserializeGraph(localReader, m_objects[key]);
+                --count;
+            }
+
             for (var i = 0; i < count; i++) {
                 byte[] bytes = reader.ReadArray<byte>();
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 Buffer.Write(key, bytes);
             }
+        }
+
+
+        private void SerializeGraph (SaveWriter writer, object graph) {
+            Type type = graph.GetType();
+            FieldInfo[] fields = type
+               .GetFields()
+               .Concat(type
+                   .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+                   .Where(field => field.IsDefined(typeof(RuntimeSerializedFieldAttribute))))
+               .ToArray();
+            writer.Write(fields.Length);
+
+            foreach (FieldInfo field in fields) {
+                writer.Write(field.Name);
+                writer.Write(field.FieldType.AssemblyQualifiedName);
+                SerializeSubgraph(writer, field.GetValue(graph));
+            }
+
+            PropertyInfo[] properties = type
+               .GetProperties()
+               .Concat(type
+                   .GetProperties(BindingFlags.NonPublic | BindingFlags.Instance)
+                   .Where(property => property.IsDefined(typeof(RuntimeSerializedPropertyAttribute))))
+               .ToArray();
+            writer.Write(properties.Length);
+
+            foreach (PropertyInfo property in properties) {
+                writer.Write(property.Name);
+                writer.Write(property.PropertyType.AssemblyQualifiedName);
+                SerializeSubgraph(writer, property.GetValue(graph));
+            }
+        }
+
+
+        private void SerializeSubgraph (SaveWriter writer, object graph) {
+            Type type = graph.GetType();
+            writer.Write(type.IsPrimitive);
+
+            if (!type.IsPrimitive) {
+                bool isString = type == typeof(string);
+                writer.Write(isString);
+
+                if (isString) {
+                    var str = (string)graph;
+                    writer.Write(str.ToCharArray());
+                    return;
+                }
+
+                writer.Write(type.IsArray);
+
+                if (type.IsArray) {
+                    var array = (Array)graph;
+                    writer.Write(array.Length);
+                    Type elementType = type.GetElementType() ?? throw new InvalidOperationException();
+                    writer.Write(elementType.AssemblyQualifiedName);
+                    foreach (object element in array)
+                        SerializeSubgraph(writer, element);
+                    return;
+                }
+
+                SerializeGraph(writer, graph);
+                return;
+            }
+
+            writer.Write(graph);
+        }
+
+
+        private void DeserializeGraph (SaveReader reader, object graph) {
+            Type type = graph.GetType();
+            var fieldsCount = reader.Read<int>();
+
+            for (var i = 0; i < fieldsCount; i++) {
+                string fieldName = reader.ReadString();
+                var fieldType = Type.GetType(reader.ReadString());
+                object value = DeserializeSubgraph(reader, fieldType);
+                FieldInfo field = type.GetField(
+                    fieldName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+                );
+                field?.SetValue(graph, value);
+            }
+
+            var propertiesCount = reader.Read<int>();
+
+            for (var i = 0; i < propertiesCount; i++) {
+                string propertyName = reader.ReadString();
+                var propertyType = Type.GetType(reader.ReadString());
+                object value = DeserializeSubgraph(reader, propertyType);
+                PropertyInfo property = type.GetProperty(propertyName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+                );
+                property?.SetValue(graph, value);
+            }
+        }
+
+
+        private object DeserializeSubgraph (SaveReader reader, Type type) {
+            var isPrimitive = reader.Read<bool>();
+
+            if (!isPrimitive) {
+                var isString = reader.Read<bool>();
+
+                if (isString) {
+                    char[] chars = reader.ReadArray<char>();
+                    return string.Create(chars.Length, chars, (span, array) => {
+                        for (var i = 0; i < array.Length; i++)
+                            span[i] = array[i];
+                    });
+                }
+
+                var isArray = reader.Read<bool>();
+
+                if (isArray) {
+                    var count = reader.Read<int>();
+                    var elementType = Type.GetType(reader.ReadString());
+                    var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
+
+                    for (var i = 0; i < count; i++)
+                        array.SetValue(DeserializeSubgraph(reader, elementType), i);
+                    return array;
+                }
+
+                object graph = Activator.CreateInstance(type);
+                DeserializeGraph(reader, graph);
+                return graph;
+            }
+
+            return reader.ReadObject(type);
         }
 
     }

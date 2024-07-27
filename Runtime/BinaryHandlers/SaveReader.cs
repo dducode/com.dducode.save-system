@@ -37,60 +37,6 @@ namespace SaveSystemPackage.BinaryHandlers {
 
 
         public object ReadObject (Type type) {
-            var isPrimitive = Read<bool>();
-
-            if (!isPrimitive) {
-                var isString = Read<bool>();
-
-                if (isString) {
-                    char[] chars = ReadArray<char>();
-                    return string.Create(chars.Length, chars, (span, array) => {
-                        for (var i = 0; i < array.Length; i++)
-                            span[i] = array[i];
-                    });
-                }
-
-                var isArray = Read<bool>();
-
-                if (isArray) {
-                    var count = Read<int>();
-                    var elementType = Type.GetType(ReadString());
-                    var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
-
-                    for (var i = 0; i < count; i++)
-                        array.SetValue(ReadObject(elementType), i);
-                    return array;
-                }
-
-                object graph = Activator.CreateInstance(type);
-                var fieldsCount = Read<int>();
-
-                for (var i = 0; i < fieldsCount; i++) {
-                    string fieldName = ReadString();
-                    var fieldType = Type.GetType(ReadString());
-                    object value = ReadObject(fieldType);
-                    FieldInfo field = type.GetField(
-                        fieldName,
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                    );
-                    field?.SetValue(graph, value);
-                }
-
-                var propertiesCount = Read<int>();
-
-                for (var i = 0; i < propertiesCount; i++) {
-                    string propertyName = ReadString();
-                    var propertyType = Type.GetType(ReadString());
-                    object value = ReadObject(propertyType);
-                    PropertyInfo property = type.GetProperty(propertyName,
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                    );
-                    property?.SetValue(graph, value);
-                }
-
-                return graph;
-            }
-
             var size = Read<int>();
             var bytes = new byte[size];
             m_streamPosition += output.Read(bytes);
