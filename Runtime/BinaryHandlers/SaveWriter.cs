@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using SaveSystemPackage.Attributes;
 using UnityEngine.Rendering;
 
 // ReSharper disable MemberCanBePrivate.Global
@@ -23,6 +26,75 @@ namespace SaveSystemPackage.BinaryHandlers {
         public void Write<TValue> (TValue value) where TValue : unmanaged {
             ReadOnlySpan<TValue> span = MemoryMarshal.CreateReadOnlySpan(ref value, 1);
             input.Write(MemoryMarshal.AsBytes(span));
+        }
+
+
+        public void Write (object graph) {
+            Type type = graph.GetType();
+            Write(type.IsPrimitive);
+
+            if (!type.IsPrimitive) {
+                bool isString = type == typeof(string);
+                Write(isString);
+
+                if (isString) {
+                    var str = (string)graph;
+                    Write(str.ToCharArray());
+                    return;
+                }
+
+                Write(type.IsArray);
+
+                if (type.IsArray) {
+                    var array = (Array)graph;
+                    Write(array.Length);
+                    Type elementType = type.GetElementType() ?? throw new InvalidOperationException();
+                    Write(elementType.AssemblyQualifiedName);
+                    foreach (object element in array)
+                        Write(element);
+                    return;
+                }
+
+                FieldInfo[] fields = type
+                   .GetFields()
+                   .Concat(type
+                       .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+                       .Where(field => field.IsDefined(typeof(RuntimeSerializedFieldAttribute))))
+                   .ToArray();
+                Write(fields.Length);
+
+                foreach (FieldInfo field in fields) {
+                    Write(field.Name);
+                    Write(field.FieldType.AssemblyQualifiedName);
+                    Write(field.GetValue(graph));
+                }
+
+                PropertyInfo[] properties = type
+                   .GetProperties()
+                   .Concat(type
+                       .GetProperties(BindingFlags.NonPublic | BindingFlags.Instance)
+                       .Where(property => property.IsDefined(typeof(RuntimeSerializedPropertyAttribute))))
+                   .ToArray();
+                Write(properties.Length);
+
+                foreach (PropertyInfo property in properties) {
+                    Write(property.Name);
+                    Write(property.PropertyType.AssemblyQualifiedName);
+                    Write(property.GetValue(graph));
+                }
+
+                return;
+            }
+
+            int size = Marshal.SizeOf(graph);
+            var bytes = new byte[size];
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(graph, ptr, false);
+            Marshal.Copy(ptr, bytes, 0, size);
+            Marshal.FreeHGlobal(ptr);
+
+            Write(bytes.Length);
+            input.Write(bytes);
         }
 
 

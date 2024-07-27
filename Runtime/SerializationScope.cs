@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using SaveSystemPackage.Attributes;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal.Diagnostic;
 using Logger = SaveSystemPackage.Internal.Logger;
+using Object = UnityEngine.Object;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable SuspiciousTypeConversion.Global
@@ -46,6 +49,7 @@ namespace SaveSystemPackage {
         private string m_name;
         private string m_dataPath;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
+        private readonly Dictionary<string, object> m_objects = new();
         private int ObjectsCount => m_serializables.Count;
 
 
@@ -67,6 +71,28 @@ namespace SaveSystemPackage {
             m_serializables.Add(key, serializable);
             DiagnosticService.AddObject(serializable);
             Logger.Log(Name, $"Serializable object {serializable} registered in {Name}");
+        }
+
+
+        internal void RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+            if (obj is Object)
+                throw new SerializationException($"The object {obj} cannot be an unity object");
+            if (!obj.GetType().IsDefined(typeof(RuntimeSerializableAttribute), false))
+                throw new SerializationException($"The object {obj} must define RuntimeSerializable attribute");
+
+            if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
+                using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
+                obj = reader.ReadObject(obj.GetType());
+                Buffer.Delete(key);
+            }
+
+            m_objects.Add(key, obj);
+            DiagnosticService.AddObject(obj);
+            Logger.Log(Name, $"Serializable object {obj} registered in {Name}");
         }
 
 

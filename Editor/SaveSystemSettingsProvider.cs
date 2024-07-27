@@ -81,11 +81,14 @@ namespace SaveSystemPackage.Editor {
 
             m_serializedSettings.Update();
 
+            float width = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth *= 1.5f;
             DrawCommonSettings();
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
             DrawEncryptionSettings();
             DrawAuthenticationSettings();
+            EditorGUIUtility.labelWidth = width;
 
             m_serializedSettings.ApplyModifiedProperties();
         }
