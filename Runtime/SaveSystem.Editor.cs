@@ -1,54 +1,45 @@
 ﻿#if UNITY_EDITOR
-    using SaveSystemPackage.Internal;
-    using SaveSystemPackage.Internal.Diagnostic;
-    using UnityEngine;
-    using UnityEngine.LowLevel;
-    using UnityEngine.PlayerLoop;
-    using Logger = SaveSystemPackage.Internal.Logger;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Diagnostic;
+using UnityEngine;
+using UnityEngine.LowLevel;
+using UnityEngine.PlayerLoop;
+using Logger = SaveSystemPackage.Internal.Logger;
 
-    namespace SaveSystemPackage {
+namespace SaveSystemPackage {
 
-        public static partial class SaveSystem {
+    public static partial class SaveSystem {
 
-            static partial void SetOnExitPlayModeCallback () {
-                Application.quitting += ResetOnExit;
-            }
-
-
-            private static void ResetOnExit () {
-                ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
-                OnSaveStart = null;
-                OnSaveEnd = null;
-
-                Application.focusChanged -= OnFocusLost;
-                Application.lowMemory -= OnLowMemory;
-
-            #if ENABLE_LEGACY_INPUT_MANAGER
-                QuickSaveKey = default;
-                ScreenCaptureKey = default;
-            #endif
-
-            #if ENABLE_INPUT_SYSTEM
-                QuickSaveAction = null;
-                ScreenCaptureAction = null;
-            #endif
-
-                m_periodicSaveLastTime = 0;
-                Game = null;
-                DiagnosticService.Clear();
-
-                Application.quitting -= ResetOnExit;
-            }
+        static partial void SetOnExitPlayModeCallback () {
+            Application.quitting += ResetOnExit;
+        }
 
 
-            private static void ResetPlayerLoop (PlayerLoopSystem modifiedLoop) {
-                if (PlayerLoopManager.TryRemoveSubSystem(ref modifiedLoop, typeof(SaveSystem), typeof(PreLateUpdate)))
-                    PlayerLoop.SetPlayerLoop(modifiedLoop);
-                else
-                    Logger.LogError(nameof(SaveSystem), $"Failed remove system: {typeof(SaveSystem)}");
-            }
+        private static void ResetOnExit () {
+            ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
+            OnSaveStart = null;
+            OnSaveEnd = null;
 
+            Application.focusChanged -= OnFocusLost;
+            Application.lowMemory -= OnLowMemory;
+
+            m_periodicSaveLastTime = 0;
+            Settings = null;
+            Game = null;
+            DiagnosticService.Clear();
+
+            Application.quitting -= ResetOnExit;
+        }
+
+
+        private static void ResetPlayerLoop (PlayerLoopSystem modifiedLoop) {
+            if (PlayerLoopManager.TryRemoveSubSystem(ref modifiedLoop, typeof(SaveSystem), typeof(PreLateUpdate)))
+                PlayerLoop.SetPlayerLoop(modifiedLoop);
+            else
+                Logger.LogError(nameof(SaveSystem), $"Failed remove system: {typeof(SaveSystem)}");
         }
 
     }
+
+}
 #endif

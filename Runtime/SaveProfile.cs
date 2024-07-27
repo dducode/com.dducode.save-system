@@ -13,11 +13,10 @@ using SaveSystemPackage.Verification;
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystemPackage.Profiles {
+namespace SaveSystemPackage {
 
     public sealed class SaveProfile {
 
-        private const string NameKey = "profile-name";
         private const string EncryptKey = "profile-encrypt";
         private const string VerifyKey = "profile-verify-checksum";
 
@@ -42,43 +41,11 @@ namespace SaveSystemPackage.Profiles {
                 if (File.Exists(oldPath))
                     File.Move(oldPath, DataPath);
 
-                Metadata.Write(NameKey, value);
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
 
-        public bool Encrypt {
-            get => ProfileScope.Encrypt;
-            set {
-                ProfileScope.Encrypt = value;
-                Metadata.Write(EncryptKey, value);
-                CommitChanges();
-            }
-        }
-
-        [NotNull]
-        public Cryptographer Cryptographer {
-            get => ProfileScope.Cryptographer;
-            set => ProfileScope.Cryptographer = value;
-        }
-
-        public bool VerifyChecksum {
-            get => ProfileScope.VerifyChecksum;
-            set {
-                ProfileScope.VerifyChecksum = value;
-                Metadata.Write(VerifyKey, value);
-                CommitChanges();
-            }
-        }
-
-        [NotNull]
-        public VerificationManager VerificationManager {
-            get => ProfileScope.VerificationManager;
-            set => ProfileScope.VerificationManager = value;
-        }
-
-        public DataBuffer Metadata { get; }
-
+        public ProfileSettings Settings { get; }
         public DataBuffer Data => ProfileScope.Data;
 
         [NotNull]
@@ -113,12 +80,13 @@ namespace SaveSystemPackage.Profiles {
             }
         }
 
-        internal string DataPath {
-            get => ProfileScope.DataPath;
-            private set => ProfileScope.DataPath = value;
+        internal bool HasChanges => Data.HasChanges;
+
+        private string DataPath {
+            get => ProfileScope.Settings.DataPath;
+            set => ProfileScope.Settings.DataPath = value;
         }
 
-        internal bool HasChanges => Data.HasChanges;
         private SerializationScope ProfileScope { get; }
 
         private string m_name;
@@ -128,12 +96,24 @@ namespace SaveSystemPackage.Profiles {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal SaveProfile (DataBuffer metadata) : this(
-            metadata.ReadString(NameKey),
-            metadata.Read<bool>(EncryptKey),
-            metadata.Read<bool>(VerifyKey)
-        ) {
-            Metadata = metadata;
+        internal SaveProfile (string name, DataBuffer settingsData) {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+
+            m_name = name;
+            DataFolder = name;
+
+            ProfileScope = new SerializationScope {
+                Name = $"{name} profile scope",
+                Settings = {
+                    Encrypt = settingsData.Read<bool>(EncryptKey),
+                    VerifyChecksum = settingsData.Read<bool>(VerifyKey),
+                    DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
+                }
+            };
+
+            Settings = new ProfileSettings(ProfileScope, settingsData);
+            Settings.OnSettingsChanged += CommitChanges;
         }
 
 
@@ -146,15 +126,17 @@ namespace SaveSystemPackage.Profiles {
 
             ProfileScope = new SerializationScope {
                 Name = $"{name} profile scope",
-                Encrypt = encrypt,
-                VerifyChecksum = authenticate,
-                DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
+                Settings = {
+                    Encrypt = encrypt,
+                    VerifyChecksum = authenticate,
+                    DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
+                }
             };
 
-            Metadata = new DataBuffer();
-            Metadata.Write(NameKey, Name);
-            Metadata.Write(EncryptKey, Encrypt);
-            Metadata.Write(VerifyKey, VerifyChecksum);
+            Settings = new ProfileSettings(ProfileScope, new DataBuffer());
+            Settings.Data.Write(EncryptKey, encrypt);
+            Settings.Data.Write(VerifyKey, authenticate);
+            Settings.OnSettingsChanged += CommitChanges;
         }
 
 
@@ -241,6 +223,51 @@ namespace SaveSystemPackage.Profiles {
 
         internal void Clear () {
             ProfileScope.Clear();
+        }
+
+
+        public class ProfileSettings {
+
+            public bool Encrypt {
+                get => Scope.Settings.Encrypt;
+                set {
+                    Scope.Settings.Encrypt = value;
+                    Data.Write(EncryptKey, value);
+                    OnSettingsChanged?.Invoke();
+                }
+            }
+
+            [NotNull]
+            public Cryptographer Cryptographer {
+                get => Scope.Settings.Cryptographer;
+                set => Scope.Settings.Cryptographer = value;
+            }
+
+            public bool VerifyChecksum {
+                get => Scope.Settings.VerifyChecksum;
+                set {
+                    Scope.Settings.VerifyChecksum = value;
+                    Data.Write(VerifyKey, value);
+                    OnSettingsChanged?.Invoke();
+                }
+            }
+
+            [NotNull]
+            public VerificationManager VerificationManager {
+                get => Scope.Settings.VerificationManager;
+                set => Scope.Settings.VerificationManager = value;
+            }
+
+            public DataBuffer Data { get; }
+            internal SerializationScope Scope { get; }
+            internal event Action OnSettingsChanged;
+
+
+            internal ProfileSettings (SerializationScope scope, DataBuffer data) {
+                Scope = scope;
+                Data = data;
+            }
+
         }
 
     }

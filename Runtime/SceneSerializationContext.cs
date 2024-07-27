@@ -8,7 +8,6 @@ using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Verification;
 using UnityEngine;
@@ -34,8 +33,8 @@ namespace SaveSystemPackage {
         private string fileName;
 
         public bool Encrypt {
-            get => SceneScope.Encrypt;
-            set => SceneScope.Encrypt = value;
+            get => SceneScope.Settings.Encrypt;
+            set => SceneScope.Settings.Encrypt = value;
         }
 
         /// <summary>
@@ -43,19 +42,19 @@ namespace SaveSystemPackage {
         /// </summary>
         [NotNull]
         public Cryptographer Cryptographer {
-            get => SceneScope.Cryptographer;
-            set => SceneScope.Cryptographer = value;
+            get => SceneScope.Settings.Cryptographer;
+            set => SceneScope.Settings.Cryptographer = value;
         }
 
         public bool VerifyChecksum {
-            get => SceneScope.VerifyChecksum;
-            set => SceneScope.VerifyChecksum = value;
+            get => SceneScope.Settings.VerifyChecksum;
+            set => SceneScope.Settings.VerifyChecksum = value;
         }
 
         [NotNull]
         public VerificationManager VerificationManager {
-            get => SceneScope.VerificationManager;
-            set => SceneScope.VerificationManager = value;
+            get => SceneScope.Settings.VerificationManager;
+            set => SceneScope.Settings.VerificationManager = value;
         }
 
         public DataBuffer Data => SceneScope.Data;
@@ -63,8 +62,8 @@ namespace SaveSystemPackage {
         private SerializationScope SceneScope { get; set; }
 
         private string DataPath {
-            get => SceneScope.DataPath;
-            set => SceneScope.DataPath = value;
+            get => SceneScope.Settings.DataPath;
+            set => SceneScope.Settings.DataPath = value;
         }
 
 

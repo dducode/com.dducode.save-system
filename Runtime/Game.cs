@@ -6,7 +6,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Verification;
 
@@ -15,8 +14,6 @@ using SaveSystemPackage.Verification;
 namespace SaveSystemPackage {
 
     public class Game {
-
-        internal Game () { }
 
         /// <summary>
         /// Uses for serializing data into a separately file
@@ -31,44 +28,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        /// <summary>
-        /// Set the game data path
-        /// </summary>
-        [NotNull]
-        public string DataPath {
-            get => GameScope.DataPath;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
-
-                GameScope.DataPath = Storage.PrepareBeforeUsing(value);
-            }
-        }
-
-        public bool Encrypt {
-            get => GameScope.Encrypt;
-            set => GameScope.Encrypt = value;
-        }
-
-        /// <summary>
-        /// Cryptographer used to encrypt/decrypt serializable data
-        /// </summary>
-        [NotNull]
-        public Cryptographer Cryptographer {
-            get => GameScope.Cryptographer;
-            set => GameScope.Cryptographer = value;
-        }
-
-        public bool VerifyChecksum {
-            get => GameScope.VerifyChecksum;
-            set => GameScope.VerifyChecksum = value;
-        }
-
-        [NotNull]
-        public VerificationManager VerificationManager {
-            get => GameScope.VerificationManager;
-            set => GameScope.VerificationManager = value;
-        }
+        public GameSettings Settings { get; }
 
         public DataBuffer Data => GameScope.Data;
 
@@ -83,12 +43,23 @@ namespace SaveSystemPackage {
 
         internal bool HasChanges => Data.HasChanges;
 
-        private SerializationScope GameScope { get; } = new() {
-            Name = "Game scope"
-        };
+        private SerializationScope GameScope { get; }
 
         private SaveProfile m_saveProfile;
         private SceneSerializationContext m_sceneContext;
+
+
+        internal Game (SaveSystemSettings settings) {
+            GameScope = new SerializationScope {
+                Name = "Game scope"
+            };
+
+            Settings = new GameSettings(GameScope) {
+                DataPath = settings.dataPath,
+                Encrypt = settings.encrypt,
+                VerifyChecksum = settings.verifyChecksum
+            };
+        }
 
 
         /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
@@ -140,15 +111,67 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask<StorageData> ExportGameData (CancellationToken token = default) {
-            return File.Exists(DataPath)
-                ? new StorageData(await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+            return File.Exists(Settings.DataPath)
+                ? new StorageData(
+                    await File.ReadAllBytesAsync(Settings.DataPath, token), Path.GetFileName(Settings.DataPath))
                 : null;
         }
 
 
         internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
-                await File.WriteAllBytesAsync(DataPath, data, token);
+                await File.WriteAllBytesAsync(Settings.DataPath, data, token);
+        }
+
+
+        public class GameSettings {
+
+            /// <summary>
+            /// Set the game data path
+            /// </summary>
+            [NotNull]
+            public string DataPath {
+                get => Scope.Settings.DataPath;
+                set {
+                    if (string.IsNullOrEmpty(value))
+                        throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
+
+                    Scope.Settings.DataPath = Storage.PrepareBeforeUsing(value);
+                }
+            }
+
+            public bool Encrypt {
+                get => Scope.Settings.Encrypt;
+                set => Scope.Settings.Encrypt = value;
+            }
+
+            /// <summary>
+            /// Cryptographer used to encrypt/decrypt serializable data
+            /// </summary>
+            [NotNull]
+            public Cryptographer Cryptographer {
+                get => Scope.Settings.Cryptographer;
+                set => Scope.Settings.Cryptographer = value;
+            }
+
+            public bool VerifyChecksum {
+                get => Scope.Settings.VerifyChecksum;
+                set => Scope.Settings.VerifyChecksum = value;
+            }
+
+            [NotNull]
+            public VerificationManager VerificationManager {
+                get => Scope.Settings.VerificationManager;
+                set => Scope.Settings.VerificationManager = value;
+            }
+
+            private SerializationScope Scope { get; }
+
+
+            internal GameSettings (SerializationScope scope) {
+                Scope = scope;
+            }
+
         }
 
     }

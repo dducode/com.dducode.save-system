@@ -13,6 +13,8 @@ using SaveSystemPackage.Security;
 using SaveSystemPackage.Verification;
 using Logger = SaveSystemPackage.Internal.Logger;
 
+// ReSharper disable InconsistentNaming
+
 // ReSharper disable UnusedMember.Global
 
 // ReSharper disable SuspiciousTypeConversion.Global
@@ -32,73 +34,11 @@ namespace SaveSystemPackage {
             }
         }
 
-        [NotNull]
-        internal string DataPath {
-            get => m_dataPath;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath));
-
-                m_dataPath = value;
-            }
-        }
-
-        internal bool Encrypt {
-            get => m_encrypt;
-            set {
-                m_encrypt = value;
-
-                if (m_encrypt) {
-                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-                    if (Cryptographer == null)
-                        Cryptographer = new Cryptographer(settings.encryptionSettings);
-                    else
-                        Cryptographer.SetSettings(settings.encryptionSettings);
-                }
-            }
-        }
-
-        [NotNull]
-        internal Cryptographer Cryptographer {
-            get => m_cryptographer;
-            set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
-        }
-
-        internal bool VerifyChecksum {
-            get => m_verifyChecksum;
-            set {
-                m_verifyChecksum = value;
-
-                if (m_verifyChecksum) {
-                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-                    if (VerificationManager == null)
-                        VerificationManager = new VerificationManager(settings.verificationSettings);
-                    else
-                        VerificationManager.SetSettings(settings.verificationSettings);
-                }
-            }
-        }
-
-        [NotNull]
-        internal VerificationManager VerificationManager {
-            get => m_verificationManager;
-            set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
-        }
-
+        internal _Settings Settings { get; } = new();
         internal DataBuffer Data { get; private set; } = new();
         private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
-        private string m_dataPath;
-
-        private bool m_encrypt;
-        private Cryptographer m_cryptographer;
-
-        private bool m_verifyChecksum;
-        private VerificationManager m_verificationManager;
-
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private int ObjectsCount => m_serializables.Count;
 
@@ -158,9 +98,9 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask Serialize (CancellationToken token) {
-            if (Encrypt && Cryptographer == null)
+            if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (VerifyChecksum && VerificationManager == null)
+            if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             if (ObjectsCount == 0 && Data.Count == 0)
@@ -175,33 +115,33 @@ namespace SaveSystemPackage {
                 data = memoryStream.ToArray();
             }
 
-            if (Encrypt)
-                data = Cryptographer.Encrypt(data);
-            if (VerifyChecksum)
-                await VerificationManager.SetChecksum(DataPath, data);
+            if (Settings.Encrypt)
+                data = Settings.Cryptographer.Encrypt(data);
+            if (Settings.VerifyChecksum)
+                await Settings.VerificationManager.SetChecksum(Settings.DataPath, data);
 
-            await File.WriteAllBytesAsync(DataPath, data, token);
+            await File.WriteAllBytesAsync(Settings.DataPath, data, token);
             Logger.Log(Name, "Data saved");
         }
 
 
         internal async UniTask Deserialize (CancellationToken token) {
-            if (Encrypt && Cryptographer == null)
+            if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (VerifyChecksum && VerificationManager == null)
+            if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (!File.Exists(DataPath)) {
+            if (!File.Exists(Settings.DataPath)) {
                 SetDefaults();
                 return;
             }
 
-            byte[] data = await File.ReadAllBytesAsync(DataPath, token);
+            byte[] data = await File.ReadAllBytesAsync(Settings.DataPath, token);
 
-            if (VerifyChecksum)
-                await VerificationManager.VerifyData(DataPath, data);
-            if (Encrypt)
-                data = Cryptographer.Decrypt(data);
+            if (Settings.VerifyChecksum)
+                await Settings.VerificationManager.VerifyData(Settings.DataPath, data);
+            if (Settings.Encrypt)
+                data = Settings.Cryptographer.Decrypt(data);
 
             await using var reader = new SaveReader(new MemoryStream(data));
 
@@ -253,6 +193,72 @@ namespace SaveSystemPackage {
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 Buffer.Write(key, bytes);
             }
+        }
+
+
+        internal sealed class _Settings {
+
+            [NotNull]
+            internal string DataPath {
+                get => m_dataPath;
+                set {
+                    if (string.IsNullOrEmpty(value))
+                        throw new ArgumentNullException(nameof(DataPath));
+
+                    m_dataPath = value;
+                }
+            }
+
+            internal bool Encrypt {
+                get => m_encrypt;
+                set {
+                    m_encrypt = value;
+
+                    if (m_encrypt) {
+                        using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+
+                        if (Cryptographer == null)
+                            Cryptographer = new Cryptographer(settings.encryptionSettings);
+                        else
+                            Cryptographer.SetSettings(settings.encryptionSettings);
+                    }
+                }
+            }
+
+            [NotNull]
+            internal Cryptographer Cryptographer {
+                get => m_cryptographer;
+                set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
+            }
+
+            internal bool VerifyChecksum {
+                get => m_verifyChecksum;
+                set {
+                    m_verifyChecksum = value;
+
+                    if (m_verifyChecksum) {
+                        using SaveSystemSettings settings = ResourcesManager.LoadSettings();
+
+                        if (VerificationManager == null)
+                            VerificationManager = new VerificationManager(settings.verificationSettings);
+                        else
+                            VerificationManager.SetSettings(settings.verificationSettings);
+                    }
+                }
+            }
+
+            [NotNull]
+            internal VerificationManager VerificationManager {
+                get => m_verificationManager;
+                set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
+            }
+
+            private string m_dataPath;
+            private bool m_encrypt;
+            private Cryptographer m_cryptographer;
+            private bool m_verifyChecksum;
+            private VerificationManager m_verificationManager;
+
         }
 
     }

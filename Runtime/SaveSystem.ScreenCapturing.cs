@@ -5,36 +5,12 @@ using System.IO;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
 // ReSharper disable EventNeverSubscribedTo.Global
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace SaveSystemPackage {
 
     public static partial class SaveSystem {
-
-    #if ENABLE_LEGACY_INPUT_MANAGER
-        /// <summary>
-        /// Binds any key to screen capture
-        /// </summary>
-        public static KeyCode ScreenCaptureKey {
-            get => m_screenCaptureKey;
-            set {
-                m_screenCaptureKey = value;
-                PlayerPrefs.SetInt(SaveSystemConstants.ScreenCaptureKeyCode, (int)m_screenCaptureKey);
-            }
-        }
-    #endif
-
-    #if ENABLE_INPUT_SYSTEM
-        /// <summary>
-        /// Binds any input action to screen capture
-        /// </summary>
-        public static InputAction ScreenCaptureAction { get; set; }
-    #endif
 
         /// <summary>
         /// Event is called after screen capturing
@@ -58,10 +34,6 @@ namespace SaveSystemPackage {
         }
 
         private static string m_screenshotsFolder;
-
-    #if ENABLE_LEGACY_INPUT_MANAGER
-        private static KeyCode m_screenCaptureKey;
-    #endif
 
 
         public static void CaptureScreenshot ([NotNull] string filename = "screenshot", int superSize = 1) {

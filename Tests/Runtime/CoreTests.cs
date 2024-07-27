@@ -34,7 +34,7 @@ namespace SaveSystemPackage.Tests {
             camera.transform.position = new Vector3(0, 0, -10);
             m_sceneContext = new GameObject("Scene Serialization Context").AddComponent<SceneSerializationContext>();
 
-            SaveSystem.EnabledLogs = LogLevel.All;
+            SaveSystem.Settings.EnabledLogs = LogLevel.All;
             SaveSystem.Game.SaveProfile = SaveSystem.CreateProfile("test-profile");
             Debug.Log("Start test");
         }
@@ -44,8 +44,8 @@ namespace SaveSystemPackage.Tests {
         public IEnumerator PeriodicSave () {
             TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
-            SaveSystem.SavePeriod = 1.5f;
-            SaveSystem.EnabledSaveEvents = SaveEvents.PeriodicSave;
+            SaveSystem.Settings.SavePeriod = 1.5f;
+            SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave;
 
             m_sceneContext.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
@@ -65,7 +65,7 @@ namespace SaveSystemPackage.Tests {
             TestObject simpleObject = new TestObjectFactory(PrimitiveType.Cube).CreateObject();
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            SaveSystem.QuickSaveKey = KeyCode.S;
+            SaveSystem.Settings.QuickSaveKey = KeyCode.S;
         #elif ENABLE_INPUT_SYSTEM
             SaveSystemCore.BindAction(new InputAction("save", binding: "<Keyboard>/s"));
         #else
@@ -93,7 +93,7 @@ namespace SaveSystemPackage.Tests {
             sphere.transform.position = Vector3.up * 10;
             sphere.tag = sphereTag;
 
-            SaveSystem.PlayerTag = sphereTag;
+            SaveSystem.Settings.PlayerTag = sphereTag;
 
             m_sceneContext.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
@@ -125,17 +125,17 @@ namespace SaveSystemPackage.Tests {
             }
 
             m_sceneContext.RegisterSerializables(nameof(spheres), spheres);
-            SaveSystem.Game.Encrypt = false;
-            SaveSystem.Game.VerifyChecksum = false;
-            SaveSystem.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
-            SaveSystem.SavePeriod = 3;
-            SaveSystem.EnabledLogs = LogLevel.All;
-            SaveSystem.PlayerTag = sphereTag;
+            SaveSystem.Game.Settings.Encrypt = false;
+            SaveSystem.Game.Settings.VerifyChecksum = false;
+            SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
+            SaveSystem.Settings.SavePeriod = 3;
+            SaveSystem.Settings.EnabledLogs = LogLevel.All;
+            SaveSystem.Settings.PlayerTag = sphereTag;
 
             var testStopped = false;
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            SaveSystem.QuickSaveKey = KeyCode.S;
+            SaveSystem.Settings.QuickSaveKey = KeyCode.S;
         #elif ENABLE_INPUT_SYSTEM
             SaveSystemCore.QuickSaveAction = new InputAction("save", binding: "<Keyboard>/s");
         #else
@@ -161,8 +161,8 @@ namespace SaveSystemPackage.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystem.Game.Encrypt = true;
-            SaveSystem.Game.Cryptographer = new Cryptographer(
+            SaveSystem.Game.Settings.Encrypt = true;
+            SaveSystem.Game.Settings.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
@@ -182,8 +182,8 @@ namespace SaveSystemPackage.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystem.Game.Encrypt = true;
-            SaveSystem.Game.Cryptographer = new Cryptographer(
+            SaveSystem.Game.Settings.Encrypt = true;
+            SaveSystem.Game.Settings.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
@@ -202,8 +202,8 @@ namespace SaveSystemPackage.Tests {
             );
             sphereFactory.CreateObjects(250);
 
-            SaveSystem.Game.VerifyChecksum = true;
-            SaveSystem.Game.VerificationManager = new VerificationManager(
+            SaveSystem.Game.Settings.VerifyChecksum = true;
+            SaveSystem.Game.Settings.VerificationManager = new VerificationManager(
                 new DefaultHashStorage(), HashAlgorithmName.SHA1
             );
 
@@ -219,8 +219,8 @@ namespace SaveSystemPackage.Tests {
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
 
-            SaveSystem.Game.VerifyChecksum = true;
-            SaveSystem.Game.VerificationManager = new VerificationManager(
+            SaveSystem.Game.Settings.VerifyChecksum = true;
+            SaveSystem.Game.Settings.VerificationManager = new VerificationManager(
                 new DefaultHashStorage(), HashAlgorithmName.SHA1
             );
 
@@ -230,7 +230,6 @@ namespace SaveSystemPackage.Tests {
 
             PlayerPrefs.DeleteKey(VerifyHashKey);
         }
-
 
 
         public class DataBufferTests {
@@ -252,7 +251,6 @@ namespace SaveSystemPackage.Tests {
             }
 
         }
-
 
 
         [TearDown]

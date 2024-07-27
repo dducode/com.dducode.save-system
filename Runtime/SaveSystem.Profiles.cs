@@ -5,7 +5,6 @@ using System.IO;
 using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Profiles;
 using ArgumentNullException = System.ArgumentNullException;
 
 namespace SaveSystemPackage {
@@ -24,8 +23,8 @@ namespace SaveSystemPackage {
             string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profile");
             using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
             var profile = new SaveProfile(name, encrypt, authenticate);
-            writer.Write(profile.Metadata);
             writer.Write(profile.Name);
+            writer.Write(profile.Settings.Data);
             return profile;
         }
 
@@ -39,7 +38,7 @@ namespace SaveSystemPackage {
 
             foreach (string path in paths) {
                 using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                yield return new SaveProfile(reader.ReadDataBuffer());
+                yield return new SaveProfile(reader.ReadString(), reader.ReadDataBuffer());
             }
         }
 
@@ -64,8 +63,8 @@ namespace SaveSystemPackage {
         internal static void UpdateProfile (SaveProfile profile) {
             string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
             using var writer = new SaveWriter(File.Open(path, FileMode.Open));
-            writer.Write(profile.Metadata);
             writer.Write(profile.Name);
+            writer.Write(profile.Settings.Data);
         }
 
 
@@ -75,8 +74,8 @@ namespace SaveSystemPackage {
                 File.Move(Path.Combine(InternalFolder, $"{oldName}.profile"), path);
 
             using var writer = new SaveWriter(File.Open(path, FileMode.Open));
-            writer.Write(profile.Metadata);
             writer.Write(newName);
+            writer.Write(profile.Settings.Data);
         }
 
     }
