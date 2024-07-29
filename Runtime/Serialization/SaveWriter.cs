@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
 
-namespace SaveSystemPackage.BinaryHandlers {
+namespace SaveSystemPackage.Serialization {
 
     public class SaveWriter : IDisposable, IAsyncDisposable {
 

@@ -9,8 +9,8 @@ using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Attributes;
-using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal.Diagnostic;
+using SaveSystemPackage.Serialization;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -254,14 +254,31 @@ namespace SaveSystemPackage {
 
             foreach (FieldInfo field in fields) {
                 writer.Write(field.Name);
-                writer.Write(field.FieldType.AssemblyQualifiedName);
-                bool isPrimitive = field.FieldType.IsPrimitive;
                 object value = field.GetValue(graph);
-                writer.Write(isPrimitive);
-                if (isPrimitive)
+
+                if (field.FieldType.IsPrimitive) {
                     writer.Write(value);
-                else
-                    SerializeSubgraph(writer, value);
+                }
+                else if (value is string str) {
+                    writer.Write(str);
+                }
+                else if (field.FieldType.IsArray) {
+                    var array = (Array)value;
+                    writer.Write(array.Length);
+                    Type elementType = field.FieldType.GetElementType() ?? throw new InvalidOperationException();
+
+                    foreach (object element in array) {
+                        if (elementType.IsPrimitive)
+                            writer.Write(element);
+                        else if (element is string elementStr)
+                            writer.Write(elementStr);
+                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute)))
+                            SerializeGraph(writer, element);
+                    }
+                }
+                else if (field.FieldType.IsDefined(typeof(RuntimeSerializableAttribute))) {
+                    SerializeGraph(writer, value);
+                }
             }
 
             PropertyInfo[] properties = type
@@ -274,46 +291,32 @@ namespace SaveSystemPackage {
 
             foreach (PropertyInfo property in properties) {
                 writer.Write(property.Name);
-                writer.Write(property.PropertyType.AssemblyQualifiedName);
-                bool isPrimitive = property.PropertyType.IsPrimitive;
                 object value = property.GetValue(graph);
-                writer.Write(isPrimitive);
-                if (isPrimitive)
+
+                if (property.PropertyType.IsPrimitive) {
                     writer.Write(value);
-                else
-                    SerializeSubgraph(writer, value);
-            }
-        }
-
-
-        private void SerializeSubgraph (SaveWriter writer, object graph) {
-            Type type = graph.GetType();
-
-            if (graph is string str) {
-                writer.Write(str);
-                return;
-            }
-
-            if (type.IsArray) {
-                var list = (Array)graph;
-                writer.Write(list.Length);
-                Type elementType = type.GetElementType() ?? throw new InvalidOperationException();
-                writer.Write(elementType.AssemblyQualifiedName);
-
-                foreach (object element in list) {
-                    bool isPrimitive = elementType.IsPrimitive;
-                    writer.Write(isPrimitive);
-                    if (isPrimitive)
-                        writer.Write(element);
-                    else
-                        SerializeSubgraph(writer, element);
                 }
+                else if (value is string str) {
+                    writer.Write(str);
+                }
+                else if (property.PropertyType.IsArray) {
+                    var array = (Array)value;
+                    writer.Write(array.Length);
+                    Type elementType = property.PropertyType.GetElementType() ?? throw new InvalidOperationException();
 
-                return;
+                    foreach (object element in array) {
+                        if (elementType.IsPrimitive)
+                            writer.Write(element);
+                        else if (element is string elementStr)
+                            writer.Write(elementStr);
+                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute)))
+                            SerializeGraph(writer, element);
+                    }
+                }
+                else if (property.PropertyType.IsDefined(typeof(RuntimeSerializableAttribute))) {
+                    SerializeGraph(writer, value);
+                }
             }
-
-            if (type.IsDefined(typeof(RuntimeSerializableAttribute)))
-                SerializeGraph(writer, graph);
         }
 
 
@@ -323,16 +326,45 @@ namespace SaveSystemPackage {
 
             for (var i = 0; i < fieldsCount; i++) {
                 string fieldName = reader.ReadString();
-                var fieldType = Type.GetType(reader.ReadString());
-                var isPrimitive = reader.Read<bool>();
-                object value = isPrimitive ? reader.ReadObject(fieldType) : DeserializeSubgraph(reader, fieldType);
+                FieldInfo field = type.GetField(
+                    fieldName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+                );
 
-                if (value != default) {
-                    FieldInfo field = type.GetField(
-                        fieldName,
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                    );
-                    field?.SetValue(graph, value);
+                if (field == null)
+                    continue;
+
+                if (field.FieldType.IsPrimitive) {
+                    field.SetValue(graph, reader.ReadObject(field.FieldType));
+                }
+                else if (field.FieldType == typeof(string)) {
+                    field.SetValue(graph, reader.ReadString());
+                }
+                else if (field.FieldType.IsArray) {
+                    var count = reader.Read<int>();
+                    Type elementType = field.FieldType.GetElementType();
+                    var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
+
+                    for (var j = 0; j < count; j++) {
+                        if (elementType.IsPrimitive) {
+                            array.SetValue(reader.ReadObject(elementType), j);
+                        }
+                        else if (elementType == typeof(string)) {
+                            array.SetValue(reader.ReadString(), j);
+                        }
+                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute))) {
+                            object element = Activator.CreateInstance(elementType);
+                            DeserializeGraph(reader, element);
+                            array.SetValue(element, j);
+                        }
+                    }
+
+                    field.SetValue(graph, array);
+                }
+                else if (field.FieldType.IsDefined(typeof(RuntimeSerializableAttribute))) {
+                    object subGraph = Activator.CreateInstance(field.FieldType);
+                    DeserializeGraph(reader, subGraph);
+                    field.SetValue(graph, subGraph);
                 }
             }
 
@@ -340,48 +372,47 @@ namespace SaveSystemPackage {
 
             for (var i = 0; i < propertiesCount; i++) {
                 string propertyName = reader.ReadString();
-                var propertyType = Type.GetType(reader.ReadString());
-                var isPrimitive = reader.Read<bool>();
-                object value = isPrimitive
-                    ? reader.ReadObject(propertyType)
-                    : DeserializeSubgraph(reader, propertyType);
+                PropertyInfo property = type.GetProperty(
+                    propertyName,
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+                );
 
-                if (value != default) {
-                    PropertyInfo property = type.GetProperty(propertyName,
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                    );
-                    property?.SetValue(graph, value);
+                if (property == null)
+                    continue;
+
+                if (property.PropertyType.IsPrimitive) {
+                    property.SetValue(graph, reader.ReadObject(property.PropertyType));
+                }
+                else if (property.PropertyType == typeof(string)) {
+                    property.SetValue(graph, reader.ReadString());
+                }
+                else if (property.PropertyType.IsArray) {
+                    var count = reader.Read<int>();
+                    Type elementType = property.PropertyType.GetElementType();
+                    var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
+
+                    for (var j = 0; j < count; j++) {
+                        if (elementType.IsPrimitive) {
+                            array.SetValue(reader.ReadObject(elementType), j);
+                        }
+                        else if (elementType == typeof(string)) {
+                            array.SetValue(reader.ReadString(), j);
+                        }
+                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute))) {
+                            object element = Activator.CreateInstance(elementType);
+                            DeserializeGraph(reader, element);
+                            array.SetValue(element, j);
+                        }
+                    }
+
+                    property.SetValue(graph, array);
+                }
+                else if (property.PropertyType.IsDefined(typeof(RuntimeSerializableAttribute))) {
+                    object subGraph = Activator.CreateInstance(property.PropertyType);
+                    DeserializeGraph(reader, subGraph);
+                    property.SetValue(graph, subGraph);
                 }
             }
-        }
-
-
-        private object DeserializeSubgraph (SaveReader reader, Type type) {
-            if (type == typeof(string))
-                return reader.ReadString();
-
-            if (type.IsArray) {
-                var count = reader.Read<int>();
-                var elementType = Type.GetType(reader.ReadString());
-                var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
-
-                for (var i = 0; i < count; i++) {
-                    var isPrimitive = reader.Read<bool>();
-                    array.SetValue(
-                        isPrimitive ? reader.ReadObject(elementType) : DeserializeSubgraph(reader, elementType), i
-                    );
-                }
-
-                return array;
-            }
-
-            if (type.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                object graph = Activator.CreateInstance(type);
-                DeserializeGraph(reader, graph);
-                return graph;
-            }
-
-            return default;
         }
 
     }

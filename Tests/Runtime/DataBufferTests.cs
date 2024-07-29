@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Text;
 using NUnit.Framework;
-using SaveSystemPackage.BinaryHandlers;
+using SaveSystemPackage.Serialization;
 using UnityEngine;
 
 namespace SaveSystemPackage.Tests {
