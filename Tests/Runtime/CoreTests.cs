@@ -35,7 +35,7 @@ namespace SaveSystemPackage.Tests {
             m_sceneContext = new GameObject("Scene Serialization Context").AddComponent<SceneSerializationContext>();
 
             SaveSystem.Settings.EnabledLogs = LogLevel.All;
-            SaveSystem.Game.SaveProfile = SaveSystem.CreateProfile("test-profile");
+            SaveSystem.Game.SaveProfile = SaveSystem.CreateProfile<TestProfile>("test-profile");
             Debug.Log("Start test");
         }
 

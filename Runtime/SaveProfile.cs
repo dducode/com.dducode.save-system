@@ -13,10 +13,7 @@ using SaveSystemPackage.Serialization;
 
 namespace SaveSystemPackage {
 
-    public sealed class SaveProfile {
-
-        private const string EncryptKey = "profile-encrypt";
-        private const string VerifyKey = "profile-verify-checksum";
+    public abstract class SaveProfile {
 
         [NotNull]
         public string Name {
@@ -44,7 +41,6 @@ namespace SaveSystemPackage {
         }
 
         public SerializationSettings Settings => ProfileScope.Settings;
-        public DataBuffer SettingsData { get; }
         public DataBuffer Data => ProfileScope.Data;
 
         [NotNull]
@@ -86,7 +82,7 @@ namespace SaveSystemPackage {
             set => ProfileScope.DataPath = value;
         }
 
-        private SerializationScope ProfileScope { get; }
+        private SerializationScope ProfileScope { get; set; }
 
         private string m_name;
         private string m_dataFolder;
@@ -95,27 +91,7 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal SaveProfile (string name, DataBuffer settingsData) {
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-
-            m_name = name;
-            ProfileScope = new SerializationScope {
-                Name = $"{name} profile scope",
-                Settings = {
-                    Encrypt = settingsData.Read<bool>(EncryptKey),
-                    VerifyChecksum = settingsData.Read<bool>(VerifyKey),
-                }
-            };
-
-            DataFolder = name;
-            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
-
-            SettingsData = settingsData;
-        }
-
-
-        internal SaveProfile ([NotNull] string name, bool encrypt, bool verify) {
+        internal void Initialize ([NotNull] string name, bool encrypt, bool verify) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
@@ -130,14 +106,11 @@ namespace SaveSystemPackage {
 
             DataFolder = name;
             DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
-
-            SettingsData = new DataBuffer();
-            SettingsData.Write(EncryptKey, encrypt);
-            SettingsData.Write(VerifyKey, verify);
+            OnInitialized();
         }
 
 
-        public void CommitChanges () {
+        public void ApplyChanges () {
             SaveSystem.UpdateProfile(this);
         }
 
@@ -228,6 +201,9 @@ namespace SaveSystemPackage {
         internal void Clear () {
             ProfileScope.Clear();
         }
+
+
+        protected virtual void OnInitialized () { }
 
     }
 

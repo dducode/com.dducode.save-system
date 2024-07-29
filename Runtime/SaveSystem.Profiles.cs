@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
@@ -14,17 +15,17 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Creates new save profile and stores it in the internal storage
         /// </summary>
-        public static SaveProfile CreateProfile (
-            [NotNull] string name, bool encrypt = true, bool authenticate = true
-        ) {
+        public static TProfile CreateProfile<TProfile> (
+            [NotNull] string name, bool encrypt = true, bool verify = true
+        ) where TProfile : SaveProfile {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profile");
             using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-            var profile = new SaveProfile(name, encrypt, authenticate);
-            writer.Write(profile.Name);
-            writer.Write(profile.SettingsData);
+            var profile = Activator.CreateInstance<TProfile>();
+            profile.Initialize(name, encrypt, verify);
+            SerializeProfile(writer, profile);
             return profile;
         }
 
@@ -33,12 +34,19 @@ namespace SaveSystemPackage {
         /// Get all previously created saving profiles
         /// </summary>
         [Pure]
-        public static IEnumerable<SaveProfile> LoadProfiles () {
+        public static IEnumerable<TProfile> LoadProfiles<TProfile> () where TProfile : SaveProfile {
             string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
 
             foreach (string path in paths) {
                 using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                yield return new SaveProfile(reader.ReadString(), reader.ReadDataBuffer());
+                Type type = typeof(TProfile);
+
+                if (string.Equals(reader.ReadString(), type.AssemblyQualifiedName)) {
+                    var profile = Activator.CreateInstance<TProfile>();
+                    profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                    SerializationManager.DeserializeGraph(reader, profile);
+                    yield return profile;
+                }
             }
         }
 
@@ -63,8 +71,7 @@ namespace SaveSystemPackage {
         internal static void UpdateProfile (SaveProfile profile) {
             string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
             using var writer = new SaveWriter(File.Open(path, FileMode.Open));
-            writer.Write(profile.Name);
-            writer.Write(profile.SettingsData);
+            SerializeProfile(writer, profile);
         }
 
 
@@ -74,8 +81,17 @@ namespace SaveSystemPackage {
                 File.Move(Path.Combine(InternalFolder, $"{oldName}.profile"), path);
 
             using var writer = new SaveWriter(File.Open(path, FileMode.Open));
-            writer.Write(newName);
-            writer.Write(profile.SettingsData);
+            SerializeProfile(writer, profile);
+        }
+
+
+        private static void SerializeProfile (SaveWriter writer, SaveProfile profile) {
+            Type type = profile.GetType();
+            writer.Write(type.AssemblyQualifiedName);
+            writer.Write(profile.Name);
+            writer.Write(profile.Settings.Encrypt);
+            writer.Write(profile.Settings.VerifyChecksum);
+            SerializationManager.SerializeGraph(writer, profile);
         }
 
     }

@@ -331,10 +331,18 @@ namespace SaveSystemPackage {
             foreach (string path in paths) {
                 writer.Write(Path.GetFileName(path));
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                var profile = new SaveProfile(reader.ReadString(), reader.ReadDataBuffer());
+                string typeName = reader.ReadString();
+                var type = Type.GetType(typeName);
 
-                writer.Write(profile.Name);
-                writer.Write(profile.SettingsData);
+                if (type == null) {
+                    Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
+                    continue;
+                }
+
+                var profile = (SaveProfile)Activator.CreateInstance(type);
+                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                SerializationManager.DeserializeGraph(reader, profile);
+                SerializeProfile(writer, profile);
                 writer.Write(await profile.ExportProfileData(token));
             }
 
@@ -386,10 +394,18 @@ namespace SaveSystemPackage {
             for (var i = 0; i < count; i++) {
                 string path = Path.Combine(InternalFolder, reader.ReadString());
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-                var profile = new SaveProfile(reader.ReadString(), reader.ReadDataBuffer());
+                string typeName = reader.ReadString();
+                var type = Type.GetType(typeName);
 
-                writer.Write(profile.Name);
-                writer.Write(profile.SettingsData);
+                if (type == null) {
+                    Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
+                    continue;
+                }
+
+                var profile = (SaveProfile)Activator.CreateInstance(type);
+                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                SerializationManager.DeserializeGraph(reader, profile);
+                SerializeProfile(writer, profile);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }

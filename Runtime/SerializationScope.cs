@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
@@ -84,7 +83,7 @@ namespace SaveSystemPackage {
 
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
-                DeserializeGraph(reader, obj);
+                SerializationManager.DeserializeGraph(reader, obj);
                 Buffer.Delete(key);
             }
 
@@ -209,9 +208,7 @@ namespace SaveSystemPackage {
             foreach ((string key, object graph) in m_objects) {
                 using var stream = new MemoryStream();
                 using var localWriter = new SaveWriter(stream);
-                if (graph is IRuntimeSerializationCallbacks target)
-                    target.OnBeforeRuntimeSerialization();
-                SerializeGraph(localWriter, graph);
+                SerializationManager.SerializeGraph(localWriter, graph);
 
                 writer.Write(stream.ToArray());
                 writer.Write(Encoding.UTF8.GetBytes(key));
@@ -232,9 +229,7 @@ namespace SaveSystemPackage {
             foreach (KeyValuePair<string, object> unused in m_objects) {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                DeserializeGraph(localReader, m_objects[key]);
-                if (m_objects[key] is IRuntimeSerializationCallbacks target)
-                    target.OnAfterRuntimeDeserialization();
+                SerializationManager.DeserializeGraph(localReader, m_objects[key]);
                 --count;
             }
 
@@ -242,180 +237,6 @@ namespace SaveSystemPackage {
                 byte[] bytes = reader.ReadArray<byte>();
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 Buffer.Write(key, bytes);
-            }
-        }
-
-
-        private void SerializeGraph (SaveWriter writer, object graph) {
-            Type type = graph.GetType();
-            FieldInfo[] fields = type
-               .GetFields()
-               .Concat(type
-                   .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-                   .Where(field => field.IsDefined(typeof(RuntimeSerializedFieldAttribute))))
-               .ToArray();
-            writer.Write(fields.Length);
-
-            foreach (FieldInfo field in fields) {
-                writer.Write(field.Name);
-                object value = field.GetValue(graph);
-
-                if (field.FieldType.IsPrimitive) {
-                    writer.Write(value);
-                }
-                else if (value is string str) {
-                    writer.Write(str);
-                }
-                else if (field.FieldType.IsArray) {
-                    var array = (Array)value;
-                    writer.Write(array.Length);
-                    Type elementType = field.FieldType.GetElementType() ?? throw new InvalidOperationException();
-
-                    foreach (object element in array) {
-                        if (elementType.IsPrimitive)
-                            writer.Write(element);
-                        else if (element is string elementStr)
-                            writer.Write(elementStr);
-                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute)))
-                            SerializeGraph(writer, element);
-                    }
-                }
-                else if (field.FieldType.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                    SerializeGraph(writer, value);
-                }
-            }
-
-            PropertyInfo[] properties = type
-               .GetProperties()
-               .Concat(type
-                   .GetProperties(BindingFlags.NonPublic | BindingFlags.Instance)
-                   .Where(property => property.IsDefined(typeof(RuntimeSerializedPropertyAttribute))))
-               .ToArray();
-            writer.Write(properties.Length);
-
-            foreach (PropertyInfo property in properties) {
-                writer.Write(property.Name);
-                object value = property.GetValue(graph);
-
-                if (property.PropertyType.IsPrimitive) {
-                    writer.Write(value);
-                }
-                else if (value is string str) {
-                    writer.Write(str);
-                }
-                else if (property.PropertyType.IsArray) {
-                    var array = (Array)value;
-                    writer.Write(array.Length);
-                    Type elementType = property.PropertyType.GetElementType() ?? throw new InvalidOperationException();
-
-                    foreach (object element in array) {
-                        if (elementType.IsPrimitive)
-                            writer.Write(element);
-                        else if (element is string elementStr)
-                            writer.Write(elementStr);
-                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute)))
-                            SerializeGraph(writer, element);
-                    }
-                }
-                else if (property.PropertyType.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                    SerializeGraph(writer, value);
-                }
-            }
-        }
-
-
-        private void DeserializeGraph (SaveReader reader, object graph) {
-            Type type = graph.GetType();
-            var fieldsCount = reader.Read<int>();
-
-            for (var i = 0; i < fieldsCount; i++) {
-                string fieldName = reader.ReadString();
-                FieldInfo field = type.GetField(
-                    fieldName,
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                );
-
-                if (field == null)
-                    continue;
-
-                if (field.FieldType.IsPrimitive) {
-                    field.SetValue(graph, reader.ReadObject(field.FieldType));
-                }
-                else if (field.FieldType == typeof(string)) {
-                    field.SetValue(graph, reader.ReadString());
-                }
-                else if (field.FieldType.IsArray) {
-                    var count = reader.Read<int>();
-                    Type elementType = field.FieldType.GetElementType();
-                    var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
-
-                    for (var j = 0; j < count; j++) {
-                        if (elementType.IsPrimitive) {
-                            array.SetValue(reader.ReadObject(elementType), j);
-                        }
-                        else if (elementType == typeof(string)) {
-                            array.SetValue(reader.ReadString(), j);
-                        }
-                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                            object element = Activator.CreateInstance(elementType);
-                            DeserializeGraph(reader, element);
-                            array.SetValue(element, j);
-                        }
-                    }
-
-                    field.SetValue(graph, array);
-                }
-                else if (field.FieldType.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                    object subGraph = Activator.CreateInstance(field.FieldType);
-                    DeserializeGraph(reader, subGraph);
-                    field.SetValue(graph, subGraph);
-                }
-            }
-
-            var propertiesCount = reader.Read<int>();
-
-            for (var i = 0; i < propertiesCount; i++) {
-                string propertyName = reader.ReadString();
-                PropertyInfo property = type.GetProperty(
-                    propertyName,
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                );
-
-                if (property == null)
-                    continue;
-
-                if (property.PropertyType.IsPrimitive) {
-                    property.SetValue(graph, reader.ReadObject(property.PropertyType));
-                }
-                else if (property.PropertyType == typeof(string)) {
-                    property.SetValue(graph, reader.ReadString());
-                }
-                else if (property.PropertyType.IsArray) {
-                    var count = reader.Read<int>();
-                    Type elementType = property.PropertyType.GetElementType();
-                    var array = Array.CreateInstance(elementType ?? throw new InvalidOperationException(), count);
-
-                    for (var j = 0; j < count; j++) {
-                        if (elementType.IsPrimitive) {
-                            array.SetValue(reader.ReadObject(elementType), j);
-                        }
-                        else if (elementType == typeof(string)) {
-                            array.SetValue(reader.ReadString(), j);
-                        }
-                        else if (elementType.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                            object element = Activator.CreateInstance(elementType);
-                            DeserializeGraph(reader, element);
-                            array.SetValue(element, j);
-                        }
-                    }
-
-                    property.SetValue(graph, array);
-                }
-                else if (property.PropertyType.IsDefined(typeof(RuntimeSerializableAttribute))) {
-                    object subGraph = Activator.CreateInstance(property.PropertyType);
-                    DeserializeGraph(reader, subGraph);
-                    property.SetValue(graph, subGraph);
-                }
             }
         }
 
