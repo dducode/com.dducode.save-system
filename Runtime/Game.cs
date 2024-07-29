@@ -72,9 +72,16 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,IRuntimeSerializable)"/>
         public Game RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             GameScope.RegisterSerializable(key, serializable);
+            return this;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,object)"/>
+        public Game RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
+            GameScope.RegisterSerializable(key, obj);
             return this;
         }
 

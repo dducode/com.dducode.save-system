@@ -1,11 +1,9 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Object = UnityEngine.Object;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
@@ -33,16 +31,6 @@ namespace SaveSystemPackage.BinaryHandlers {
             Span<TValue> span = MemoryMarshal.CreateSpan(ref value, 1);
             m_streamPosition += output.Read(MemoryMarshal.AsBytes(span));
             return value;
-        }
-
-
-        public object ReadObject (Type type) {
-            var size = Read<int>();
-            var bytes = new byte[size];
-            m_streamPosition += output.Read(bytes);
-            IntPtr ptr = Marshal.AllocHGlobal(size);
-            Marshal.Copy(bytes, 0, ptr, size);
-            return Marshal.PtrToStructure(ptr, type);
         }
 
 
@@ -167,6 +155,16 @@ namespace SaveSystemPackage.BinaryHandlers {
         public async ValueTask DisposeAsync () {
             if (output != null)
                 await output.DisposeAsync();
+        }
+
+
+        internal object ReadObject (Type type) {
+            var size = Read<int>();
+            var bytes = new byte[size];
+            m_streamPosition += output.Read(bytes);
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.Copy(bytes, 0, ptr, size);
+            return Marshal.PtrToStructure(ptr, type);
         }
 
     }

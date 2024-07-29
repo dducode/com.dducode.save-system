@@ -1,44 +1,35 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.Attributes;
-using SaveSystemPackage.BinaryHandlers;
+using UnityEngine;
 
 namespace SaveSystemPackage.Tests {
 
     public class ManagedSerializationTests {
 
         [Test]
-        public void ReadWriteTest () {
-            var first = new TestObject {
-                intValue = 10,
-                floatValue = 2.5f,
-                stringValue = "test-object",
-                intArray = new[] {1, 2, 3, 4, 5},
-                DoubleValue = 5
+        public async Task SerializationScopeTest () {
+            var scope = new SerializationScope {
+                DataPath = Path.Combine(Application.temporaryCachePath, "test-objects.test")
             };
 
-            var memoryStream = new MemoryStream();
-
-            using (var writer = new SaveWriter(memoryStream)) {
-                writer.Write(first);
+            for (var i = 0; i < 10; i++) {
+                scope.RegisterSerializable($"test-object-{i}", new TestObject {
+                    intValue = i,
+                    floatValue = i * 1.5f,
+                    stringValue = $"test-object-{i}",
+                    intArray = new[] {i, i + 1, i + 2},
+                    DoubleValue = i * 2.5
+                });
             }
 
-            TestObject second;
-
-            using (var reader = new SaveReader(new MemoryStream(memoryStream.ToArray()))) {
-                second = (TestObject)reader.ReadObject(typeof(TestObject));
-            }
-
-            Assert.IsTrue(
-                first.intValue == second.intValue &&
-                Math.Abs(first.floatValue - second.floatValue) < 0.0001f &&
-                string.Equals(first.stringValue, second.stringValue) &&
-                Math.Abs(first.DoubleValue - second.DoubleValue) < 0.00001f
-            );
+            await scope.Serialize(default);
+            await scope.Deserialize(default);
         }
 
 
+        [RuntimeSerializable]
         private class TestObject {
 
             public int intValue;

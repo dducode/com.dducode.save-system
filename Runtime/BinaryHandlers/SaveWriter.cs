@@ -26,19 +26,6 @@ namespace SaveSystemPackage.BinaryHandlers {
         }
 
 
-        public void Write (object graph) {
-            int size = Marshal.SizeOf(graph);
-            var bytes = new byte[size];
-            IntPtr ptr = Marshal.AllocHGlobal(size);
-            Marshal.StructureToPtr(graph, ptr, false);
-            Marshal.Copy(ptr, bytes, 0, size);
-            Marshal.FreeHGlobal(ptr);
-
-            Write(bytes.Length);
-            input.Write(bytes);
-        }
-
-
         public void Write<TValue> ([NotNull] TValue[] array) where TValue : unmanaged {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
@@ -153,6 +140,19 @@ namespace SaveSystemPackage.BinaryHandlers {
         public async ValueTask DisposeAsync () {
             if (input != null)
                 await input.DisposeAsync();
+        }
+
+
+        internal void Write (object graph) {
+            int size = Marshal.SizeOf(graph);
+            var bytes = new byte[size];
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(graph, ptr, false);
+            Marshal.Copy(ptr, bytes, 0, size);
+            Marshal.FreeHGlobal(ptr);
+
+            Write(bytes.Length);
+            input.Write(bytes);
         }
 
     }

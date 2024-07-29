@@ -142,9 +142,16 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,IRuntimeSerializable)"/>
         public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             ProfileScope.RegisterSerializable(key, serializable);
+            return this;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,object)"/>
+        public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
+            ProfileScope.RegisterSerializable(key, obj);
             return this;
         }
 
