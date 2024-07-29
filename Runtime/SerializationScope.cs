@@ -209,6 +209,8 @@ namespace SaveSystemPackage {
             foreach ((string key, object graph) in m_objects) {
                 using var stream = new MemoryStream();
                 using var localWriter = new SaveWriter(stream);
+                if (graph is IRuntimeSerializationCallbacks target)
+                    target.OnBeforeRuntimeSerialization();
                 SerializeGraph(localWriter, graph);
 
                 writer.Write(stream.ToArray());
@@ -231,6 +233,8 @@ namespace SaveSystemPackage {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 DeserializeGraph(localReader, m_objects[key]);
+                if (m_objects[key] is IRuntimeSerializationCallbacks target)
+                    target.OnAfterRuntimeDeserialization();
                 --count;
             }
 
