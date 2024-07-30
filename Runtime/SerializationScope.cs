@@ -3,23 +3,21 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.BinaryHandlers;
-using SaveSystemPackage.Internal;
+using SaveSystemPackage.Attributes;
 using SaveSystemPackage.Internal.Diagnostic;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
+using SaveSystemPackage.Serialization;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
-
 // ReSharper disable SuspiciousTypeConversion.Global
 
 namespace SaveSystemPackage {
 
-    internal sealed class SerializationScope {
+    public sealed class SerializationScope {
 
         [NotNull]
         internal string Name {
@@ -43,64 +41,15 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal bool Encrypt {
-            get => m_encrypt;
-            set {
-                m_encrypt = value;
-
-                if (m_encrypt) {
-                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-                    if (Cryptographer == null)
-                        Cryptographer = new Cryptographer(settings.encryptionSettings);
-                    else
-                        Cryptographer.SetSettings(settings.encryptionSettings);
-                }
-            }
-        }
-
-        [NotNull]
-        internal Cryptographer Cryptographer {
-            get => m_cryptographer;
-            set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
-        }
-
-        internal bool VerifyChecksum {
-            get => m_verifyChecksum;
-            set {
-                m_verifyChecksum = value;
-
-                if (m_verifyChecksum) {
-                    using SaveSystemSettings settings = ResourcesManager.LoadSettings();
-
-                    if (VerificationManager == null)
-                        VerificationManager = new VerificationManager(settings.verificationSettings);
-                    else
-                        VerificationManager.SetSettings(settings.verificationSettings);
-                }
-            }
-        }
-
-        [NotNull]
-        internal VerificationManager VerificationManager {
-            get => m_verificationManager;
-            set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
-        }
-
+        internal SerializationSettings Settings { get; } = new();
         internal DataBuffer Data { get; private set; } = new();
         private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
         private string m_dataPath;
-
-        private bool m_encrypt;
-        private Cryptographer m_cryptographer;
-
-        private bool m_verifyChecksum;
-        private VerificationManager m_verificationManager;
-
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
-        private int ObjectsCount => m_serializables.Count;
+        private readonly Dictionary<string, object> m_objects = new();
+        private int ObjectsCount => m_serializables.Count + m_objects.Count;
 
 
         /// <summary>
@@ -121,6 +70,26 @@ namespace SaveSystemPackage {
             m_serializables.Add(key, serializable);
             DiagnosticService.AddObject(serializable);
             Logger.Log(Name, $"Serializable object {serializable} registered in {Name}");
+        }
+
+
+        internal void RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+            if (!obj.GetType().IsDefined(typeof(RuntimeSerializableAttribute), false))
+                throw new SerializationException($"The object {obj} must define RuntimeSerializable attribute");
+
+            if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
+                using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
+                SerializationManager.DeserializeGraph(reader, obj);
+                Buffer.Delete(key);
+            }
+
+            m_objects.Add(key, obj);
+            DiagnosticService.AddObject(obj);
+            Logger.Log(Name, $"Serializable object {obj} registered in {Name}");
         }
 
 
@@ -158,9 +127,9 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask Serialize (CancellationToken token) {
-            if (Encrypt && Cryptographer == null)
+            if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (VerifyChecksum && VerificationManager == null)
+            if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             if (ObjectsCount == 0 && Data.Count == 0)
@@ -175,10 +144,10 @@ namespace SaveSystemPackage {
                 data = memoryStream.ToArray();
             }
 
-            if (Encrypt)
-                data = Cryptographer.Encrypt(data);
-            if (VerifyChecksum)
-                await VerificationManager.SetChecksum(DataPath, data);
+            if (Settings.Encrypt)
+                data = Settings.Cryptographer.Encrypt(data);
+            if (Settings.VerifyChecksum)
+                await Settings.VerificationManager.SetChecksum(DataPath, data);
 
             await File.WriteAllBytesAsync(DataPath, data, token);
             Logger.Log(Name, "Data saved");
@@ -186,9 +155,9 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask Deserialize (CancellationToken token) {
-            if (Encrypt && Cryptographer == null)
+            if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (VerifyChecksum && VerificationManager == null)
+            if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             if (!File.Exists(DataPath)) {
@@ -198,10 +167,10 @@ namespace SaveSystemPackage {
 
             byte[] data = await File.ReadAllBytesAsync(DataPath, token);
 
-            if (VerifyChecksum)
-                await VerificationManager.VerifyData(DataPath, data);
-            if (Encrypt)
-                data = Cryptographer.Decrypt(data);
+            if (Settings.VerifyChecksum)
+                await Settings.VerificationManager.VerifyData(DataPath, data);
+            if (Settings.Encrypt)
+                data = Settings.Cryptographer.Decrypt(data);
 
             await using var reader = new SaveReader(new MemoryStream(data));
 
@@ -211,15 +180,15 @@ namespace SaveSystemPackage {
         }
 
 
-        private void SetDefaults () {
-            foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))
-                serializable?.SetDefaults();
-        }
-
-
         internal void Clear () {
             Data.Clear();
             m_serializables.Clear();
+        }
+
+
+        private void SetDefaults () {
+            foreach (IDefault serializable in m_serializables.Select(pair => pair.Value as IDefault))
+                serializable?.SetDefaults();
         }
 
 
@@ -235,6 +204,15 @@ namespace SaveSystemPackage {
                 writer.Write(stream.ToArray());
                 writer.Write(Encoding.UTF8.GetBytes(key));
             }
+
+            foreach ((string key, object graph) in m_objects) {
+                using var stream = new MemoryStream();
+                using var localWriter = new SaveWriter(stream);
+                SerializationManager.SerializeGraph(localWriter, graph);
+
+                writer.Write(stream.ToArray());
+                writer.Write(Encoding.UTF8.GetBytes(key));
+            }
         }
 
 
@@ -245,6 +223,13 @@ namespace SaveSystemPackage {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
                 m_serializables[key].Deserialize(localReader, localReader.Read<int>());
+                --count;
+            }
+
+            foreach (KeyValuePair<string, object> unused in m_objects) {
+                using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
+                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
+                SerializationManager.DeserializeGraph(localReader, m_objects[key]);
                 --count;
             }
 

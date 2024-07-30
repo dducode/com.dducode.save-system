@@ -3,7 +3,6 @@
 #endif
 
 using System;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEditor;
 using UnityEngine;
@@ -66,13 +65,13 @@ namespace SaveSystemPackage.Editor {
 
 
         private SaveSystemSettingsProvider () {
-            Initialize(ResourcesManager.LoadSettings());
+            Initialize(SaveSystemSettings.Load());
         }
 
 
         private void Draw () {
             if (m_serializedSettings == null || m_serializedSettings.targetObject == null) {
-                if (ResourcesManager.TryLoadSettings(out SaveSystemSettings settings))
+                if (SaveSystemSettings.TryLoad(out SaveSystemSettings settings))
                     Initialize(settings);
                 else
                     DrawFallbackWindow();
@@ -82,11 +81,14 @@ namespace SaveSystemPackage.Editor {
 
             m_serializedSettings.Update();
 
+            float width = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth *= 1.5f;
             DrawCommonSettings();
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
             DrawEncryptionSettings();
             DrawAuthenticationSettings();
+            EditorGUIUtility.labelWidth = width;
 
             m_serializedSettings.ApplyModifiedProperties();
         }

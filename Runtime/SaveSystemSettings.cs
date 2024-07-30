@@ -52,6 +52,17 @@ namespace SaveSystemPackage {
         public VerificationSettings verificationSettings;
 
 
+        internal static SaveSystemSettings Load () {
+            return Resources.Load<SaveSystemSettings>($"Save System/{nameof(SaveSystemSettings)}");
+        }
+
+
+        internal static bool TryLoad (out SaveSystemSettings settings) {
+            settings = Load();
+            return settings != null;
+        }
+
+
         private void OnEnable () {
             if (string.IsNullOrEmpty(dataPath))
                 dataPath = $"{Application.productName.ToPathFormat()}.data";

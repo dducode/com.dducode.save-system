@@ -6,17 +6,12 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Profiles;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 
 // ReSharper disable UnusedMember.Global
 
 namespace SaveSystemPackage {
 
     public class Game {
-
-        internal Game () { }
 
         /// <summary>
         /// Uses for serializing data into a separately file
@@ -45,31 +40,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        public bool Encrypt {
-            get => GameScope.Encrypt;
-            set => GameScope.Encrypt = value;
-        }
-
-        /// <summary>
-        /// Cryptographer used to encrypt/decrypt serializable data
-        /// </summary>
-        [NotNull]
-        public Cryptographer Cryptographer {
-            get => GameScope.Cryptographer;
-            set => GameScope.Cryptographer = value;
-        }
-
-        public bool VerifyChecksum {
-            get => GameScope.VerifyChecksum;
-            set => GameScope.VerifyChecksum = value;
-        }
-
-        [NotNull]
-        public VerificationManager VerificationManager {
-            get => GameScope.VerificationManager;
-            set => GameScope.VerificationManager = value;
-        }
-
+        public SerializationSettings Settings => GameScope.Settings;
         public DataBuffer Data => GameScope.Data;
 
         internal SceneSerializationContext SceneContext {
@@ -82,18 +53,35 @@ namespace SaveSystemPackage {
         }
 
         internal bool HasChanges => Data.HasChanges;
-
-        private SerializationScope GameScope { get; } = new() {
-            Name = "Game scope"
-        };
+        private SerializationScope GameScope { get; }
 
         private SaveProfile m_saveProfile;
         private SceneSerializationContext m_sceneContext;
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
+        internal Game (SaveSystemSettings settings) {
+            GameScope = new SerializationScope {
+                Name = "Game scope",
+                Settings = {
+                    Encrypt = settings.encrypt,
+                    VerifyChecksum = settings.verifyChecksum
+                }
+            };
+
+            DataPath = settings.dataPath;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,IRuntimeSerializable)"/>
         public Game RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             GameScope.RegisterSerializable(key, serializable);
+            return this;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,object)"/>
+        public Game RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
+            GameScope.RegisterSerializable(key, obj);
             return this;
         }
 
@@ -141,7 +129,8 @@ namespace SaveSystemPackage {
 
         internal async UniTask<StorageData> ExportGameData (CancellationToken token = default) {
             return File.Exists(DataPath)
-                ? new StorageData(await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+                ? new StorageData(
+                    await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
                 : null;
         }
 

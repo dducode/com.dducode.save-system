@@ -3,9 +3,9 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Serialization;
 using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
 
 namespace SaveSystemPackage.Verification {
@@ -37,7 +37,7 @@ namespace SaveSystemPackage.Verification {
 
             string password;
 
-            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                 password = settings.verificationSettings.hashStoragePassword;
             }
 
@@ -84,7 +84,7 @@ namespace SaveSystemPackage.Verification {
 
             string password;
 
-            using (SaveSystemSettings settings = ResourcesManager.LoadSettings()) {
+            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                 password = settings.verificationSettings.hashStoragePassword;
             }
 

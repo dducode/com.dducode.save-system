@@ -6,11 +6,10 @@ using System;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Templates;
-using SaveSystemPackage.Profiles;
+using SaveSystemPackage.Serialization;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -54,15 +53,6 @@ namespace SaveSystemPackage {
 
         internal static string DefaultHashStoragePath { get; private set; }
 
-        // Common settings
-        private static SaveEvents m_enabledSaveEvents;
-        private static float m_savePeriod;
-        private static float m_autoSaveTime;
-        private static string m_dataPath;
-
-        // Checkpoints settings
-        private static string m_playerTag;
-
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
@@ -70,14 +60,6 @@ namespace SaveSystemPackage {
 
         private static string m_profilesFolder;
         private static string m_scenesFolder;
-
-    #if ENABLE_BOTH_SYSTEMS
-        private static UsedInputSystem m_usedInputSystem;
-    #endif
-
-    #if ENABLE_LEGACY_INPUT_MANAGER
-        private static KeyCode m_quickSaveKey;
-    #endif
 
         private static bool m_periodicSaveEnabled;
         private static float m_periodicSaveLastTime;
@@ -87,7 +69,7 @@ namespace SaveSystemPackage {
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void AutoInit () {
-            SaveSystemSettings settings = ResourcesManager.LoadSettings();
+            SaveSystemSettings settings = SaveSystemSettings.Load();
 
             if (settings != null && settings.automaticInitialize) {
                 settings.Dispose();
@@ -118,57 +100,8 @@ namespace SaveSystemPackage {
                 ));
             }
 
-            EnabledSaveEvents = settings.enabledSaveEvents;
-            Logger.EnabledLogs = settings.enabledLogs;
-            SavePeriod = settings.savePeriod;
-            PlayerTag = settings.playerTag;
+            Settings = settings;
             DefaultHashStoragePath = Path.Combine(InternalFolder, settings.verificationSettings.hashStoragePath);
-
-            SetupUserInputs(settings);
-
-            Game.DataPath = settings.dataPath;
-            Game.Encrypt = settings.encrypt;
-            Game.VerifyChecksum = settings.verifyChecksum;
-
-            settings.Dispose();
-        }
-
-
-        private static void SetupUserInputs (SaveSystemSettings settings) {
-        #if ENABLE_BOTH_SYSTEMS
-            m_usedInputSystem = settings.usedInputSystem;
-
-            switch (m_usedInputSystem) {
-                case UsedInputSystem.LegacyInputManager:
-                    QuickSaveKey = (KeyCode)PlayerPrefs.GetInt(
-                        SaveSystemConstants.QuickSaveKeyCode, (int)settings.quickSaveKey
-                    );
-                    ScreenCaptureKey = (KeyCode)PlayerPrefs.GetInt(
-                        SaveSystemConstants.ScreenCaptureKeyCode, (int)settings.screenCaptureKey
-                    );
-                    break;
-                case UsedInputSystem.InputSystem:
-                    QuickSaveAction = settings.quickSaveAction;
-                    QuickSaveAction.Enable();
-                    ScreenCaptureAction = settings.screenCaptureAction;
-                    ScreenCaptureAction.Enable();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        #else
-        #if ENABLE_LEGACY_INPUT_MANAGER
-            QuickSaveKey = settings.quickSaveKey;
-            ScreenCaptureKey = settings.screenCaptureKey;
-        #endif
-
-        #if ENABLE_INPUT_SYSTEM
-            QuickSaveAction = settings.quickSaveAction;
-            QuickSaveAction.Enable();
-            ScreenCaptureAction = settings.screenCaptureAction;
-            ScreenCaptureAction.Enable();
-        #endif
-        #endif
         }
 
 
@@ -183,7 +116,7 @@ namespace SaveSystemPackage {
 
 
         internal static void SaveAtCheckpoint (Component other) {
-            if (!other.CompareTag(PlayerTag))
+            if (!other.CompareTag(Settings.PlayerTag))
                 return;
 
             ScheduleSave(SaveType.SaveAtCheckpoint);
@@ -212,7 +145,7 @@ namespace SaveSystemPackage {
 
         private static void UpdateUserInputs () {
         #if ENABLE_BOTH_SYSTEMS
-            switch (m_usedInputSystem) {
+            switch (Settings.UsedInputSystem) {
                 case UsedInputSystem.LegacyInputManager:
                     CheckPressedKeys();
                     break;
@@ -236,9 +169,9 @@ namespace SaveSystemPackage {
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private static void CheckPressedKeys () {
-            if (Input.GetKeyDown(QuickSaveKey))
+            if (Input.GetKeyDown(Settings.QuickSaveKey))
                 QuickSave();
-            if (Input.GetKeyDown(ScreenCaptureKey))
+            if (Input.GetKeyDown(Settings.ScreenCaptureKey))
                 CaptureScreenshot();
         }
     #endif
@@ -246,9 +179,11 @@ namespace SaveSystemPackage {
 
     #if ENABLE_INPUT_SYSTEM
         private static void CheckPerformedActions () {
-            if (QuickSaveAction != null && QuickSaveAction.WasPerformedThisFrame())
+            if (Settings.QuickSaveAction != null &&
+                Settings.QuickSaveAction.WasPerformedThisFrame())
                 QuickSave();
-            if (ScreenCaptureAction != null && ScreenCaptureAction.WasPerformedThisFrame())
+            if (Settings.ScreenCaptureAction != null &&
+                Settings.ScreenCaptureAction.WasPerformedThisFrame())
                 CaptureScreenshot();
         }
     #endif
@@ -260,7 +195,7 @@ namespace SaveSystemPackage {
 
 
         private static void PeriodicSave () {
-            if (m_periodicSaveLastTime + SavePeriod < Time.time) {
+            if (m_periodicSaveLastTime + Settings.SavePeriod < Time.time) {
                 ScheduleSave(SaveType.PeriodicSave);
                 m_periodicSaveLastTime = Time.time;
             }
@@ -396,9 +331,18 @@ namespace SaveSystemPackage {
             foreach (string path in paths) {
                 writer.Write(Path.GetFileName(path));
                 await using var reader = new SaveReader(File.Open(path, FileMode.Open));
-                var profile = new SaveProfile(reader.ReadDataBuffer());
+                string typeName = reader.ReadString();
+                var type = Type.GetType(typeName);
 
-                writer.Write(profile.Metadata);
+                if (type == null) {
+                    Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
+                    continue;
+                }
+
+                var profile = (SaveProfile)Activator.CreateInstance(type);
+                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                SerializationManager.DeserializeGraph(reader, profile);
+                SerializeProfile(writer, profile);
                 writer.Write(await profile.ExportProfileData(token));
             }
 
@@ -450,9 +394,18 @@ namespace SaveSystemPackage {
             for (var i = 0; i < count; i++) {
                 string path = Path.Combine(InternalFolder, reader.ReadString());
                 await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
-                var profile = new SaveProfile(reader.ReadDataBuffer());
+                string typeName = reader.ReadString();
+                var type = Type.GetType(typeName);
 
-                writer.Write(profile.Metadata);
+                if (type == null) {
+                    Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
+                    continue;
+                }
+
+                var profile = (SaveProfile)Activator.CreateInstance(type);
+                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                SerializationManager.DeserializeGraph(reader, profile);
+                SerializeProfile(writer, profile);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
             }
         }

@@ -7,10 +7,6 @@ using SaveSystemPackage.Internal;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
-
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -24,81 +20,7 @@ namespace SaveSystemPackage {
 
         public static Game Game { get; private set; }
 
-        /// <summary>
-        /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
-        /// </summary>
-        /// <example> EnabledSaveEvents = SaveEvents.AutoSave | SaveEvents.OnFocusChanged </example>
-        /// <seealso cref="SaveEvents"/>
-        public static SaveEvents EnabledSaveEvents {
-            get => m_enabledSaveEvents;
-            set => SetupEvents(m_enabledSaveEvents = value);
-        }
-
-        /// <summary>
-        /// It's used to enable logs
-        /// </summary>
-        /// <example> EnabledLogs = LogLevel.Warning | LogLevel.Error </example>
-        /// <seealso cref="LogLevel"/>
-        public static LogLevel EnabledLogs {
-            get => Logger.EnabledLogs;
-            set => Logger.EnabledLogs = value;
-        }
-
-        /// <summary>
-        /// It's used to determine periodic saving frequency
-        /// </summary>
-        /// <value> Saving period in seconds </value>
-        /// <remarks> If it equals 0, saving will be executed at every frame </remarks>
-        public static float SavePeriod {
-            get => m_savePeriod;
-            set {
-                if (value < 0) {
-                    throw new ArgumentException(
-                        "Save period cannot be less than 0.", nameof(SavePeriod)
-                    );
-                }
-
-                m_savePeriod = value;
-            }
-        }
-
-        /// <summary>
-        /// Player tag is used to filtering messages from triggered checkpoints
-        /// </summary>
-        /// <value> Tag of the player object </value>
-        [NotNull]
-        public static string PlayerTag {
-            get => m_playerTag;
-            set {
-                if (string.IsNullOrEmpty(value)) {
-                    throw new ArgumentNullException(
-                        nameof(PlayerTag), "Player tag cannot be null or empty"
-                    );
-                }
-
-                m_playerTag = value;
-            }
-        }
-
-    #if ENABLE_LEGACY_INPUT_MANAGER
-        /// <summary>
-        /// Binds any key to quick save
-        /// </summary>
-        public static KeyCode QuickSaveKey {
-            get => m_quickSaveKey;
-            set {
-                m_quickSaveKey = value;
-                PlayerPrefs.SetInt(SaveSystemConstants.QuickSaveKeyCode, (int)m_quickSaveKey);
-            }
-        }
-    #endif
-
-    #if ENABLE_INPUT_SYSTEM
-        /// <summary>
-        /// Binds any input action to quick save
-        /// </summary>
-        public static InputAction QuickSaveAction { get; set; }
-    #endif
+        public static SystemSettings Settings { get; private set; }
 
         /// <summary>
         /// The event is called before saving. It can be useful when you use async saving
@@ -121,13 +43,14 @@ namespace SaveSystemPackage {
 
         public static void Initialize () {
             try {
-                Game = new Game();
+                using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
+                    SetSettings(settings);
+                    Game = new Game(settings);
+                }
 
-                SetSettings(ResourcesManager.LoadSettings());
                 SetInternalFolder();
                 SetOnExitPlayModeCallback();
                 SetPlayerLoop();
-
                 m_exitCancellation = new CancellationTokenSource();
                 Logger.Log(nameof(SaveSystem), "Initialized");
             }

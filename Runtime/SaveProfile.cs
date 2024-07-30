@@ -4,22 +4,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.BinaryHandlers;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
+using SaveSystemPackage.Serialization;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystemPackage.Profiles {
+namespace SaveSystemPackage {
 
-    public sealed class SaveProfile {
-
-        private const string NameKey = "profile-name";
-        private const string EncryptKey = "profile-encrypt";
-        private const string VerifyKey = "profile-verify-checksum";
+    public abstract class SaveProfile {
 
         [NotNull]
         public string Name {
@@ -42,43 +36,11 @@ namespace SaveSystemPackage.Profiles {
                 if (File.Exists(oldPath))
                     File.Move(oldPath, DataPath);
 
-                Metadata.Write(NameKey, value);
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
 
-        public bool Encrypt {
-            get => ProfileScope.Encrypt;
-            set {
-                ProfileScope.Encrypt = value;
-                Metadata.Write(EncryptKey, value);
-                CommitChanges();
-            }
-        }
-
-        [NotNull]
-        public Cryptographer Cryptographer {
-            get => ProfileScope.Cryptographer;
-            set => ProfileScope.Cryptographer = value;
-        }
-
-        public bool VerifyChecksum {
-            get => ProfileScope.VerifyChecksum;
-            set {
-                ProfileScope.VerifyChecksum = value;
-                Metadata.Write(VerifyKey, value);
-                CommitChanges();
-            }
-        }
-
-        [NotNull]
-        public VerificationManager VerificationManager {
-            get => ProfileScope.VerificationManager;
-            set => ProfileScope.VerificationManager = value;
-        }
-
-        public DataBuffer Metadata { get; }
-
+        public SerializationSettings Settings => ProfileScope.Settings;
         public DataBuffer Data => ProfileScope.Data;
 
         [NotNull]
@@ -113,13 +75,14 @@ namespace SaveSystemPackage.Profiles {
             }
         }
 
-        internal string DataPath {
+        internal bool HasChanges => Data.HasChanges;
+
+        private string DataPath {
             get => ProfileScope.DataPath;
-            private set => ProfileScope.DataPath = value;
+            set => ProfileScope.DataPath = value;
         }
 
-        internal bool HasChanges => Data.HasChanges;
-        private SerializationScope ProfileScope { get; }
+        private SerializationScope ProfileScope { get; set; }
 
         private string m_name;
         private string m_dataFolder;
@@ -128,44 +91,40 @@ namespace SaveSystemPackage.Profiles {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal SaveProfile (DataBuffer metadata) : this(
-            metadata.ReadString(NameKey),
-            metadata.Read<bool>(EncryptKey),
-            metadata.Read<bool>(VerifyKey)
-        ) {
-            Metadata = metadata;
-        }
-
-
-        internal SaveProfile ([NotNull] string name, bool encrypt, bool authenticate) {
+        internal void Initialize ([NotNull] string name, bool encrypt, bool verify) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-            DataFolder = name;
-
             ProfileScope = new SerializationScope {
                 Name = $"{name} profile scope",
-                Encrypt = encrypt,
-                VerifyChecksum = authenticate,
-                DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata")
+                Settings = {
+                    Encrypt = encrypt,
+                    VerifyChecksum = verify,
+                }
             };
 
-            Metadata = new DataBuffer();
-            Metadata.Write(NameKey, Name);
-            Metadata.Write(EncryptKey, Encrypt);
-            Metadata.Write(VerifyKey, VerifyChecksum);
+            DataFolder = name;
+            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
+            OnInitialized();
         }
 
 
-        public void CommitChanges () {
+        public void ApplyChanges () {
             SaveSystem.UpdateProfile(this);
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable"/>
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,IRuntimeSerializable)"/>
         public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
             ProfileScope.RegisterSerializable(key, serializable);
+            return this;
+        }
+
+
+        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,object)"/>
+        public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
+            ProfileScope.RegisterSerializable(key, obj);
             return this;
         }
 
@@ -242,6 +201,9 @@ namespace SaveSystemPackage.Profiles {
         internal void Clear () {
             ProfileScope.Clear();
         }
+
+
+        protected virtual void OnInitialized () { }
 
     }
 

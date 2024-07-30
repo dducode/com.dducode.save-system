@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
 
-namespace SaveSystemPackage.BinaryHandlers {
+namespace SaveSystemPackage.Serialization {
 
     public class SaveReader : IDisposable, IAsyncDisposable {
 
@@ -155,6 +155,16 @@ namespace SaveSystemPackage.BinaryHandlers {
         public async ValueTask DisposeAsync () {
             if (output != null)
                 await output.DisposeAsync();
+        }
+
+
+        internal object ReadObject (Type type) {
+            var size = Read<int>();
+            var bytes = new byte[size];
+            m_streamPosition += output.Read(bytes);
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.Copy(bytes, 0, ptr, size);
+            return Marshal.PtrToStructure(ptr, type);
         }
 
     }
