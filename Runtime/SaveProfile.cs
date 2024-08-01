@@ -5,7 +5,6 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Serialization;
 
 // ReSharper disable UnusedMember.Global
@@ -29,13 +28,6 @@ namespace SaveSystemPackage {
                 m_name = value;
                 ProfileScope.Name = $"{value} scope";
 
-                DataFolder = m_name;
-                DataPath = Path.Combine(DataFolder, $"{m_name.ToPathFormat()}.profiledata");
-                string oldPath = Path.Combine(DataFolder, $"{oldName}.profiledata");
-
-                if (File.Exists(oldPath))
-                    File.Move(oldPath, DataPath);
-
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
@@ -46,21 +38,14 @@ namespace SaveSystemPackage {
         [NotNull]
         internal string DataFolder {
             get => m_dataFolder;
-            private set {
+            set {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(DataFolder));
 
-                string newDir = Path.Combine(SaveSystem.ProfilesFolder, value.ToPathFormat());
-
-                if (string.Equals(m_dataFolder, newDir))
+                if (string.Equals(m_dataFolder, value))
                     return;
 
-                if (Directory.Exists(m_dataFolder))
-                    Directory.Move(m_dataFolder, newDir);
-                else
-                    Directory.CreateDirectory(newDir);
-
-                m_dataFolder = newDir;
+                m_dataFolder = value;
             }
         }
 
@@ -77,7 +62,7 @@ namespace SaveSystemPackage {
 
         internal bool HasChanges => Data.HasChanges;
 
-        private string DataPath {
+        internal string DataPath {
             get => ProfileScope.DataPath;
             set => ProfileScope.DataPath = value;
         }
@@ -104,8 +89,6 @@ namespace SaveSystemPackage {
                 }
             };
 
-            DataFolder = name;
-            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
             OnInitialized();
         }
 

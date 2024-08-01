@@ -85,7 +85,7 @@ namespace SaveSystemPackage {
             File.Delete(path);
             if (Directory.GetFileSystemEntries(ScreenshotsFolder).Length == 0)
                 Directory.Delete(ScreenshotsFolder);
-            Logger.Log(nameof(SaveSystem), $"The screenshot <b>{screenshotName}</b> deleted");
+            Logger.Log(nameof(SaveSystem), $"The screenshot \"{screenshotName}\" deleted");
         }
 
 

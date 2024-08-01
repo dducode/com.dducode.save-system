@@ -44,6 +44,12 @@ namespace SaveSystemPackage.Editor {
         private void OnEnable () {
             m_selectedTab = (ConsoleTabsNames)EditorPrefs.GetInt(DrawingModeKey, (int)ConsoleTabsNames.SavedFiles);
             m_drawableTab = GetConsoleTab(m_selectedTab);
+            SaveSystem.OnUpdateSystem += Repaint;
+        }
+
+
+        private void OnDisable () {
+            SaveSystem.OnUpdateSystem -= Repaint;
         }
 
 

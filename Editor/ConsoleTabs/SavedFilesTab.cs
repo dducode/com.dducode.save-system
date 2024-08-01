@@ -44,7 +44,7 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
 
 
         private void DrawFileSystemEntries (string path) {
-            foreach (string entryPath in Directory.GetFileSystemEntries(path)) {
+            foreach (string entryPath in Directory.EnumerateFileSystemEntries(path)) {
                 if (File.GetAttributes(entryPath).HasFlag(FileAttributes.Directory))
                     DrawFolderEntry(entryPath);
                 else
@@ -65,10 +65,18 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
                 if (ev.clickCount > 1 && EditorGUILayout.GetControlRect().Contains(ev.mousePosition))
                     EditorUtility.RevealInFinder(entryPath);
 
-                m_folders[entryPath] = EditorGUILayout.Foldout(m_folders[entryPath], new GUIContent {
-                    text = Path.GetFileName(entryPath),
-                    image = EditorGUIUtility.IconContent("Folder Icon").image
-                });
+                if (Directory.GetFileSystemEntries(entryPath).Length > 0) {
+                    m_folders[entryPath] = EditorGUILayout.Foldout(m_folders[entryPath], new GUIContent {
+                        text = Path.GetFileName(entryPath),
+                        image = EditorGUIUtility.IconContent("Folder Icon").image
+                    });
+                }
+                else {
+                    EditorGUILayout.LabelField(new GUIContent {
+                        text = Path.GetFileName(entryPath),
+                        image = EditorGUIUtility.IconContent("Folder Icon").image
+                    });
+                }
             }
 
             EditorGUI.indentLevel++;

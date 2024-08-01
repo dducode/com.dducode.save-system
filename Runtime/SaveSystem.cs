@@ -29,17 +29,6 @@ namespace SaveSystemPackage {
 
         internal static readonly string InternalFolder = SetInternalFolder();
 
-        internal static string ProfilesFolder {
-            get {
-                if (string.IsNullOrEmpty(m_profilesFolder)) {
-                    m_profilesFolder = Storage.PrepareBeforeUsing("profiles");
-                    Directory.CreateDirectory(m_profilesFolder);
-                }
-
-                return m_profilesFolder;
-            }
-        }
-
         internal static string ScenesFolder {
             get {
                 if (string.IsNullOrEmpty(m_scenesFolder)) {
@@ -52,6 +41,18 @@ namespace SaveSystemPackage {
         }
 
         internal static string DefaultHashStoragePath { get; private set; }
+        internal static event Action OnUpdateSystem;
+
+        private static string ProfilesFolder {
+            get {
+                if (string.IsNullOrEmpty(m_profilesFolder)) {
+                    m_profilesFolder = Storage.PrepareBeforeUsing("profiles");
+                    Directory.CreateDirectory(m_profilesFolder);
+                }
+
+                return m_profilesFolder;
+            }
+        }
 
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
@@ -140,6 +141,8 @@ namespace SaveSystemPackage {
 
             if (m_autoSaveEnabled)
                 AutoSave();
+
+            OnUpdateSystem?.Invoke();
         }
 
 
@@ -340,7 +343,7 @@ namespace SaveSystemPackage {
                 }
 
                 var profile = (SaveProfile)Activator.CreateInstance(type);
-                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
                 writer.Write(await profile.ExportProfileData(token));
@@ -403,7 +406,7 @@ namespace SaveSystemPackage {
                 }
 
                 var profile = (SaveProfile)Activator.CreateInstance(type);
-                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
