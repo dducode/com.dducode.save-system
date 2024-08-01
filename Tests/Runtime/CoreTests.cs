@@ -24,7 +24,7 @@ namespace SaveSystemPackage.Tests {
         private const string SaltKey = "salt";
         private const string VerifyHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
 
-        private SceneSerializationContext m_sceneContext;
+        private TestProfile m_profile;
 
 
         [SetUp]
@@ -32,10 +32,10 @@ namespace SaveSystemPackage.Tests {
             var camera = new GameObject();
             camera.AddComponent<Camera>();
             camera.transform.position = new Vector3(0, 0, -10);
-            m_sceneContext = new GameObject("Scene Serialization Context").AddComponent<SceneSerializationContext>();
 
             SaveSystem.Settings.EnabledLogs = LogLevel.All;
-            SaveSystem.Game.SaveProfile = SaveSystem.CreateProfile<TestProfile>("test-profile");
+            m_profile = SaveSystem.CreateProfile<TestProfile>("test-profile");
+            SaveSystem.Game.SaveProfile = m_profile;
             Debug.Log("Start test");
         }
 
@@ -47,7 +47,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Settings.SavePeriod = 1.5f;
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave;
 
-            m_sceneContext.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
+            m_profile.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var autoSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
@@ -72,7 +72,7 @@ namespace SaveSystemPackage.Tests {
             #error Compile error: no unity inputs enabled
         #endif
 
-            m_sceneContext.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
+            m_profile.RegisterSerializable(nameof(simpleObject), new TestObjectAdapter(simpleObject));
 
             var quickSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
@@ -95,7 +95,7 @@ namespace SaveSystemPackage.Tests {
 
             SaveSystem.Settings.PlayerTag = sphereTag;
 
-            m_sceneContext.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
+            m_profile.RegisterSerializable(nameof(sphere), new TestRigidbodyAdapter(sphere));
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -124,7 +124,7 @@ namespace SaveSystemPackage.Tests {
                     sphere.tag = sphereTag;
             }
 
-            m_sceneContext.RegisterSerializables(nameof(spheres), spheres);
+            m_profile.RegisterSerializables(nameof(spheres), spheres);
             SaveSystem.Game.Settings.Encrypt = false;
             SaveSystem.Game.Settings.VerifyChecksum = false;
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
@@ -168,7 +168,7 @@ namespace SaveSystemPackage.Tests {
                 generationParams
             );
 
-            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Save();
             await UniTask.WaitForSeconds(1);
         }
@@ -189,7 +189,7 @@ namespace SaveSystemPackage.Tests {
                 generationParams
             );
 
-            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Load();
             await UniTask.WaitForSeconds(1);
         }
@@ -207,7 +207,7 @@ namespace SaveSystemPackage.Tests {
                 new DefaultHashStorage(), HashAlgorithmName.SHA1
             );
 
-            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Save();
             await UniTask.WaitForSeconds(1);
         }
@@ -224,7 +224,7 @@ namespace SaveSystemPackage.Tests {
                 new DefaultHashStorage(), HashAlgorithmName.SHA1
             );
 
-            m_sceneContext.RegisterSerializable(nameof(sphereFactory), sphereFactory);
+            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Load();
             await UniTask.WaitForSeconds(1);
 
@@ -255,6 +255,7 @@ namespace SaveSystemPackage.Tests {
 
         [TearDown]
         public void EndTest () {
+            SaveSystem.DeleteProfile(m_profile);
             Debug.Log("End test");
         }
 

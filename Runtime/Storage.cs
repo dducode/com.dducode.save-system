@@ -18,13 +18,8 @@ namespace SaveSystemPackage {
         private const string ScreenshotsName = "screenshots";
         private const string TestsName = "tests";
 
-        internal static Directory Root {
-            get {
-                return m_storageDirectory ??= new Directory(
-                    RootName, Path.Combine(Application.persistentDataPath, RootName)
-                );
-            }
-        }
+        internal static Directory Root =>
+            m_storageDirectory ??= new Directory(RootName, Application.persistentDataPath);
 
         internal static Directory InternalDirectory =>
             m_internalDirectory ??= Root.CreateDirectory(InternalName);
@@ -39,7 +34,7 @@ namespace SaveSystemPackage {
             m_screenshotsDirectory ??= Root.CreateDirectory(ScreenshotsName);
 
         internal static Directory TestsDirectory =>
-            m_testsDirectory ??= new Directory(TestsName, Path.Combine(Application.temporaryCachePath, TestsName));
+            m_testsDirectory ??= new Directory(TestsName, Application.temporaryCachePath);
 
         private static Directory m_storageDirectory;
         private static Directory m_internalDirectory;

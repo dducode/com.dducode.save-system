@@ -11,7 +11,7 @@ namespace SaveSystemPackage.Internal {
         internal string Path => System.IO.Path.Combine(Parent != null ? Parent.Path : RootPath, Name);
         internal Directory Parent { get; }
         internal Directory Root { get; }
-        internal string RootPath { get; }
+        private string RootPath { get; }
 
         internal long DataSize {
             get {

@@ -39,7 +39,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private void Awake () {
+        private void Start () {
             SceneScope = new SerializationScope {
                 Name = $"{gameObject.scene.name} scene scope",
                 Settings = {
