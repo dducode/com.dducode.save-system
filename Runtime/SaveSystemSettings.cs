@@ -27,7 +27,7 @@ namespace SaveSystemPackage {
         public float savePeriod = 5;
 
         [Tooltip(Tooltips.DataPath)]
-        public string dataPath;
+        public string dataFileName;
 
     #if ENABLE_BOTH_SYSTEMS
         public UsedInputSystem usedInputSystem;
@@ -64,8 +64,8 @@ namespace SaveSystemPackage {
 
 
         private void OnEnable () {
-            if (string.IsNullOrEmpty(dataPath))
-                dataPath = $"{Application.productName.ToPathFormat()}.data";
+            if (string.IsNullOrEmpty(dataFileName))
+                dataFileName = $"{Application.productName.ToPathFormat()}.data";
         }
 
 
@@ -90,7 +90,7 @@ namespace SaveSystemPackage {
             result.Append($"\nEnabled Logs: {enabledLogs}");
             if (enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave))
                 result.Append($"\nSave Period: {savePeriod} sec");
-            result.Append($"\nData Path: {dataPath}");
+            result.Append($"\nData Path: {dataFileName}");
             result.Append($"\nPlayer Tag: {playerTag}");
         }
 

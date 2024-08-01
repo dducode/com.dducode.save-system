@@ -48,7 +48,6 @@ namespace SaveSystemPackage {
                     Game = new Game(settings);
                 }
 
-                SetInternalFolder();
                 SetOnExitPlayModeCallback();
                 SetPlayerLoop();
                 m_exitCancellation = new CancellationTokenSource();

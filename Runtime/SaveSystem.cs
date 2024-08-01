@@ -3,7 +3,7 @@
 #endif
 
 using System;
-using System.IO;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
@@ -13,6 +13,7 @@ using SaveSystemPackage.Serialization;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using File = SaveSystemPackage.Internal.File;
 using Logger = SaveSystemPackage.Internal.Logger;
 using MemoryStream = System.IO.MemoryStream;
 
@@ -27,40 +28,13 @@ namespace SaveSystemPackage {
     /// </summary>
     public static partial class SaveSystem {
 
-        internal static readonly string InternalFolder = SetInternalFolder();
-
-        internal static string ScenesFolder {
-            get {
-                if (string.IsNullOrEmpty(m_scenesFolder)) {
-                    m_scenesFolder = Storage.PrepareBeforeUsing("scenes");
-                    Directory.CreateDirectory(m_scenesFolder);
-                }
-
-                return m_scenesFolder;
-            }
-        }
-
-        internal static string DefaultHashStoragePath { get; private set; }
         internal static event Action OnUpdateSystem;
-
-        private static string ProfilesFolder {
-            get {
-                if (string.IsNullOrEmpty(m_profilesFolder)) {
-                    m_profilesFolder = Storage.PrepareBeforeUsing("profiles");
-                    Directory.CreateDirectory(m_profilesFolder);
-                }
-
-                return m_profilesFolder;
-            }
-        }
+        internal static File HashStorageFile { get; private set; }
 
         /// It will be canceled before exit game
         private static CancellationTokenSource m_exitCancellation;
 
         private static readonly SynchronizationPoint SynchronizationPoint = new();
-
-        private static string m_profilesFolder;
-        private static string m_scenesFolder;
 
         private static bool m_periodicSaveEnabled;
         private static float m_periodicSaveLastTime;
@@ -102,14 +76,12 @@ namespace SaveSystemPackage {
             }
 
             Settings = settings;
-            DefaultHashStoragePath = Path.Combine(InternalFolder, settings.verificationSettings.hashStoragePath);
-        }
 
+            if (!settings.verificationSettings.useCustomStorage) {
+                string storageFileName = settings.verificationSettings.hashStoragePath;
 
-        private static string SetInternalFolder () {
-            string folder = Storage.PrepareBeforeUsing(".internal");
-            Directory.CreateDirectory(folder).Attributes |= FileAttributes.Hidden;
-            return folder;
+                HashStorageFile = Storage.InternalDirectory.GetOrCreateFile(storageFileName, "data");
+            }
         }
 
 
@@ -304,36 +276,33 @@ namespace SaveSystemPackage {
             if (gameData != null)
                 await cloudStorage.Push(gameData);
 
-            string[] profiles = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-            if (profiles.Length > 0)
-                await UploadProfiles(cloudStorage, profiles, token);
+            await UploadProfiles(cloudStorage, token);
 
-            if (File.Exists(DefaultHashStoragePath)) {
+            if (HashStorageFile.Exists) {
                 var dataTable = new StorageData(
-                    await File.ReadAllBytesAsync(DefaultHashStoragePath, token),
-                    Path.GetFileName(DefaultHashStoragePath)
+                    await HashStorageFile.ReadAllBytesAsync(token),
+                    HashStorageFile.Name
                 );
                 await cloudStorage.Push(dataTable);
             }
 
-            if (!string.IsNullOrEmpty(m_screenshotsFolder) && Directory.Exists(m_screenshotsFolder)) {
-                string[] screenshots = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
-                if (screenshots.Length > 0)
-                    await UploadScreenshots(cloudStorage, screenshots, token);
-            }
+            if (Storage.ScreenshotsDirectoryExists())
+                await UploadScreenshots(cloudStorage, token);
         }
 
 
-        private static async UniTask UploadProfiles (
-            ICloudStorage cloudStorage, string[] paths, CancellationToken token
-        ) {
+        private static async UniTask UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(paths.Length);
+            File[] profiles = Storage.InternalDirectory.EnumerateFiles("profile").ToArray();
+            if (profiles.Length == 0)
+                return;
 
-            foreach (string path in paths) {
-                writer.Write(Path.GetFileName(path));
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+            writer.Write(profiles.Length);
+
+            foreach (File file in profiles) {
+                writer.Write(file.Name);
+                await using var reader = new SaveReader(file.Open());
                 string typeName = reader.ReadString();
                 var type = Type.GetType(typeName);
 
@@ -353,16 +322,18 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadScreenshots (
-            ICloudStorage cloudStorage, string[] paths, CancellationToken token
-        ) {
+        private static async UniTask UploadScreenshots (ICloudStorage cloudStorage, CancellationToken token) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(paths.Length);
+            File[] screenshots = Storage.ScreenshotsDirectory.EnumerateFiles("png").ToArray();
+            if (screenshots.Length == 0)
+                return;
 
-            foreach (string path in paths) {
-                writer.Write(Path.GetFileName(path));
-                writer.Write(await File.ReadAllBytesAsync(path, token));
+            writer.Write(screenshots.Length);
+
+            foreach (File screenshot in screenshots) {
+                writer.Write(screenshot.Name);
+                writer.Write(await screenshot.ReadAllBytesAsync(token));
             }
 
             await cloudStorage.Push(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllScreenshotsFile));
@@ -372,7 +343,7 @@ namespace SaveSystemPackage {
         private static async UniTask DownloadFromCloudStorage (
             ICloudStorage cloudStorage, CancellationToken token = default
         ) {
-            StorageData gameData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
+            StorageData gameData = await cloudStorage.Pull(Game.DataFile.Name);
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
 
@@ -380,9 +351,9 @@ namespace SaveSystemPackage {
             if (profiles != null)
                 await DownloadProfiles(profiles);
 
-            StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DefaultHashStoragePath));
+            StorageData dataTable = await cloudStorage.Pull(HashStorageFile.Name);
             if (dataTable != null)
-                await File.WriteAllBytesAsync(DefaultHashStoragePath, dataTable.rawData, token);
+                await HashStorageFile.WriteAllBytesAsync(dataTable.rawData, token);
 
             StorageData screenshots = await cloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
@@ -395,8 +366,8 @@ namespace SaveSystemPackage {
             var count = reader.Read<int>();
 
             for (var i = 0; i < count; i++) {
-                string path = Path.Combine(InternalFolder, reader.ReadString());
-                await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
+                File file = Storage.InternalDirectory.GetOrCreateFile(reader.ReadString(), "profile");
+                await using var writer = new SaveWriter(file.Open());
                 string typeName = reader.ReadString();
                 var type = Type.GetType(typeName);
 
@@ -419,9 +390,9 @@ namespace SaveSystemPackage {
             var count = reader.Read<int>();
 
             for (var i = 0; i < count; i++) {
-                await File.WriteAllBytesAsync(
-                    Path.Combine(ScreenshotsFolder, reader.ReadString()), reader.ReadArray<byte>()
-                );
+                await Storage.ScreenshotsDirectory
+                   .GetOrCreateFile(reader.ReadString(), "png")
+                   .WriteAllBytesAsync(reader.ReadArray<byte>());
             }
         }
 

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
+using File = SaveSystemPackage.Internal.File;
 
 // ReSharper disable UnusedMember.Global
 
@@ -26,22 +26,14 @@ namespace SaveSystemPackage {
             }
         }
 
-        /// <summary>
-        /// Set the game data path
-        /// </summary>
-        [NotNull]
-        public string DataPath {
-            get => GameScope.DataPath;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath), "Data path cannot be null or empty");
-
-                GameScope.DataPath = Storage.PrepareBeforeUsing(value);
-            }
-        }
-
         public SerializationSettings Settings => GameScope.Settings;
         public DataBuffer Data => GameScope.Data;
+
+        [NotNull]
+        internal File DataFile {
+            get => GameScope.DataFile;
+            private set => GameScope.DataFile = value;
+        }
 
         internal SceneSerializationContext SceneContext {
             get => m_sceneContext;
@@ -68,7 +60,7 @@ namespace SaveSystemPackage {
                 }
             };
 
-            DataPath = settings.dataPath;
+            DataFile = Storage.Root.GetOrCreateFile(settings.dataFileName, "data");
         }
 
 
@@ -128,16 +120,15 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask<StorageData> ExportGameData (CancellationToken token = default) {
-            return File.Exists(DataPath)
-                ? new StorageData(
-                    await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+            return DataFile.Exists
+                ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
                 : null;
         }
 
 
         internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
-                await File.WriteAllBytesAsync(DataPath, data, token);
+                await DataFile.WriteAllBytesAsync(data, token);
         }
 
     }

@@ -31,14 +31,9 @@ namespace SaveSystemPackage {
         }
 
         [NotNull]
-        internal string DataPath {
-            get => m_dataPath;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath));
-
-                m_dataPath = value;
-            }
+        internal Internal.File DataFile {
+            get => m_dataFile;
+            set => m_dataFile = value ?? throw new ArgumentNullException(nameof(DataFile));
         }
 
         internal SerializationSettings Settings { get; } = new();
@@ -46,7 +41,7 @@ namespace SaveSystemPackage {
         private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
-        private string m_dataPath;
+        private Internal.File m_dataFile;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private readonly Dictionary<string, object> m_objects = new();
         private int ObjectsCount => m_serializables.Count + m_objects.Count;
@@ -147,9 +142,9 @@ namespace SaveSystemPackage {
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Encrypt(data);
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.SetChecksum(DataPath, data);
+                await Settings.VerificationManager.SetChecksum(DataFile.Path, data);
 
-            await File.WriteAllBytesAsync(DataPath, data, token);
+            await DataFile.WriteAllBytesAsync(data, token);
             Logger.Log(Name, "Data saved");
         }
 
@@ -160,15 +155,15 @@ namespace SaveSystemPackage {
             if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (!File.Exists(DataPath)) {
+            if (!DataFile.Exists) {
                 SetDefaults();
                 return;
             }
 
-            byte[] data = await File.ReadAllBytesAsync(DataPath, token);
+            byte[] data = await DataFile.ReadAllBytesAsync(token);
 
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.VerifyData(DataPath, data);
+                await Settings.VerificationManager.VerifyData(DataFile.Path, data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Decrypt(data);
 

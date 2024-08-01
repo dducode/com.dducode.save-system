@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using SaveSystemPackage.Internal;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -21,20 +21,6 @@ namespace SaveSystemPackage {
         /// </value>
         public static event Action<Texture2D> OnScreenCaptured;
 
-        private static string ScreenshotsFolder {
-            get {
-                if (string.IsNullOrEmpty(m_screenshotsFolder))
-                    m_screenshotsFolder = Storage.PrepareBeforeUsing("screenshots");
-
-                if (!Directory.Exists(m_screenshotsFolder))
-                    Directory.CreateDirectory(m_screenshotsFolder);
-
-                return m_screenshotsFolder;
-            }
-        }
-
-        private static string m_screenshotsFolder;
-
 
         public static void CaptureScreenshot ([NotNull] string filename = "screenshot", int superSize = 1) {
             SaveScreenshot(ScreenCapture.CaptureScreenshotAsTexture(superSize), filename);
@@ -45,16 +31,10 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(filename))
                 throw new ArgumentNullException(nameof(filename));
 
-            string path = Path.Combine(ScreenshotsFolder, $"{filename}.png");
-
-            if (File.Exists(path)) {
-                var index = 1;
-                while (File.Exists(path = Path.Combine(ScreenshotsFolder, $"{filename}_{index}.png")))
-                    ++index;
-            }
+            File screenshotFile = Storage.ScreenshotsDirectory.CreateFile(filename, "png");
 
             SynchronizationPoint.ScheduleTask(async token => {
-                await File.WriteAllBytesAsync(path, screenshot.EncodeToPNG(), token);
+                await screenshotFile.WriteAllBytesAsync(screenshot.EncodeToPNG(), token);
                 OnScreenCaptured?.Invoke(screenshot);
                 Logger.Log(nameof(SaveSystem), "Capture screenshot");
             });
@@ -62,13 +42,11 @@ namespace SaveSystemPackage {
 
 
         public static async IAsyncEnumerable<Texture2D> LoadScreenshots () {
-            string[] paths = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
-
-            foreach (string path in paths) {
-                byte[] data = await File.ReadAllBytesAsync(path);
+            foreach (File file in Storage.ScreenshotsDirectory.EnumerateFiles("png")) {
+                byte[] data = await file.ReadAllBytesAsync();
                 var screenshot = new Texture2D(2, 2);
                 screenshot.LoadImage(data);
-                screenshot.name = Path.GetFileNameWithoutExtension(path);
+                screenshot.name = file.Name;
                 yield return screenshot;
             }
         }
@@ -78,19 +56,17 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(screenshotName))
                 throw new ArgumentNullException(nameof(screenshotName));
 
-            string path = Path.Combine(ScreenshotsFolder, $"{screenshotName}.png");
-            if (!File.Exists(path))
-                return;
+            Directory directory = Storage.ScreenshotsDirectory;
+            directory.DeleteFile(screenshotName);
+            if (directory.IsEmpty)
+                directory.Delete();
 
-            File.Delete(path);
-            if (Directory.GetFileSystemEntries(ScreenshotsFolder).Length == 0)
-                Directory.Delete(ScreenshotsFolder);
             Logger.Log(nameof(SaveSystem), $"The screenshot \"{screenshotName}\" deleted");
         }
 
 
         public static void ClearScreenshotsFolder () {
-            Directory.Delete(ScreenshotsFolder, true);
+            Storage.ScreenshotsDirectory.Delete();
             Logger.Log(nameof(SaveSystem), "All screenshots deleted");
         }
 

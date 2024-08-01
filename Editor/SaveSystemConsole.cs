@@ -17,17 +17,17 @@ namespace SaveSystemPackage.Editor {
 
         private readonly GUIContent[] m_toolbarsContent = {
             new() {
-                text = "Saved Files",
-                tooltip = "Check your saved files in system directory"
+                text = "File Explorer",
+                tooltip = "Check your saved files in save system directory"
             },
             new() {
                 text = "Objects Tracker",
-                tooltip = "Track data handlers at runtime"
+                tooltip = "Track registered objects at runtime"
             },
         };
 
-        private SavedFilesTab m_savedFilesTab;
-        private TrackerTab m_trackerTab;
+        private FileExplorer m_fileExplorer;
+        private ObjectsTracker m_objectsTracker;
 
 
         [MenuItem("Window/" + WindowName)]
@@ -42,7 +42,7 @@ namespace SaveSystemPackage.Editor {
 
 
         private void OnEnable () {
-            m_selectedTab = (ConsoleTabsNames)EditorPrefs.GetInt(DrawingModeKey, (int)ConsoleTabsNames.SavedFiles);
+            m_selectedTab = (ConsoleTabsNames)EditorPrefs.GetInt(DrawingModeKey, (int)ConsoleTabsNames.FileExplorer);
             m_drawableTab = GetConsoleTab(m_selectedTab);
             SaveSystem.OnUpdateSystem += Repaint;
         }
@@ -78,10 +78,10 @@ namespace SaveSystemPackage.Editor {
 
         private IConsoleTab GetConsoleTab (ConsoleTabsNames selectedTab) {
             switch (selectedTab) {
-                case ConsoleTabsNames.SavedFiles:
-                    return m_savedFilesTab ??= new SavedFilesTab();
-                case ConsoleTabsNames.HandlersTracker:
-                    return m_trackerTab ??= new TrackerTab();
+                case ConsoleTabsNames.FileExplorer:
+                    return m_fileExplorer ??= new FileExplorer();
+                case ConsoleTabsNames.ObjectsTracker:
+                    return m_objectsTracker ??= new ObjectsTracker();
                 default:
                     throw new ArgumentOutOfRangeException();
             }

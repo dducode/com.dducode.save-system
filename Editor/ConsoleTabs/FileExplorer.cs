@@ -1,16 +1,16 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using UnityEditor;
 using UnityEngine;
+using File = SaveSystemPackage.Internal.File;
 
 namespace SaveSystemPackage.Editor.ConsoleTabs {
 
-    internal class SavedFilesTab : IConsoleTab {
+    internal class FileExplorer : IConsoleTab {
 
         private const string TypeKey = "saved_files_tab";
         private const string ShowInternalKey = TypeKey + "show_internal";
 
-        private readonly Dictionary<string, bool> m_folders = new();
+        private readonly Dictionary<string, bool> m_directories = new();
         private bool m_showInternal = EditorPrefs.GetBool(ShowInternalKey, false);
 
         private string m_selectedEntry;
@@ -21,7 +21,7 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
             DrawDataSizeLabel();
             DrawProperties();
             EditorGUILayout.Space(15);
-            DrawFileSystemEntries(Storage.StorageDataPath);
+            DrawFileSystemEntries(Storage.Root);
 
             if (Storage.HasAnyData())
                 DrawDeleteDataButton();
@@ -43,63 +43,65 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
         }
 
 
-        private void DrawFileSystemEntries (string path) {
-            foreach (string entryPath in Directory.EnumerateFileSystemEntries(path)) {
-                if (File.GetAttributes(entryPath).HasFlag(FileAttributes.Directory))
-                    DrawFolderEntry(entryPath);
-                else
-                    DrawFileEntry(entryPath);
-            }
+        private void DrawFileSystemEntries (Internal.Directory directory) {
+            foreach (Internal.Directory nested in directory.EnumerateDirectories())
+                DrawDirectory(nested);
+
+            foreach (File file in directory.EnumerateFiles())
+                DrawFile(file);
         }
 
 
-        private void DrawFolderEntry (string entryPath) {
-            if (!m_showInternal && entryPath == SaveSystem.InternalFolder)
+        private void DrawDirectory (Internal.Directory directory) {
+            if (!m_showInternal && directory == Storage.InternalDirectory)
                 return;
 
-            m_folders.TryAdd(entryPath, false);
+            m_directories.TryAdd(directory.Name, false);
 
             using (new EditorGUILayout.HorizontalScope()) {
                 Event ev = Event.current;
 
                 if (ev.clickCount > 1 && EditorGUILayout.GetControlRect().Contains(ev.mousePosition))
-                    EditorUtility.RevealInFinder(entryPath);
+                    EditorUtility.RevealInFinder(directory.Path);
 
-                if (Directory.GetFileSystemEntries(entryPath).Length > 0) {
-                    m_folders[entryPath] = EditorGUILayout.Foldout(m_folders[entryPath], new GUIContent {
-                        text = Path.GetFileName(entryPath),
+                if (directory.IsEmpty) {
+                    EditorGUILayout.LabelField(new GUIContent {
+                        text = directory.Name,
                         image = EditorGUIUtility.IconContent("Folder Icon").image
                     });
                 }
                 else {
-                    EditorGUILayout.LabelField(new GUIContent {
-                        text = Path.GetFileName(entryPath),
-                        image = EditorGUIUtility.IconContent("Folder Icon").image
-                    });
+                    m_directories[directory.Name] = EditorGUILayout.Foldout(
+                        m_directories[directory.Name],
+                        new GUIContent {
+                            text = directory.Name,
+                            image = EditorGUIUtility.IconContent("Folder Icon").image
+                        }
+                    );
                 }
             }
 
             EditorGUI.indentLevel++;
-            if (m_folders[entryPath])
-                DrawFileSystemEntries(entryPath);
+            if (m_directories[directory.Name])
+                DrawFileSystemEntries(directory);
             EditorGUI.indentLevel--;
         }
 
 
-        private void DrawFileEntry (string entryPath) {
+        private void DrawFile (File file) {
             using var scope = new EditorGUILayout.HorizontalScope();
 
             Event ev = Event.current;
 
             if (ev.clickCount > 1 && EditorGUILayout.GetControlRect().Contains(ev.mousePosition))
-                EditorUtility.RevealInFinder(entryPath);
+                EditorUtility.RevealInFinder(file.Path);
 
             EditorGUILayout.LabelField(new GUIContent {
-                text = Path.GetFileName(entryPath),
+                text = file.FullName,
                 image = EditorGUIUtility.IconContent("DefaultAsset Icon").image
             });
 
-            string fileSize = Storage.GetFormattedDataSize(new FileInfo(entryPath).Length);
+            string fileSize = Storage.GetFormattedDataSize(file.DataSize);
             int indent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
             EditorGUILayout.LabelField(fileSize);

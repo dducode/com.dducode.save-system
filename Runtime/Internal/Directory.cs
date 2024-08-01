@@ -1,0 +1,189 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace SaveSystemPackage.Internal {
+
+    internal class Directory {
+
+        internal string Name { get; private set; }
+        internal string Path { get; private set; }
+        internal Directory Parent { get; }
+        internal Directory Root { get; }
+
+        internal long DataSize {
+            get {
+                long size = 0;
+
+                foreach (Directory directory in m_directories.Values)
+                    size += directory.DataSize;
+                foreach (File file in m_files.Values)
+                    size += file.DataSize;
+
+                return size;
+            }
+        }
+
+        internal bool IsEmpty => DataSize == 0;
+
+        private readonly Dictionary<string, File> m_files = new();
+        private readonly Dictionary<string, Directory> m_directories = new();
+
+
+        internal Directory (string name, string path) {
+            Name = name;
+            Path = path;
+            Root = this;
+            Init();
+        }
+
+
+        private Directory (string name, Directory parent) {
+            Parent = parent;
+            Name = parent.GenerateUniqueName(name);
+            Path = System.IO.Path.Combine(parent.Path, name);
+            Root = parent.Root;
+            Init();
+        }
+
+
+        internal Directory CreateDirectory (string name) {
+            if (m_directories.TryGetValue(name, out Directory directory))
+                return directory;
+
+            directory = new Directory(name, this);
+            m_directories.Add(directory.Name, directory);
+            return directory;
+        }
+
+
+        internal File CreateFile (string name, string extension) {
+            var file = new File(name, extension, this);
+            m_files.Add(file.Name, file);
+            return file;
+        }
+
+
+        internal IEnumerable<File> EnumerateFiles () {
+            foreach (File file in m_files.Values)
+                yield return file;
+        }
+
+
+        internal IEnumerable<File> EnumerateFiles (string extension) {
+            foreach (File file in m_files.Values)
+                if (string.Equals(file.Extension, extension))
+                    yield return file;
+        }
+
+
+        internal IEnumerable<Directory> EnumerateDirectories () {
+            foreach (Directory directory in m_directories.Values)
+                yield return directory;
+        }
+
+
+        internal File GetFile (string name) {
+            if (!m_files.ContainsKey(name))
+                throw new InvalidOperationException($"Directory doesn't contain file with name \"{name}\"");
+            return m_files[name];
+        }
+
+
+        internal bool TryGetFile (string name, out File file) {
+            return m_files.TryGetValue(name, out file);
+        }
+
+
+        internal File GetOrCreateFile (string name, string extension) {
+            return m_files.TryGetValue(name, out File file) ? file : CreateFile(name, extension);
+        }
+
+
+        internal bool ContainsFile (string name) {
+            return m_files.ContainsKey(name);
+        }
+
+
+        internal bool ContainsDirectory (string name) {
+            return m_directories.ContainsKey(name);
+        }
+
+
+        internal bool ContainsEntry (string name) {
+            return ContainsDirectory(name) || ContainsFile(name);
+        }
+
+
+        internal void DeleteFile (string fileName) {
+            if (!m_files.ContainsKey(fileName))
+                return;
+
+            m_files[fileName].Delete();
+            m_files.Remove(fileName);
+        }
+
+
+        internal void Rename (string newName) {
+            string oldName = Name;
+            string oldPath = Path;
+            Name = Parent.GenerateUniqueName(newName);
+            Path = oldPath.Replace(oldName, Name);
+
+            if (System.IO.Directory.Exists(oldPath))
+                System.IO.Directory.Move(oldPath, Path);
+        }
+
+
+        internal void Clear () {
+            foreach (Directory directory in m_directories.Values)
+                directory.Delete();
+            foreach (File file in m_files.Values)
+                file.Delete();
+
+            m_directories.Clear();
+            m_files.Clear();
+        }
+
+
+        internal void Delete () {
+            System.IO.Directory.Delete(Path, true);
+        }
+
+
+        internal string GenerateUniqueName (string name) {
+            if (!ContainsEntry(name))
+                return name;
+
+            var index = 1;
+            string uniqueName;
+
+            do {
+                uniqueName = $"{name} {index}";
+                ++index;
+            } while (ContainsEntry(uniqueName));
+
+            return uniqueName;
+        }
+
+
+        private void Init () {
+            System.IO.Directory.CreateDirectory(Path);
+
+            foreach (string path in System.IO.Directory.EnumerateDirectories(Path)) {
+                string name = new DirectoryInfo(path).Name;
+                var directory = new Directory(name, this);
+                m_directories.Add(directory.Name, directory);
+            }
+
+            foreach (string path in System.IO.Directory.EnumerateFiles(Path)) {
+                string name = System.IO.Path.GetFileNameWithoutExtension(path);
+                string extension = System.IO.Path.GetExtension(path).Remove(0, 1);
+                var file = new File(name, extension, this);
+                m_files.Add(file.Name, file);
+            }
+        }
+
+    }
+
+}

@@ -3,9 +3,9 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Cysharp.Threading.Tasks;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
+using File = SaveSystemPackage.Internal.File;
 using HashAlgorithmName = System.Security.Cryptography.HashAlgorithmName;
 
 namespace SaveSystemPackage.Verification {
@@ -13,7 +13,7 @@ namespace SaveSystemPackage.Verification {
     public class DefaultHashStorage : HashStorage {
 
         private const int IVLength = 16;
-        private string StoragePath => SaveSystem.DefaultHashStoragePath;
+        private File StorageFile => SaveSystem.HashStorageFile;
 
         public override byte[] this [string key] {
             get {
@@ -29,10 +29,10 @@ namespace SaveSystemPackage.Verification {
 
 
         public override UniTask Open () {
-            if (!File.Exists(StoragePath))
+            if (!StorageFile.Exists)
                 return UniTask.CompletedTask;
 
-            byte[] data = File.ReadAllBytes(StoragePath);
+            byte[] data = StorageFile.ReadAllBytes();
             byte[] buffer;
 
             string password;
@@ -102,7 +102,7 @@ namespace SaveSystemPackage.Verification {
                 cryptoStream.FlushFinalBlock();
                 aes.Clear();
 
-                File.WriteAllBytes(StoragePath, memoryStream.ToArray());
+                StorageFile.WriteAllBytes(memoryStream.ToArray());
             }
 
             return UniTask.CompletedTask;

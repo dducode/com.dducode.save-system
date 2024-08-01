@@ -10,7 +10,7 @@ namespace SaveSystemPackage.Tests {
 
     public class BinaryHandlersTests {
 
-        private readonly string m_filePath = Storage.GetFullPath("test.bytes");
+        private readonly string m_filePath = Path.Combine(Storage.Root.Path, "test.bytes");
 
 
         [SetUp]

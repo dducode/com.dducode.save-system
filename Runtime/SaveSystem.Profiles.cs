@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
-using System.IO;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Serialization;
@@ -21,11 +20,11 @@ namespace SaveSystemPackage {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
-            string path = Path.Combine(InternalFolder, $"{name.ToPathFormat()}.profile");
             var profile = Activator.CreateInstance<TProfile>();
+            string formattedName = name.ToPathFormat();
 
-            if (File.Exists(path)) {
-                using var reader = new SaveReader(File.Open(path, FileMode.Open));
+            if (Storage.InternalDirectory.TryGetFile(formattedName, out File file)) {
+                using var reader = new SaveReader(file.Open());
                 Type type = typeof(TProfile);
 
                 if (string.Equals(reader.ReadString(), type.AssemblyQualifiedName)) {
@@ -38,7 +37,8 @@ namespace SaveSystemPackage {
                 }
             }
 
-            using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
+            file = Storage.InternalDirectory.CreateFile(formattedName, "profile");
+            using var writer = new SaveWriter(file.Open());
             InitializeProfile(profile, name, encrypt, verify);
             SerializeProfile(writer, profile);
             return profile;
@@ -50,10 +50,8 @@ namespace SaveSystemPackage {
         /// </summary>
         [Pure]
         public static IEnumerable<TProfile> LoadProfiles<TProfile> () where TProfile : SaveProfile {
-            string[] paths = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-
-            foreach (string path in paths) {
-                using var reader = new SaveReader(File.Open(path, FileMode.Open));
+            foreach (File file in Storage.InternalDirectory.EnumerateFiles("profile")) {
+                using var reader = new SaveReader(file.Open());
                 Type type = typeof(TProfile);
 
                 if (string.Equals(reader.ReadString(), type.AssemblyQualifiedName)) {
@@ -73,12 +71,8 @@ namespace SaveSystemPackage {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
 
-            string path = Path.Combine(InternalFolder, $"{profile.Name.ToPathFormat()}.profile");
-            if (!File.Exists(path))
-                return;
-
-            File.Delete(path);
-            Directory.Delete(profile.DataFolder, true);
+            Storage.InternalDirectory.DeleteFile(profile.Name.ToPathFormat());
+            profile.DataDirectory.Delete();
             Logger.Log(nameof(SaveSystem), $"Profile \"{profile}\" deleted");
         }
 
@@ -91,29 +85,19 @@ namespace SaveSystemPackage {
             if (string.Equals(oldName, newName))
                 return;
 
-            string newFormattedName = newName.ToPathFormat();
-            string oldFormattedName = oldName.ToPathFormat();
+            string formattedName = newName.ToPathFormat();
 
-            string path = Path.Combine(InternalFolder, $"{newFormattedName}.profile");
-            File.Move(Path.Combine(InternalFolder, $"{oldFormattedName}.profile"), path);
-
-            string oldDir = profile.DataFolder;
-            profile.DataFolder = oldDir.Replace(oldFormattedName, newFormattedName);
-            Directory.Move(oldDir, profile.DataFolder);
-
-            string oldPath = profile.DataPath;
-            profile.DataPath = oldPath.Replace(oldFormattedName, newFormattedName);
-
-            if (File.Exists(oldPath))
-                File.Move(oldPath, profile.DataPath);
+            Storage.InternalDirectory.GetFile(oldName.ToPathFormat()).Rename(formattedName);
+            profile.DataDirectory.Rename(formattedName);
+            profile.DataFile.Rename(formattedName);
 
             UpdateProfile(profile);
         }
 
 
         internal static void UpdateProfile (SaveProfile profile) {
-            string path = Path.Combine(InternalFolder, $"{profile.Name}.profile");
-            using var writer = new SaveWriter(File.Open(path, FileMode.Open));
+            File file = Storage.InternalDirectory.GetFile(profile.Name.ToPathFormat());
+            using var writer = new SaveWriter(file.Open());
             SerializeProfile(writer, profile);
         }
 
@@ -121,9 +105,8 @@ namespace SaveSystemPackage {
         private static void InitializeProfile (SaveProfile profile, string name, bool encrypt, bool verify) {
             string formattedName = name.ToPathFormat();
             profile.Initialize(name, encrypt, verify);
-            profile.DataFolder = Path.Combine(ProfilesFolder, formattedName);
-            Directory.CreateDirectory(profile.DataFolder);
-            profile.DataPath = Path.Combine(profile.DataFolder, $"{formattedName}.profiledata");
+            profile.DataDirectory = Storage.ProfilesDirectory.CreateDirectory(formattedName);
+            profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
         }
 
 
