@@ -39,16 +39,16 @@ namespace SaveSystemPackage.Verification {
         }
 
 
-        public virtual async UniTask VerifyData ([NotNull] string filePath, [NotNull] byte[] data) {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
+        public virtual async UniTask VerifyData ([NotNull] File file, [NotNull] byte[] data) {
+            if (file == null)
+                throw new ArgumentNullException(nameof(file));
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
             await Storage.Open();
-            byte[] storedHash = Storage[filePath];
+            byte[] storedHash = Storage.Get(file);
             byte[] computedHash = ComputeHash(data, Algorithm);
             if (!storedHash.EqualsBytes(computedHash))
                 throw new SecurityException(Messages.DataIsCorrupted);
@@ -56,16 +56,16 @@ namespace SaveSystemPackage.Verification {
         }
 
 
-        public virtual async UniTask SetChecksum ([NotNull] string filePath, [NotNull] byte[] data) {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentNullException(nameof(filePath));
+        public virtual async UniTask SetChecksum ([NotNull] File file, [NotNull] byte[] data) {
+            if (file == null)
+                throw new ArgumentNullException(nameof(file));
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
             await Storage.Open();
-            Storage[filePath] = ComputeHash(data, Algorithm);
+            Storage.Add(file, ComputeHash(data, Algorithm));
             await Storage.Close();
         }
 

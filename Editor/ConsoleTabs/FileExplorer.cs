@@ -93,6 +93,8 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
         private void DrawFile (File file) {
             if (!file.Exists)
                 return;
+            if (string.Equals(file.Extension, "link"))
+                return;
 
             using var scope = new EditorGUILayout.HorizontalScope();
 

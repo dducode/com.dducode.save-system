@@ -81,6 +81,9 @@ namespace SaveSystemPackage {
             profile.DataDirectory.Rename(formattedName);
             profile.DataFile.Rename(formattedName);
 
+            if (profile.Settings.VerifyChecksum)
+                profile.Settings.VerificationManager.Storage.RenameLink(profile.DataFile);
+
             UpdateProfile(profile);
         }
 

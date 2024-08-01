@@ -1,18 +1,24 @@
 ﻿using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using MergetoolGui;
 
 namespace SaveSystemPackage.Internal {
 
-    internal class File {
+    public class File {
 
         internal string Name { get; private set; }
         internal string Extension { get; }
-        public string FullName { get; private set; }
+        internal string FullName { get; private set; }
         internal string Path => System.IO.Path.Combine(Directory.Path, FullName);
         internal Directory Directory { get; }
+
         internal long DataSize => System.IO.File.Exists(Path) ? new FileInfo(Path).Length : 0;
+        internal bool IsEmpty => DataSize == 0;
         internal bool Exists => System.IO.File.Exists(Path);
+
+        internal string OldFullName { get; private set; }
+        internal string OldName { get; private set; }
 
 
         internal File (string name, string extension, Directory directory) {
@@ -25,10 +31,11 @@ namespace SaveSystemPackage.Internal {
 
         internal void Rename (string newName) {
             string oldPath = Path;
-            string oldName = Name;
+            OldName = string.Copy(Name);
             Name = Directory.GenerateUniqueName(newName);
+            OldFullName = string.Copy(FullName);
             FullName = $"{Name}.{Extension}";
-            Directory.UpdateFile(this, oldName);
+            Directory.UpdateFile(this, OldName);
 
             if (System.IO.File.Exists(oldPath))
                 System.IO.File.Move(oldPath, Path);
@@ -45,6 +52,11 @@ namespace SaveSystemPackage.Internal {
         }
 
 
+        public string ReadAllText () {
+            return System.IO.File.ReadAllText(Path);
+        }
+
+
         internal async UniTask<byte[]> ReadAllBytesAsync (CancellationToken token = default) {
             return await System.IO.File.ReadAllBytesAsync(Path, token);
         }
@@ -52,6 +64,11 @@ namespace SaveSystemPackage.Internal {
 
         public void WriteAllBytes (byte[] bytes) {
             System.IO.File.WriteAllBytes(Path, bytes);
+        }
+
+
+        public void WriteAllText (string text) {
+            System.IO.File.WriteAllText(Path, text);
         }
 
 

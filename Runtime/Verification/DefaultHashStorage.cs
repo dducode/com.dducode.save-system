@@ -28,6 +28,33 @@ namespace SaveSystemPackage.Verification {
         }
 
 
+        public override void Add (File file, byte[] bytes) {
+            string name = file.FullName;
+
+            if (file.Directory.TryGetFile(name, out File link)) {
+                map[link.ReadAllText()] = bytes;
+            }
+            else {
+                link = file.Directory.CreateFile(name, "link");
+                var guid = Guid.NewGuid().ToString();
+                link.WriteAllText(guid);
+                map[guid] = bytes;
+            }
+        }
+
+
+        public override byte[] Get (File file) {
+            File link = file.Directory.GetFile(file.FullName);
+            return map[link.ReadAllText()];
+        }
+
+
+        public override void RenameLink (File file) {
+            if (file.Directory.TryGetFile(file.OldFullName, out File link))
+                link.Rename(file.FullName);
+        }
+
+
         public override UniTask Open () {
             if (!StorageFile.Exists)
                 return UniTask.CompletedTask;
