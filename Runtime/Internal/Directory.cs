@@ -33,27 +33,27 @@ namespace SaveSystemPackage.Internal {
         private readonly Dictionary<string, Directory> m_directories = new();
 
 
-        internal Directory (string name, string path) {
+        internal Directory (string name, string path, bool isHidden = false) {
             Name = name;
             RootPath = path;
             Root = this;
-            Init();
+            Init(isHidden);
         }
 
 
-        private Directory (string name, Directory parent) {
+        private Directory (string name, Directory parent, bool isHidden = false) {
             Parent = parent;
             Name = parent.GenerateUniqueName(name);
             Root = parent.Root;
-            Init();
+            Init(isHidden);
         }
 
 
-        internal Directory CreateDirectory (string name) {
+        internal Directory CreateDirectory (string name, bool isHidden = false) {
             if (m_directories.TryGetValue(name, out Directory directory))
                 return directory;
 
-            directory = new Directory(name, this);
+            directory = new Directory(name, this, isHidden);
             m_directories.Add(directory.Name, directory);
             return directory;
         }
@@ -199,8 +199,10 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        private void Init () {
-            System.IO.Directory.CreateDirectory(Path);
+        private void Init (bool isHidden) {
+            DirectoryInfo info = System.IO.Directory.CreateDirectory(Path);
+            if (isHidden)
+                info.Attributes |= FileAttributes.Hidden;
 
             foreach (string path in System.IO.Directory.EnumerateDirectories(Path)) {
                 string name = new DirectoryInfo(path).Name;

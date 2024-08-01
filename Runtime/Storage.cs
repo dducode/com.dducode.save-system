@@ -1,5 +1,4 @@
-﻿using System.IO;
-using UnityEngine;
+﻿using UnityEngine;
 using Directory = SaveSystemPackage.Internal.Directory;
 
 // ReSharper disable UnusedMember.Global
@@ -22,7 +21,7 @@ namespace SaveSystemPackage {
             m_storageDirectory ??= new Directory(RootName, Application.persistentDataPath);
 
         internal static Directory InternalDirectory =>
-            m_internalDirectory ??= Root.CreateDirectory(InternalName);
+            m_internalDirectory ??= Root.CreateDirectory(InternalName, true);
 
         internal static Directory ScenesDirectory => m_scenesDirectory ??= Root.CreateDirectory(ScenesName);
 
