@@ -55,6 +55,8 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
         private void DrawDirectory (Internal.Directory directory) {
             if (!m_showInternal && directory == Storage.InternalDirectory)
                 return;
+            if (!directory.Exists)
+                return;
 
             m_directories.TryAdd(directory.Name, false);
 
@@ -89,6 +91,9 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
 
 
         private void DrawFile (File file) {
+            if (!file.Exists)
+                return;
+
             using var scope = new EditorGUILayout.HorizontalScope();
 
             Event ev = Event.current;

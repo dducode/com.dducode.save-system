@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
+using SaveSystemPackage.Exceptions;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Serialization;
@@ -23,21 +24,10 @@ namespace SaveSystemPackage {
             var profile = Activator.CreateInstance<TProfile>();
             string formattedName = name.ToPathFormat();
 
-            if (Storage.InternalDirectory.TryGetFile(formattedName, out File file)) {
-                using var reader = new SaveReader(file.Open());
-                Type type = typeof(TProfile);
+            if (Storage.InternalDirectory.ContainsFile(formattedName))
+                throw new ProfileExistsException($"Profile with name \"{name}\" already exists");
 
-                if (string.Equals(reader.ReadString(), type.AssemblyQualifiedName)) {
-                    InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
-                    SerializationManager.DeserializeGraph(reader, profile);
-                    return profile;
-                }
-                else {
-                    throw new InvalidCastException($"Cannot cast type {type.Name} to existing profile type");
-                }
-            }
-
-            file = Storage.InternalDirectory.CreateFile(formattedName, "profile");
+            File file = Storage.InternalDirectory.CreateFile(formattedName, "profile");
             using var writer = new SaveWriter(file.Open());
             InitializeProfile(profile, name, encrypt, verify);
             SerializeProfile(writer, profile);

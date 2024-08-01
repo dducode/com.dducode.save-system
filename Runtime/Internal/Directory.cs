@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace SaveSystemPackage.Internal {
 
     internal class Directory {
 
         internal string Name { get; private set; }
-        internal string Path { get; private set; }
+        internal string Path => System.IO.Path.Combine(Parent != null ? Parent.Path : RootPath, Name);
         internal Directory Parent { get; }
         internal Directory Root { get; }
+        internal string RootPath { get; }
 
         internal long DataSize {
             get {
@@ -25,6 +27,7 @@ namespace SaveSystemPackage.Internal {
         }
 
         internal bool IsEmpty => DataSize == 0;
+        internal bool Exists => System.IO.Directory.Exists(Path);
 
         private readonly Dictionary<string, File> m_files = new();
         private readonly Dictionary<string, Directory> m_directories = new();
@@ -32,7 +35,7 @@ namespace SaveSystemPackage.Internal {
 
         internal Directory (string name, string path) {
             Name = name;
-            Path = path;
+            RootPath = path;
             Root = this;
             Init();
         }
@@ -41,7 +44,6 @@ namespace SaveSystemPackage.Internal {
         private Directory (string name, Directory parent) {
             Parent = parent;
             Name = parent.GenerateUniqueName(name);
-            Path = System.IO.Path.Combine(parent.Path, name);
             Root = parent.Root;
             Init();
         }
@@ -119,8 +121,18 @@ namespace SaveSystemPackage.Internal {
             if (!m_files.ContainsKey(fileName))
                 return;
 
-            m_files[fileName].Delete();
+            string path = m_files[fileName].Path;
+            if (System.IO.File.Exists(path))
+                System.IO.File.Delete(path);
             m_files.Remove(fileName);
+        }
+
+
+        internal void UpdateFile (File file, string oldName) {
+            if (!m_files.ContainsKey(oldName))
+                throw new InvalidOperationException($"Directory doesn't contain file with name \"{oldName}\"");
+            m_files.Remove(oldName);
+            m_files.Add(file.Name, file);
         }
 
 
@@ -128,7 +140,7 @@ namespace SaveSystemPackage.Internal {
             string oldName = Name;
             string oldPath = Path;
             Name = Parent.GenerateUniqueName(newName);
-            Path = oldPath.Replace(oldName, Name);
+            Parent.UpdateDirectory(this, oldName);
 
             if (System.IO.Directory.Exists(oldPath))
                 System.IO.Directory.Move(oldPath, Path);
@@ -136,10 +148,11 @@ namespace SaveSystemPackage.Internal {
 
 
         internal void Clear () {
-            foreach (Directory directory in m_directories.Values)
-                directory.Delete();
-            foreach (File file in m_files.Values)
-                file.Delete();
+            foreach (Directory directory in m_directories.Values.Where(d => d.Exists))
+                System.IO.Directory.Delete(directory.Path, true);
+
+            foreach (File file in m_files.Values.Where(f => f.Exists))
+                System.IO.File.Delete(file.Path);
 
             m_directories.Clear();
             m_files.Clear();
@@ -147,7 +160,7 @@ namespace SaveSystemPackage.Internal {
 
 
         internal void Delete () {
-            System.IO.Directory.Delete(Path, true);
+            Parent?.DeleteDirectory(Name);
         }
 
 
@@ -164,6 +177,25 @@ namespace SaveSystemPackage.Internal {
             } while (ContainsEntry(uniqueName));
 
             return uniqueName;
+        }
+
+
+        private void UpdateDirectory (Directory directory, string oldName) {
+            if (!m_directories.ContainsKey(oldName))
+                throw new InvalidOperationException($"Directory doesn't contain directory with name \"{oldName}\"");
+            m_directories.Remove(oldName);
+            m_directories.Add(directory.Name, directory);
+        }
+
+
+        private void DeleteDirectory (string directoryName) {
+            if (!m_directories.ContainsKey(directoryName))
+                return;
+
+            string path = m_directories[directoryName].Path;
+            if (System.IO.Directory.Exists(path))
+                System.IO.Directory.Delete(path, true);
+            m_directories.Remove(directoryName);
         }
 
 

@@ -9,9 +9,9 @@ namespace SaveSystemPackage.Internal {
         internal string Name { get; private set; }
         internal string Extension { get; }
         public string FullName { get; private set; }
-        internal string Path { get; private set; }
+        internal string Path => System.IO.Path.Combine(Directory.Path, FullName);
         internal Directory Directory { get; }
-        internal long DataSize => new FileInfo(Path).Length;
+        internal long DataSize => System.IO.File.Exists(Path) ? new FileInfo(Path).Length : 0;
         internal bool Exists => System.IO.File.Exists(Path);
 
 
@@ -20,7 +20,6 @@ namespace SaveSystemPackage.Internal {
             Name = Directory.GenerateUniqueName(name);
             Extension = extension;
             FullName = $"{Name}.{Extension}";
-            Path = System.IO.Path.Combine(Directory.Path, FullName);
         }
 
 
@@ -28,8 +27,8 @@ namespace SaveSystemPackage.Internal {
             string oldPath = Path;
             string oldName = Name;
             Name = Directory.GenerateUniqueName(newName);
-            Path = oldPath.Replace(oldName, Name);
             FullName = $"{Name}.{Extension}";
+            Directory.UpdateFile(this, oldName);
 
             if (System.IO.File.Exists(oldPath))
                 System.IO.File.Move(oldPath, Path);
@@ -62,7 +61,7 @@ namespace SaveSystemPackage.Internal {
 
 
         internal void Delete () {
-            System.IO.File.Delete(Path);
+            Directory.DeleteFile(Name);
         }
 
     }
