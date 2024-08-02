@@ -21,7 +21,7 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
             DrawDataSizeLabel();
             DrawProperties();
             EditorGUILayout.Space(15);
-            DrawFileSystemEntries(Storage.Root);
+            DrawDirectory(Storage.Root);
 
             if (Storage.HasAnyData())
                 DrawDeleteDataButton();

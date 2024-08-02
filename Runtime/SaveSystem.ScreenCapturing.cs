@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable EventNeverSubscribedTo.Global
@@ -37,7 +40,19 @@ namespace SaveSystemPackage {
             File screenshotFile = Storage.ScreenshotsDirectory.CreateFile(filename, "png");
 
             s_synchronizationPoint.ScheduleTask(async token => {
-                await screenshotFile.WriteAllBytesAsync(screenshot.EncodeToPNG(), token);
+                var rawData = new NativeArray<byte>(screenshot.GetRawTextureData(), Allocator.Persistent);
+                GraphicsFormat graphicsFormat = screenshot.graphicsFormat;
+                var width = (uint)screenshot.width;
+                var height = (uint)screenshot.height;
+
+                await UniTask.RunOnThreadPool(async () => {
+                    NativeArray<byte> data = ImageConversion.EncodeNativeArrayToPNG(
+                        rawData, graphicsFormat, width, height
+                    );
+                    await screenshotFile.WriteAllBytesAsync(data.ToArray(), token);
+                    rawData.Dispose();
+                    data.Dispose();
+                }, cancellationToken: token);
                 Logger.Log(nameof(SaveSystem), $"Screenshot \"{screenshotFile.Name}\" saved");
             });
 
