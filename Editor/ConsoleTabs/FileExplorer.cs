@@ -58,7 +58,7 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
             if (!directory.Exists)
                 return;
 
-            m_directories.TryAdd(directory.Name, false);
+            m_directories.TryAdd(directory.Path, false);
 
             using (new EditorGUILayout.HorizontalScope()) {
                 Event ev = Event.current;
@@ -73,8 +73,8 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
                     });
                 }
                 else {
-                    m_directories[directory.Name] = EditorGUILayout.Foldout(
-                        m_directories[directory.Name],
+                    m_directories[directory.Path] = EditorGUILayout.Foldout(
+                        m_directories[directory.Path],
                         new GUIContent {
                             text = directory.Name,
                             image = EditorGUIUtility.IconContent("Folder Icon").image
@@ -84,7 +84,7 @@ namespace SaveSystemPackage.Editor.ConsoleTabs {
             }
 
             EditorGUI.indentLevel++;
-            if (m_directories[directory.Name])
+            if (m_directories[directory.Path])
                 DrawFileSystemEntries(directory);
             EditorGUI.indentLevel--;
         }

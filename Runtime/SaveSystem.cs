@@ -29,17 +29,16 @@ namespace SaveSystemPackage {
     public static partial class SaveSystem {
 
         internal static event Action OnUpdateSystem;
-        internal static File HashStorageFile { get; private set; }
 
         /// It will be canceled before exit game
-        private static CancellationTokenSource m_exitCancellation;
+        private static CancellationTokenSource s_exitCancellation;
 
-        private static readonly SynchronizationPoint SynchronizationPoint = new();
+        private static readonly SynchronizationPoint s_synchronizationPoint = new();
 
-        private static bool m_periodicSaveEnabled;
-        private static float m_periodicSaveLastTime;
+        private static bool s_periodicSaveEnabled;
+        private static float s_periodicSaveLastTime;
 
-        private static bool m_autoSaveEnabled;
+        private static bool s_autoSaveEnabled;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -80,7 +79,7 @@ namespace SaveSystemPackage {
             if (!settings.verificationSettings.useCustomStorage) {
                 string storageFileName = settings.verificationSettings.hashStoragePath;
 
-                HashStorageFile = Storage.InternalDirectory.GetOrCreateFile(storageFileName, "data");
+                Storage.HashStorageFile = Storage.InternalDirectory.GetOrCreateFile(storageFileName, "data");
             }
         }
 
@@ -97,21 +96,21 @@ namespace SaveSystemPackage {
 
 
         private static void UpdateSystem () {
-            if (m_exitCancellation.IsCancellationRequested)
+            if (s_exitCancellation.IsCancellationRequested)
                 return;
 
             /*
              * Call saving request only in the one state machine
              * This is necessary to prevent sharing of the same file
              */
-            SynchronizationPoint.ExecuteScheduledTask(m_exitCancellation.Token);
+            s_synchronizationPoint.ExecuteScheduledTask(s_exitCancellation.Token);
 
             UpdateUserInputs();
 
-            if (m_periodicSaveEnabled)
+            if (s_periodicSaveEnabled)
                 PeriodicSave();
 
-            if (m_autoSaveEnabled)
+            if (s_autoSaveEnabled)
                 AutoSave();
 
             OnUpdateSystem?.Invoke();
@@ -170,9 +169,9 @@ namespace SaveSystemPackage {
 
 
         private static void PeriodicSave () {
-            if (m_periodicSaveLastTime + Settings.SavePeriod < Time.time) {
+            if (s_periodicSaveLastTime + Settings.SavePeriod < Time.time) {
                 ScheduleSave(SaveType.PeriodicSave);
-                m_periodicSaveLastTime = Time.time;
+                s_periodicSaveLastTime = Time.time;
             }
         }
 
@@ -196,8 +195,8 @@ namespace SaveSystemPackage {
 
 
         private static void SetupEvents (SaveEvents enabledSaveEvents) {
-            m_periodicSaveEnabled = false;
-            m_autoSaveEnabled = false;
+            s_periodicSaveEnabled = false;
+            s_autoSaveEnabled = false;
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
 
@@ -205,16 +204,16 @@ namespace SaveSystemPackage {
                 case SaveEvents.None:
                     break;
                 case not SaveEvents.All:
-                    m_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
-                    m_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
+                    s_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
+                    s_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
                         Application.focusChanged += OnFocusLost;
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                         Application.lowMemory += OnLowMemory;
                     break;
                 case SaveEvents.All:
-                    m_periodicSaveEnabled = true;
-                    m_autoSaveEnabled = true;
+                    s_periodicSaveEnabled = true;
+                    s_autoSaveEnabled = true;
                     Application.focusChanged += OnFocusLost;
                     Application.lowMemory += OnLowMemory;
                     break;
@@ -234,7 +233,7 @@ namespace SaveSystemPackage {
 
 
         private static void ScheduleSave (SaveType saveType) {
-            SynchronizationPoint.ScheduleTask(async token => await CommonSavingTask(saveType, token));
+            s_synchronizationPoint.ScheduleTask(async token => await CommonSavingTask(saveType, token));
         }
 
 
@@ -269,25 +268,22 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadToCloudStorage (
-            ICloudStorage cloudStorage, CancellationToken token = default
-        ) {
+        private static async UniTask UploadToCloudStorage (CancellationToken token = default) {
             StorageData gameData = await Game.ExportGameData(token);
             if (gameData != null)
-                await cloudStorage.Push(gameData);
+                await CloudStorage.Push(gameData);
 
-            await UploadProfiles(cloudStorage, token);
+            await UploadProfiles(CloudStorage, token);
 
-            if (HashStorageFile.Exists) {
+            if (Storage.HashStorageFile.Exists) {
                 var dataTable = new StorageData(
-                    await HashStorageFile.ReadAllBytesAsync(token),
-                    HashStorageFile.Name
+                    await Storage.HashStorageFile.ReadAllBytesAsync(token), Storage.HashStorageFile.Name
                 );
-                await cloudStorage.Push(dataTable);
+                await CloudStorage.Push(dataTable);
             }
 
             if (Storage.ScreenshotsDirectoryExists())
-                await UploadScreenshots(cloudStorage, token);
+                await UploadScreenshots(CloudStorage, token);
         }
 
 
@@ -340,22 +336,20 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask DownloadFromCloudStorage (
-            ICloudStorage cloudStorage, CancellationToken token = default
-        ) {
-            StorageData gameData = await cloudStorage.Pull(Game.DataFile.Name);
+        private static async UniTask DownloadFromCloudStorage (CancellationToken token = default) {
+            StorageData gameData = await CloudStorage.Pull(Game.DataFile.Name);
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
 
-            StorageData profiles = await cloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
+            StorageData profiles = await CloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
             if (profiles != null)
                 await DownloadProfiles(profiles);
 
-            StorageData dataTable = await cloudStorage.Pull(HashStorageFile.Name);
+            StorageData dataTable = await CloudStorage.Pull(Storage.HashStorageFile.Name);
             if (dataTable != null)
-                await HashStorageFile.WriteAllBytesAsync(dataTable.rawData, token);
+                await Storage.HashStorageFile.WriteAllBytesAsync(dataTable.rawData, token);
 
-            StorageData screenshots = await cloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
+            StorageData screenshots = await CloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
                 await DownloadScreenshots(screenshots);
         }

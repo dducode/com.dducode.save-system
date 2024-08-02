@@ -142,7 +142,7 @@ namespace SaveSystemPackage {
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Encrypt(data);
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.SetChecksum(DataFile, data);
+                data = await Settings.VerificationManager.SetChecksum(DataFile.Path, data);
 
             await DataFile.WriteAllBytesAsync(data, token);
             Logger.Log(Name, "Data saved");
@@ -163,7 +163,7 @@ namespace SaveSystemPackage {
             byte[] data = await DataFile.ReadAllBytesAsync(token);
 
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.VerifyData(DataFile, data);
+                data = await Settings.VerificationManager.VerifyData(data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Decrypt(data);
 

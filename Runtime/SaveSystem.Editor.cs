@@ -23,7 +23,7 @@ namespace SaveSystemPackage {
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
 
-            m_periodicSaveLastTime = 0;
+            s_periodicSaveLastTime = 0;
             Settings = null;
             Game = null;
             DiagnosticService.Clear();

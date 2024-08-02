@@ -4,7 +4,7 @@ using Cysharp.Threading.Tasks;
 
 namespace SaveSystemPackage.Internal {
 
-    public class File {
+    internal class File {
 
         internal string Name { get; private set; }
         internal string Extension { get; }
@@ -12,12 +12,27 @@ namespace SaveSystemPackage.Internal {
         internal string Path => System.IO.Path.Combine(Directory.Path, FullName);
         internal Directory Directory { get; }
 
-        internal long DataSize => System.IO.File.Exists(Path) ? new FileInfo(Path).Length : 0;
+        internal long DataSize {
+            get {
+                if (System.IO.File.Exists(Path)) {
+                    if (m_fileInfo == null || !string.Equals(m_fileInfo.FullName, Path))
+                        m_fileInfo = new FileInfo(Path);
+                    m_fileInfo.Refresh();
+                    return m_fileInfo.Length;
+                }
+                else {
+                    return 0;
+                }
+            }
+        }
+
         internal bool IsEmpty => DataSize == 0;
         internal bool Exists => System.IO.File.Exists(Path);
 
         internal string OldFullName { get; private set; }
         internal string OldName { get; private set; }
+
+        private FileInfo m_fileInfo;
 
 
         internal File (string name, string extension, Directory directory) {
@@ -46,12 +61,12 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        public byte[] ReadAllBytes () {
+        internal byte[] ReadAllBytes () {
             return System.IO.File.ReadAllBytes(Path);
         }
 
 
-        public string ReadAllText () {
+        internal string ReadAllText () {
             return System.IO.File.ReadAllText(Path);
         }
 
@@ -61,12 +76,12 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        public void WriteAllBytes (byte[] bytes) {
+        internal void WriteAllBytes (byte[] bytes) {
             System.IO.File.WriteAllBytes(Path, bytes);
         }
 
 
-        public void WriteAllText (string text) {
+        internal void WriteAllText (string text) {
             System.IO.File.WriteAllText(Path, text);
         }
 

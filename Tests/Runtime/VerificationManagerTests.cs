@@ -25,14 +25,18 @@ namespace SaveSystemPackage.Tests {
         [Test, Order(0)]
         public async Task SetLoremIpsumAuthHash () {
             var verificationManager = new VerificationManager(new DefaultHashStorage(), HashAlgorithmName.SHA1);
-            await verificationManager.SetChecksum(m_sourceFile, await m_sourceFile.ReadAllBytesAsync());
+            byte[] data = await m_sourceFile.ReadAllBytesAsync();
+            data = await verificationManager.SetChecksum(m_sourceFile.Path, data);
+            await m_sourceFile.WriteAllBytesAsync(data);
         }
 
 
         [Test, Order(1)]
         public async Task AuthenticateLoremIpsumData () {
             var verificationManager = new VerificationManager(new DefaultHashStorage(), HashAlgorithmName.SHA1);
-            await verificationManager.VerifyData(m_sourceFile, await m_sourceFile.ReadAllBytesAsync());
+            byte[] data = await m_sourceFile.ReadAllBytesAsync();
+            data = await verificationManager.VerifyData(data);
+            await m_sourceFile.WriteAllBytesAsync(data);
         }
 
     }

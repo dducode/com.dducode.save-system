@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Diagnostics;
+using SaveSystemPackage.Internal;
+using UnityEngine;
 using Directory = SaveSystemPackage.Internal.Directory;
 
 // ReSharper disable UnusedMember.Global
@@ -10,37 +12,27 @@ namespace SaveSystemPackage {
     /// </summary>
     public static class Storage {
 
-        private const string RootName = "save-system";
-        private const string InternalName = ".internal";
-        private const string ScenesName = "scenes";
-        private const string ProfilesName = "profiles";
         private const string ScreenshotsName = "screenshots";
-        private const string TestsName = "tests";
 
         internal static Directory Root =>
-            m_storageDirectory ??= new Directory(RootName, Application.persistentDataPath);
+            s_root ??= Directory.CreateRoot("save-system", Application.persistentDataPath);
 
-        internal static Directory InternalDirectory =>
-            m_internalDirectory ??= Root.CreateDirectory(InternalName, true);
-
-        internal static Directory ScenesDirectory => m_scenesDirectory ??= Root.CreateDirectory(ScenesName);
-
-
-        internal static Directory ProfilesDirectory =>
-            m_profilesDirectory ??= Root.CreateDirectory(ProfilesName);
-
-        internal static Directory ScreenshotsDirectory =>
-            m_screenshotsDirectory ??= Root.CreateDirectory(ScreenshotsName);
+        internal static Directory InternalDirectory => Root.GetOrCreateDirectory(".internal", true);
+        internal static Directory ScenesDirectory => Root.GetOrCreateDirectory("scenes");
+        internal static Directory ProfilesDirectory => Root.GetOrCreateDirectory("profiles");
+        internal static Directory ScreenshotsDirectory => Root.GetOrCreateDirectory(ScreenshotsName);
 
         internal static Directory TestsDirectory =>
-            m_testsDirectory ??= new Directory(TestsName, Application.temporaryCachePath);
+            s_testsDirectory ??= Directory.CreateRoot("tests", Application.temporaryCachePath);
 
-        private static Directory m_storageDirectory;
-        private static Directory m_internalDirectory;
-        private static Directory m_scenesDirectory;
-        private static Directory m_profilesDirectory;
-        private static Directory m_screenshotsDirectory;
-        private static Directory m_testsDirectory;
+        internal static File HashStorageFile { get; set; }
+
+        private static Directory s_root;
+        private static Directory s_internalDirectory;
+        private static Directory s_scenesDirectory;
+        private static Directory s_profilesDirectory;
+        private static Directory s_screenshotsDirectory;
+        private static Directory s_testsDirectory;
 
 
         /// <returns> Returns the size of the data in bytes </returns>
@@ -103,6 +95,7 @@ namespace SaveSystemPackage {
         /// <summary>
         /// It's unsafe calling. Make sure you want it
         /// </summary>
+        [Conditional("UNITY_EDITOR")]
         internal static void DeleteAllData () {
             Root.Clear();
         }

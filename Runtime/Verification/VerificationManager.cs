@@ -6,7 +6,9 @@ using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Serialization;
 using HashAlgorithmName = SaveSystemPackage.Security.HashAlgorithmName;
+using MemoryStream = System.IO.MemoryStream;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
@@ -15,13 +17,13 @@ using HashAlgorithmName = SaveSystemPackage.Security.HashAlgorithmName;
 
 namespace SaveSystemPackage.Verification {
 
-    public class VerificationManager {
+    public sealed class VerificationManager {
 
         public HashAlgorithmName Algorithm { get; set; }
         public HashStorage Storage { get; set; }
 
 
-        public VerificationManager (VerificationSettings settings) {
+        internal VerificationManager (VerificationSettings settings) {
             SetSettings(settings);
         }
 
@@ -32,41 +34,58 @@ namespace SaveSystemPackage.Verification {
         }
 
 
-        public void SetSettings (VerificationSettings settings) {
+        internal void SetSettings (VerificationSettings settings) {
             if (!settings.useCustomStorage)
                 Storage = new DefaultHashStorage();
             Algorithm = settings.hashAlgorithm;
         }
 
 
-        public virtual async UniTask VerifyData ([NotNull] File file, [NotNull] byte[] data) {
-            if (file == null)
-                throw new ArgumentNullException(nameof(file));
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Length == 0)
-                throw new ArgumentException("Value cannot be an empty collection", nameof(data));
+        internal async UniTask<byte[]> VerifyData ([NotNull] byte[] bytes) {
+            if (bytes == null)
+                throw new ArgumentNullException(nameof(bytes));
+            if (bytes.Length == 0)
+                throw new ArgumentException("Value cannot be an empty collection", nameof(bytes));
+
+            string id;
+            byte[] data;
+
+            await using (var reader = new SaveReader(new MemoryStream(bytes))) {
+                id = reader.ReadString();
+                data = reader.ReadArray<byte>();
+            }
 
             await Storage.Open();
-            byte[] storedHash = Storage.Get(file);
+            byte[] storedHash = Storage[id];
             byte[] computedHash = ComputeHash(data, Algorithm);
+            await Storage.Close();
+
             if (!storedHash.EqualsBytes(computedHash))
                 throw new SecurityException(Messages.DataIsCorrupted);
-            await Storage.Close();
+            return data;
         }
 
 
-        public virtual async UniTask SetChecksum ([NotNull] File file, [NotNull] byte[] data) {
-            if (file == null)
-                throw new ArgumentNullException(nameof(file));
+        internal async UniTask<byte[]> SetChecksum ([NotNull] string id, [NotNull] byte[] data) {
+            if (string.IsNullOrEmpty(id))
+                throw new ArgumentNullException(nameof(id));
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length == 0)
                 throw new ArgumentException("Value cannot be an empty collection", nameof(data));
 
             await Storage.Open();
-            Storage.Add(file, ComputeHash(data, Algorithm));
+            Storage[id] = ComputeHash(data, Algorithm);
             await Storage.Close();
+
+            var stream = new MemoryStream();
+
+            await using (var writer = new SaveWriter(stream)) {
+                writer.Write(id);
+                writer.Write(data);
+            }
+
+            return stream.ToArray();
         }
 
 

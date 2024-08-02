@@ -23,25 +23,32 @@ namespace SaveSystemPackage {
 
 
         public static void CaptureScreenshot ([NotNull] string filename = "screenshot", int superSize = 1) {
-            SaveScreenshot(ScreenCapture.CaptureScreenshotAsTexture(superSize), filename);
+            Texture2D screenshot = ScreenCapture.CaptureScreenshotAsTexture(superSize);
+            screenshot.name = SaveScreenshot(screenshot, filename);
+            OnScreenCaptured?.Invoke(screenshot);
+            Logger.Log(nameof(SaveSystem), "Capture screenshot");
         }
 
 
-        public static void SaveScreenshot (Texture2D screenshot, [NotNull] string filename = "screenshot") {
+        public static string SaveScreenshot (Texture2D screenshot, [NotNull] string filename = "screenshot") {
             if (string.IsNullOrEmpty(filename))
                 throw new ArgumentNullException(nameof(filename));
 
             File screenshotFile = Storage.ScreenshotsDirectory.CreateFile(filename, "png");
 
-            SynchronizationPoint.ScheduleTask(async token => {
+            s_synchronizationPoint.ScheduleTask(async token => {
                 await screenshotFile.WriteAllBytesAsync(screenshot.EncodeToPNG(), token);
-                OnScreenCaptured?.Invoke(screenshot);
-                Logger.Log(nameof(SaveSystem), "Capture screenshot");
+                Logger.Log(nameof(SaveSystem), $"Screenshot \"{screenshotFile.Name}\" saved");
             });
+
+            return screenshotFile.Name;
         }
 
 
         public static async IAsyncEnumerable<Texture2D> LoadScreenshots () {
+            if (!Storage.ScreenshotsDirectoryExists())
+                yield break;
+
             foreach (File file in Storage.ScreenshotsDirectory.EnumerateFiles("png")) {
                 byte[] data = await file.ReadAllBytesAsync();
                 var screenshot = new Texture2D(2, 2);

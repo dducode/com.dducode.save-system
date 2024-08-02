@@ -26,18 +26,26 @@ namespace SaveSystemPackage.Internal {
             }
         }
 
-        internal bool IsEmpty => DataSize == 0;
+        internal bool IsEmpty => m_directories.Count == 0 && m_files.All(p => p.Value.IsEmpty);
         internal bool Exists => System.IO.Directory.Exists(Path);
 
         private readonly Dictionary<string, File> m_files = new();
         private readonly Dictionary<string, Directory> m_directories = new();
 
 
-        internal Directory (string name, string path, bool isHidden = false) {
+        internal static Directory CreateRoot (string name, string path) {
+            return new Directory(name, path);
+        }
+
+
+        private Directory (string name, string path, bool isHidden = false) {
             Name = name;
             RootPath = path;
             Root = this;
-            Init(isHidden);
+            DirectoryInfo info = System.IO.Directory.CreateDirectory(Path);
+            if (isHidden)
+                info.Attributes |= FileAttributes.Hidden;
+            Init();
         }
 
 
@@ -45,17 +53,17 @@ namespace SaveSystemPackage.Internal {
             Parent = parent;
             Name = parent.GenerateUniqueName(name);
             Root = parent.Root;
-            Init(isHidden);
+            DirectoryInfo info = System.IO.Directory.CreateDirectory(Path);
+            if (isHidden)
+                info.Attributes |= FileAttributes.Hidden;
+            Init();
         }
 
 
-        internal Directory CreateDirectory (string name, bool isHidden = false) {
-            if (m_directories.TryGetValue(name, out Directory directory))
-                return directory;
-
-            directory = new Directory(name, this, isHidden);
-            m_directories.Add(directory.Name, directory);
-            return directory;
+        internal Directory GetOrCreateDirectory (string name, bool isHidden = false) {
+            if (!m_directories.ContainsKey(name))
+                m_directories.Add(name, new Directory(name, this, isHidden));
+            return m_directories[name];
         }
 
 
@@ -199,11 +207,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        private void Init (bool isHidden) {
-            DirectoryInfo info = System.IO.Directory.CreateDirectory(Path);
-            if (isHidden)
-                info.Attributes |= FileAttributes.Hidden;
-
+        private void Init () {
             foreach (string path in System.IO.Directory.EnumerateDirectories(Path)) {
                 string name = new DirectoryInfo(path).Name;
                 var directory = new Directory(name, this);

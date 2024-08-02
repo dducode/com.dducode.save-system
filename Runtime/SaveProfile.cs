@@ -27,6 +27,7 @@ namespace SaveSystemPackage {
                 if (string.Equals(m_name, value))
                     return;
 
+                SaveSystem.ThrowIfProfileExistsWithName(value);
                 string oldName = m_name;
                 m_name = value;
                 ProfileScope.Name = $"{value} scope";

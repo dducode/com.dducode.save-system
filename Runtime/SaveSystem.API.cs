@@ -19,7 +19,7 @@ namespace SaveSystemPackage {
     public static partial class SaveSystem {
 
         public static Game Game { get; private set; }
-
+        public static ICloudStorage CloudStorage { get; set; }
         public static SystemSettings Settings { get; private set; }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace SaveSystemPackage {
 
                 SetOnExitPlayModeCallback();
                 SetPlayerLoop();
-                m_exitCancellation = new CancellationTokenSource();
+                s_exitCancellation = new CancellationTokenSource();
                 Logger.Log(nameof(SaveSystem), "Initialized");
             }
             catch (Exception ex) {
@@ -68,7 +68,7 @@ namespace SaveSystemPackage {
         public static async UniTask LoadSceneAsync (
             Func<UniTask> sceneLoading, CancellationToken token = default
         ) {
-            await SynchronizationPoint.ExecuteTask(async () => await Game.Save(token));
+            await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
             await SceneLoader.LoadSceneAsync(sceneLoading);
         }
 
@@ -79,7 +79,7 @@ namespace SaveSystemPackage {
         public static async UniTask LoadSceneAsync<TData> (
             Func<UniTask> sceneLoading, TData passedData, CancellationToken token = default
         ) {
-            await SynchronizationPoint.ExecuteTask(async () => await Game.Save(token));
+            await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
             await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
         }
 
@@ -89,10 +89,10 @@ namespace SaveSystemPackage {
         /// </summary>
         /// <param name="exitCode"> if the exit code is zero, the game will be saved </param>
         public static async UniTask ExitGame (int exitCode = 0) {
-            SynchronizationPoint.Clear();
-            m_exitCancellation.Cancel();
+            s_synchronizationPoint.Clear();
+            s_exitCancellation.Cancel();
             if (exitCode == 0)
-                await SynchronizationPoint.ExecuteTask(async () => await Game.Save());
+                await s_synchronizationPoint.ExecuteTask(async () => await Game.Save());
 
         #if UNITY_EDITOR
             EditorApplication.ExitPlaymode();
@@ -102,15 +102,10 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async UniTask UploadToCloud (
-            [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
-        ) {
-            if (cloudStorage == null)
-                throw new ArgumentNullException(nameof(cloudStorage));
-
+        public static async UniTask UploadToCloud (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SynchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(cloudStorage, token));
+                await s_synchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(token));
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystem), "Push to cloud canceled");
@@ -118,15 +113,10 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async UniTask DownloadFromCloud (
-            [NotNull] ICloudStorage cloudStorage, CancellationToken token = default
-        ) {
-            if (cloudStorage == null)
-                throw new ArgumentNullException(nameof(cloudStorage));
-
+        public static async UniTask DownloadFromCloud (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
-                await SynchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(cloudStorage, token));
+                await s_synchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(token));
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(nameof(SaveSystem), "Pull from cloud canceled");

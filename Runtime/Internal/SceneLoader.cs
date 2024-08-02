@@ -8,7 +8,7 @@ namespace SaveSystemPackage.Internal {
 
     internal static class SceneLoader {
 
-        private static UniTaskCompletionSource<Scene> m_tcs;
+        private static UniTaskCompletionSource<Scene> s_tcs;
 
 
         internal static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
@@ -24,14 +24,14 @@ namespace SaveSystemPackage.Internal {
 
 
         private static void SetupTask () {
-            m_tcs = new UniTaskCompletionSource<Scene>();
+            s_tcs = new UniTaskCompletionSource<Scene>();
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
 
         private static async UniTask<Scene> WaitForLoading (Func<UniTask> asyncSceneLoading) {
             await asyncSceneLoading();
-            return await m_tcs.Task;
+            return await s_tcs.Task;
         }
 
 
@@ -79,7 +79,7 @@ namespace SaveSystemPackage.Internal {
 
         private static void OnSceneLoaded (Scene scene, LoadSceneMode loadSceneMode) {
             try {
-                m_tcs.TrySetResult(scene);
+                s_tcs.TrySetResult(scene);
             }
             finally {
                 SceneManager.sceneLoaded -= OnSceneLoaded;

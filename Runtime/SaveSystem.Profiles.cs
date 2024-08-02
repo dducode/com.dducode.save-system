@@ -67,6 +67,12 @@ namespace SaveSystemPackage {
         }
 
 
+        internal static void ThrowIfProfileExistsWithName (string name) {
+            if (Storage.InternalDirectory.ContainsFile(name.ToPathFormat()))
+                throw new ProfileExistsException($"Profile with name \"{name}\" already exists");
+        }
+
+
         internal static void UpdateProfile (SaveProfile profile, [NotNull] string oldName, [NotNull] string newName) {
             if (string.IsNullOrEmpty(oldName))
                 throw new ArgumentNullException(nameof(oldName));
@@ -80,9 +86,6 @@ namespace SaveSystemPackage {
             Storage.InternalDirectory.GetFile(oldName.ToPathFormat()).Rename(formattedName);
             profile.DataDirectory.Rename(formattedName);
             profile.DataFile.Rename(formattedName);
-
-            if (profile.Settings.VerifyChecksum)
-                profile.Settings.VerificationManager.Storage.RenameLink(profile.DataFile);
 
             UpdateProfile(profile);
         }
@@ -98,7 +101,7 @@ namespace SaveSystemPackage {
         private static void InitializeProfile (SaveProfile profile, string name, bool encrypt, bool verify) {
             string formattedName = name.ToPathFormat();
             profile.Initialize(name, encrypt, verify);
-            profile.DataDirectory = Storage.ProfilesDirectory.CreateDirectory(formattedName);
+            profile.DataDirectory = Storage.ProfilesDirectory.GetOrCreateDirectory(formattedName);
             profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
         }
 
