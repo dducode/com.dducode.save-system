@@ -4,11 +4,11 @@
 
 using System;
 using System.Text;
+using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using UnityEngine;
-using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -29,9 +29,6 @@ namespace SaveSystemPackage {
         [Tooltip(Tooltips.DataPath)]
         public string dataFileName;
 
-        public bool compressFiles;
-        public CompressionLevel compressionLevel;
-
     #if ENABLE_BOTH_SYSTEMS
         public UsedInputSystem usedInputSystem;
     #endif
@@ -47,6 +44,9 @@ namespace SaveSystemPackage {
     #endif
 
         public string playerTag = "Player";
+
+        public bool compressFiles;
+        public CompressionSettings compressionSettings;
 
         public bool encrypt = true;
         public EncryptionSettings encryptionSettings;

@@ -60,11 +60,8 @@ namespace SaveSystemPackage.Security {
 
 
         internal void SetSettings (EncryptionSettings settings) {
-            if (!settings.useCustomProviders) {
-                m_passwordProvider = new DefaultKeyProvider(settings.password);
-                m_saltProvider = new DefaultKeyProvider(settings.saltKey);
-            }
-
+            m_passwordProvider = new DefaultKeyProvider(settings.password);
+            m_saltProvider = new DefaultKeyProvider(settings.saltKey);
             m_generationParams = settings.keyGenerationParams;
         }
 

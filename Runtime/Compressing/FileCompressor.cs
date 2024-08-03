@@ -9,8 +9,6 @@ namespace SaveSystemPackage.Compressing {
 
     public class FileCompressor {
 
-        private CompressionLevel m_compressionLevel;
-
         public CompressionLevel CompressionLevel {
             get => m_compressionLevel;
             set {
@@ -19,9 +17,11 @@ namespace SaveSystemPackage.Compressing {
             }
         }
 
+        private CompressionLevel m_compressionLevel;
+
 
         public FileCompressor (CompressionLevel compressionLevel) {
-            CompressionLevel = compressionLevel;
+            m_compressionLevel = compressionLevel;
         }
 
 
@@ -31,7 +31,7 @@ namespace SaveSystemPackage.Compressing {
 
 
         internal void SetSettings (SaveSystemSettings settings) {
-            CompressionLevel = settings.compressionLevel;
+            m_compressionLevel = settings.compressionSettings.compressionLevel;
         }
 
 

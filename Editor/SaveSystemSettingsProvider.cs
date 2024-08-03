@@ -26,8 +26,6 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_dataFileNameProperty;
-        private SerializedProperty m_compressFilesProperty;
-        private SerializedProperty m_compressionLevelProperty;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -44,6 +42,9 @@ namespace SaveSystemPackage.Editor {
     #endif
 
         private SerializedProperty m_playerTagProperty;
+
+        private SerializedProperty m_compressFilesProperty;
+        private SerializedProperty m_compressionSettingsProperty;
 
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
@@ -111,6 +112,7 @@ namespace SaveSystemPackage.Editor {
             InitializeCommonSettings();
             InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
+            InitializeCompressionSettings();
             InitializeEncryptionSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
@@ -127,8 +129,6 @@ namespace SaveSystemPackage.Editor {
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
             m_dataFileNameProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.dataFileName));
-            m_compressFilesProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressFiles));
-            m_compressionLevelProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressionLevel));
         }
 
 
@@ -153,6 +153,14 @@ namespace SaveSystemPackage.Editor {
 
         private void InitializeCheckpointsSettings () {
             m_playerTagProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.playerTag));
+        }
+
+
+        private void InitializeCompressionSettings () {
+            m_compressFilesProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressFiles));
+            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.compressionSettings)
+            );
         }
 
 
@@ -228,11 +236,12 @@ namespace SaveSystemPackage.Editor {
 
 
         private void DrawCompressionSettings () {
-            EditorGUILayout.LabelField("Compression Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_compressFilesProperty);
-            if (m_compressFilesProperty.boolValue)
-                EditorGUILayout.PropertyField(m_compressionLevelProperty);
-            EditorGUILayout.Space(15);
+
+            if (m_compressFilesProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_compressionSettingsProperty);
+                EditorGUILayout.Space(15);
+            }
         }
 
 

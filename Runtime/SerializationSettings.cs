@@ -15,6 +15,9 @@ namespace SaveSystemPackage {
                 if (m_encrypt) {
                     using SaveSystemSettings settings = SaveSystemSettings.Load();
 
+                    if (settings.encryptionSettings.useCustomCryptographer)
+                        return;
+
                     if (Cryptographer == null)
                         Cryptographer = new Cryptographer(settings.encryptionSettings);
                     else
@@ -37,6 +40,9 @@ namespace SaveSystemPackage {
 
                 if (m_compressFiles) {
                     using SaveSystemSettings settings = SaveSystemSettings.Load();
+
+                    if (settings.compressionSettings.useCustomCompressor)
+                        return;
 
                     if (FileCompressor == null)
                         FileCompressor = new FileCompressor(settings);
