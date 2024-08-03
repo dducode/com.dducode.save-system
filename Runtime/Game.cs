@@ -56,6 +56,7 @@ namespace SaveSystemPackage {
                 Name = "Game scope",
                 Settings = {
                     Encrypt = settings.encrypt,
+                    CompressFiles = settings.compressFiles
                 }
             };
 

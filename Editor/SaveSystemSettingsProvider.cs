@@ -24,6 +24,10 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_automaticInitializeProperty;
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
+        private SerializedProperty m_savePeriodProperty;
+        private SerializedProperty m_dataFileNameProperty;
+        private SerializedProperty m_compressFilesProperty;
+        private SerializedProperty m_compressionLevelProperty;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -38,9 +42,6 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_quickSaveActionProperty;
         private SerializedProperty m_screenCaptureActionProperty;
     #endif
-
-        private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_dataFileNameProperty;
 
         private SerializedProperty m_playerTagProperty;
 
@@ -83,6 +84,7 @@ namespace SaveSystemPackage.Editor {
             DrawCommonSettings();
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
+            DrawCompressionSettings();
             DrawEncryptionSettings();
             EditorGUIUtility.labelWidth = width;
 
@@ -125,6 +127,8 @@ namespace SaveSystemPackage.Editor {
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
             m_dataFileNameProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.dataFileName));
+            m_compressFilesProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressFiles));
+            m_compressionLevelProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressionLevel));
         }
 
 
@@ -220,6 +224,17 @@ namespace SaveSystemPackage.Editor {
             );
 
             EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawCompressionSettings () {
+            EditorGUILayout.LabelField("Compression Settings", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(m_compressFilesProperty);
+
+            if (m_compressFilesProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_compressionLevelProperty);
+                EditorGUILayout.Space(15);
+            }
         }
 
 

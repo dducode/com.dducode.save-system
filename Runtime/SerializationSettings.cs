@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage {
@@ -29,8 +30,34 @@ namespace SaveSystemPackage {
         }
 
 
+        public bool CompressFiles {
+            get => m_compressFiles;
+            set {
+                m_compressFiles = value;
+
+                if (m_compressFiles) {
+                    using SaveSystemSettings settings = SaveSystemSettings.Load();
+
+                    if (FileCompressor == null)
+                        FileCompressor = new FileCompressor(settings);
+                    else
+                        FileCompressor.SetSettings(settings);
+                }
+            }
+        }
+
+
+        [NotNull]
+        public FileCompressor FileCompressor {
+            get => m_fileCompressor;
+            set => m_fileCompressor = value ?? throw new ArgumentNullException(nameof(FileCompressor));
+        }
+
+
         private bool m_encrypt;
         private Cryptographer m_cryptographer;
+        private bool m_compressFiles;
+        private FileCompressor m_fileCompressor;
 
     }
 

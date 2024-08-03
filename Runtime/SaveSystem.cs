@@ -295,7 +295,7 @@ namespace SaveSystemPackage {
                 }
 
                 var profile = (SaveProfile)Activator.CreateInstance(type);
-                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>());
+                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
                 writer.Write(await profile.ExportProfileData(token));
@@ -354,7 +354,7 @@ namespace SaveSystemPackage {
                 }
 
                 var profile = (SaveProfile)Activator.CreateInstance(type);
-                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>());
+                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
                 await profile.ImportProfileData(reader.ReadArray<byte>());

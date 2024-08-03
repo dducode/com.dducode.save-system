@@ -139,6 +139,8 @@ namespace SaveSystemPackage {
                 data = memoryStream.ToArray();
             }
 
+            if (Settings.CompressFiles)
+                data = Settings.FileCompressor.Compress(data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Encrypt(data);
 
@@ -160,6 +162,8 @@ namespace SaveSystemPackage {
 
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Decrypt(data);
+            if (Settings.CompressFiles)
+                data = Settings.FileCompressor.Decompress(data);
 
             await using var reader = new SaveReader(new MemoryStream(data));
 

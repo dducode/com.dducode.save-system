@@ -8,6 +8,7 @@ using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using UnityEngine;
+using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -27,6 +28,9 @@ namespace SaveSystemPackage {
 
         [Tooltip(Tooltips.DataPath)]
         public string dataFileName;
+
+        public bool compressFiles;
+        public CompressionLevel compressionLevel;
 
     #if ENABLE_BOTH_SYSTEMS
         public UsedInputSystem usedInputSystem;
