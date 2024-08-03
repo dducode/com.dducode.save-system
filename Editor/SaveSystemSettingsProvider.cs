@@ -230,11 +230,9 @@ namespace SaveSystemPackage.Editor {
         private void DrawCompressionSettings () {
             EditorGUILayout.LabelField("Compression Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_compressFilesProperty);
-
-            if (m_compressFilesProperty.boolValue) {
+            if (m_compressFilesProperty.boolValue)
                 EditorGUILayout.PropertyField(m_compressionLevelProperty);
-                EditorGUILayout.Space(15);
-            }
+            EditorGUILayout.Space(15);
         }
 
 
