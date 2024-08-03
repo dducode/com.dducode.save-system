@@ -16,7 +16,7 @@ namespace SaveSystemPackage {
         /// Creates new save profile and stores it in the internal storage
         /// </summary>
         public static TProfile CreateProfile<TProfile> (
-            [NotNull] string name, bool encrypt = true, bool verify = true
+            [NotNull] string name, bool? encrypt = null, bool? compressFiles = null
         ) where TProfile : SaveProfile {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
@@ -29,7 +29,7 @@ namespace SaveSystemPackage {
 
             File file = Storage.InternalDirectory.CreateFile(formattedName, "profile");
             using var writer = new SaveWriter(file.Open());
-            InitializeProfile(profile, name, encrypt, verify);
+            InitializeProfile(profile, name, encrypt, compressFiles);
             SerializeProfile(writer, profile);
             return profile;
         }
@@ -98,9 +98,9 @@ namespace SaveSystemPackage {
         }
 
 
-        private static void InitializeProfile (SaveProfile profile, string name, bool encrypt, bool verify) {
+        private static void InitializeProfile (SaveProfile profile, string name, bool? encrypt, bool? compressFiles) {
             string formattedName = name.ToPathFormat();
-            profile.Initialize(name, encrypt, verify);
+            profile.Initialize(name, encrypt, compressFiles);
             profile.DataDirectory = Storage.ProfilesDirectory.GetOrCreateDirectory(formattedName);
             profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
         }
@@ -111,7 +111,7 @@ namespace SaveSystemPackage {
             writer.Write(type.AssemblyQualifiedName);
             writer.Write(profile.Name);
             writer.Write(profile.Settings.Encrypt);
-            writer.Write(profile.Settings.VerifyChecksum);
+            writer.Write(profile.Settings.CompressFiles);
             SerializationManager.SerializeGraph(writer, profile);
         }
 

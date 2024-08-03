@@ -72,18 +72,21 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal void Initialize ([NotNull] string name, bool encrypt, bool verify) {
+        internal void Initialize ([NotNull] string name, bool? encrypt, bool? compressFiles) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-            ProfileScope = new SerializationScope {
-                Name = $"{name} profile scope",
-                Settings = {
-                    Encrypt = encrypt,
-                    VerifyChecksum = verify,
-                }
-            };
+
+            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
+                ProfileScope = new SerializationScope {
+                    Name = $"{name} profile scope",
+                    Settings = {
+                        Encrypt = encrypt ?? settings.encrypt,
+                        CompressFiles = compressFiles ?? settings.compressFiles
+                    }
+                };
+            }
 
             OnInitialized();
         }

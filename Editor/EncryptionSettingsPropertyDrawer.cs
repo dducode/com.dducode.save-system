@@ -6,10 +6,10 @@ using UnityEngine;
 namespace SaveSystemPackage.Editor {
 
     [CustomPropertyDrawer(typeof(EncryptionSettings))]
-    public class EncryptionSettingsEditor : PropertyDrawer {
+    public class EncryptionSettingsPropertyDrawer : PropertyDrawer {
 
         private bool m_editProperties;
-        private bool m_foldout;
+        private bool m_foldout = true;
 
 
         public override float GetPropertyHeight (SerializedProperty property, GUIContent label) {
@@ -19,7 +19,6 @@ namespace SaveSystemPackage.Editor {
 
         public override void OnGUI (Rect position, SerializedProperty property, GUIContent label) {
             var settings = (EncryptionSettings)property.boxedValue;
-
             EditorGUILayout.LabelField("Encryption Settings", EditorStyles.boldLabel);
 
             EditorGUI.indentLevel++;
@@ -33,34 +32,35 @@ namespace SaveSystemPackage.Editor {
                 );
             }
 
-            settings.useCustomProviders = EditorGUILayout.Toggle(
-                "Use Custom Providers", settings.useCustomProviders
+            settings.useCustomCryptographer = EditorGUILayout.Toggle(
+                "Use Custom Cryptographer", settings.useCustomCryptographer
             );
 
-            if (!settings.useCustomProviders) {
+            if (!settings.useCustomCryptographer) {
                 settings.password = DrawingUtilities.DrawKeyProperty(
                     settings.password, "Password", "Generate Password", CryptoUtilities.GenerateKey
                 );
                 settings.saltKey = DrawingUtilities.DrawKeyProperty(
                     settings.saltKey, "Salt Key", "Generate Salt Key", CryptoUtilities.GenerateKey
                 );
+                m_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_foldout, "Key Generation Parameters");
+
+                if (m_foldout) {
+                    EditorGUI.indentLevel++;
+                    KeyGenerationParams keyParams = settings.keyGenerationParams;
+                    keyParams.keyLength = (AESKeyLength)EditorGUILayout.EnumPopup(
+                        "Key Length", keyParams.keyLength
+                    );
+                    keyParams.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
+                        "Hash Algorithm", keyParams.hashAlgorithm
+                    );
+                    keyParams.iterations = EditorGUILayout.IntField("Iterations", keyParams.iterations);
+                    settings.keyGenerationParams = keyParams;
+                    EditorGUI.indentLevel--;
+                }
+
+                EditorGUILayout.EndFoldoutHeaderGroup();
             }
-
-            m_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_foldout, "Key Generation Parameters");
-
-            if (m_foldout) {
-                KeyGenerationParams keyParams = settings.keyGenerationParams;
-                keyParams.keyLength = (AESKeyLength)EditorGUILayout.EnumPopup(
-                    "Key Length", keyParams.keyLength
-                );
-                keyParams.hashAlgorithm = (HashAlgorithmName)EditorGUILayout.EnumPopup(
-                    "Hash Algorithm", keyParams.hashAlgorithm
-                );
-                keyParams.iterations = EditorGUILayout.IntField("Iterations", keyParams.iterations);
-                settings.keyGenerationParams = keyParams;
-            }
-
-            EditorGUILayout.EndFoldoutHeaderGroup();
 
             GUI.enabled = true;
             EditorGUI.indentLevel--;

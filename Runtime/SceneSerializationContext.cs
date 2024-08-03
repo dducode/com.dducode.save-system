@@ -20,10 +20,13 @@ namespace SaveSystemPackage {
     public sealed class SceneSerializationContext : MonoBehaviour {
 
         [SerializeField]
+        private bool overrideProjectSettings;
+
+        [SerializeField]
         private bool encrypt;
 
         [SerializeField]
-        private bool verifyChecksum;
+        private bool compressFiles;
 
         [SerializeField]
         private string fileName;
@@ -40,13 +43,15 @@ namespace SaveSystemPackage {
 
 
         private void Awake () {
-            SceneScope = new SerializationScope {
-                Name = $"{gameObject.scene.name} scene scope",
-                Settings = {
-                    Encrypt = encrypt,
-                    VerifyChecksum = verifyChecksum
-                }
-            };
+            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
+                SceneScope = new SerializationScope {
+                    Name = $"{gameObject.scene.name} scene scope",
+                    Settings = {
+                        Encrypt = overrideProjectSettings ? encrypt : settings.encrypt,
+                        CompressFiles = overrideProjectSettings ? compressFiles : settings.compressFiles
+                    }
+                };
+            }
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
 

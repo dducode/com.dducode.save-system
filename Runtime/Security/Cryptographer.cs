@@ -12,7 +12,7 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public sealed class Cryptographer {
+    public class Cryptographer {
 
         [NotNull]
         public IKeyProvider PasswordProvider {
@@ -45,12 +45,7 @@ namespace SaveSystemPackage.Security {
         private KeyGenerationParams m_generationParams;
 
 
-        internal Cryptographer (EncryptionSettings settings) {
-            SetSettings(settings);
-        }
-
-
-        internal Cryptographer (
+        public Cryptographer (
             IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
         ) {
             m_passwordProvider = passwordProvider;
@@ -59,12 +54,14 @@ namespace SaveSystemPackage.Security {
         }
 
 
-        internal void SetSettings (EncryptionSettings settings) {
-            if (!settings.useCustomProviders) {
-                m_passwordProvider = new DefaultKeyProvider(settings.password);
-                m_saltProvider = new DefaultKeyProvider(settings.saltKey);
-            }
+        internal Cryptographer (EncryptionSettings settings) {
+            SetSettings(settings);
+        }
 
+
+        internal void SetSettings (EncryptionSettings settings) {
+            m_passwordProvider = new DefaultKeyProvider(settings.password);
+            m_saltProvider = new DefaultKeyProvider(settings.saltKey);
             m_generationParams = settings.keyGenerationParams;
         }
 
@@ -74,7 +71,7 @@ namespace SaveSystemPackage.Security {
         /// </summary>
         /// <param name="data"> Data to be encrypted </param>
         /// <returns> Encrypted data </returns>
-        internal byte[] Encrypt ([NotNull] byte[] data) {
+        public virtual byte[] Encrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
@@ -103,7 +100,7 @@ namespace SaveSystemPackage.Security {
         /// </summary>
         /// <param name="data"> Data containing encrypted data </param>
         /// <returns> Decrypted data </returns>
-        internal byte[] Decrypt ([NotNull] byte[] data) {
+        public virtual byte[] Decrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 

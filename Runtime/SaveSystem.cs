@@ -75,12 +75,6 @@ namespace SaveSystemPackage {
             }
 
             Settings = settings;
-
-            if (!settings.verificationSettings.useCustomStorage) {
-                string storageFileName = settings.verificationSettings.hashStoragePath;
-
-                Storage.HashStorageFile = Storage.InternalDirectory.GetOrCreateFile(storageFileName, "data");
-            }
         }
 
 
@@ -275,13 +269,6 @@ namespace SaveSystemPackage {
 
             await UploadProfiles(CloudStorage, token);
 
-            if (Storage.HashStorageFile.Exists) {
-                var dataTable = new StorageData(
-                    await Storage.HashStorageFile.ReadAllBytesAsync(token), Storage.HashStorageFile.Name
-                );
-                await CloudStorage.Push(dataTable);
-            }
-
             if (Storage.ScreenshotsDirectoryExists())
                 await UploadScreenshots(CloudStorage, token);
         }
@@ -344,10 +331,6 @@ namespace SaveSystemPackage {
             StorageData profiles = await CloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
             if (profiles != null)
                 await DownloadProfiles(profiles);
-
-            StorageData dataTable = await CloudStorage.Pull(Storage.HashStorageFile.Name);
-            if (dataTable != null)
-                await Storage.HashStorageFile.WriteAllBytesAsync(dataTable.rawData, token);
 
             StorageData screenshots = await CloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)

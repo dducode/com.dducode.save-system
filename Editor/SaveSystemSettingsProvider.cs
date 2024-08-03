@@ -24,6 +24,8 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_automaticInitializeProperty;
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
+        private SerializedProperty m_savePeriodProperty;
+        private SerializedProperty m_dataFileNameProperty;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -39,16 +41,13 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_screenCaptureActionProperty;
     #endif
 
-        private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_dataFileNameProperty;
-
         private SerializedProperty m_playerTagProperty;
+
+        private SerializedProperty m_compressFilesProperty;
+        private SerializedProperty m_compressionSettingsProperty;
 
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
-
-        private SerializedProperty m_verifyChecksumProperty;
-        private SerializedProperty m_verificationSettingsProperty;
 
 
         [SettingsProvider]
@@ -86,8 +85,8 @@ namespace SaveSystemPackage.Editor {
             DrawCommonSettings();
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
+            DrawCompressionSettings();
             DrawEncryptionSettings();
-            DrawAuthenticationSettings();
             EditorGUIUtility.labelWidth = width;
 
             m_serializedSettings.ApplyModifiedProperties();
@@ -113,8 +112,8 @@ namespace SaveSystemPackage.Editor {
             InitializeCommonSettings();
             InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
+            InitializeCompressionSettings();
             InitializeEncryptionSettings();
-            InitializeVerificationSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -157,18 +156,18 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void InitializeEncryptionSettings () {
-            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
-            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.encryptionSettings)
+        private void InitializeCompressionSettings () {
+            m_compressFilesProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressFiles));
+            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.compressionSettings)
             );
         }
 
 
-        private void InitializeVerificationSettings () {
-            m_verifyChecksumProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.verifyChecksum));
-            m_verificationSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.verificationSettings)
+        private void InitializeEncryptionSettings () {
+            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.encryptionSettings)
             );
         }
 
@@ -236,21 +235,21 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void DrawEncryptionSettings () {
-            EditorGUILayout.PropertyField(m_encryptProperty);
+        private void DrawCompressionSettings () {
+            EditorGUILayout.PropertyField(m_compressFilesProperty);
 
-            if (m_encryptProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
+            if (m_compressFilesProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_compressionSettingsProperty);
                 EditorGUILayout.Space(15);
             }
         }
 
 
-        private void DrawAuthenticationSettings () {
-            EditorGUILayout.PropertyField(m_verifyChecksumProperty);
+        private void DrawEncryptionSettings () {
+            EditorGUILayout.PropertyField(m_encryptProperty);
 
-            if (m_verifyChecksumProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_verificationSettingsProperty, GUILayout.MaxWidth(500));
+            if (m_encryptProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
                 EditorGUILayout.Space(15);
             }
         }

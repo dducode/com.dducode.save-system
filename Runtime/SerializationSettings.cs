@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 
 namespace SaveSystemPackage {
 
@@ -14,6 +14,9 @@ namespace SaveSystemPackage {
 
                 if (m_encrypt) {
                     using SaveSystemSettings settings = SaveSystemSettings.Load();
+
+                    if (settings.encryptionSettings.useCustomCryptographer)
+                        return;
 
                     if (Cryptographer == null)
                         Cryptographer = new Cryptographer(settings.encryptionSettings);
@@ -29,32 +32,38 @@ namespace SaveSystemPackage {
             set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
         }
 
-        public bool VerifyChecksum {
-            get => m_verifyChecksum;
-            set {
-                m_verifyChecksum = value;
 
-                if (m_verifyChecksum) {
+        public bool CompressFiles {
+            get => m_compressFiles;
+            set {
+                m_compressFiles = value;
+
+                if (m_compressFiles) {
                     using SaveSystemSettings settings = SaveSystemSettings.Load();
 
-                    if (VerificationManager == null)
-                        VerificationManager = new VerificationManager(settings.verificationSettings);
+                    if (settings.compressionSettings.useCustomCompressor)
+                        return;
+
+                    if (FileCompressor == null)
+                        FileCompressor = new FileCompressor(settings);
                     else
-                        VerificationManager.SetSettings(settings.verificationSettings);
+                        FileCompressor.SetSettings(settings);
                 }
             }
         }
 
+
         [NotNull]
-        public VerificationManager VerificationManager {
-            get => m_verificationManager;
-            set => m_verificationManager = value ?? throw new ArgumentNullException(nameof(VerificationManager));
+        public FileCompressor FileCompressor {
+            get => m_fileCompressor;
+            set => m_fileCompressor = value ?? throw new ArgumentNullException(nameof(FileCompressor));
         }
+
 
         private bool m_encrypt;
         private Cryptographer m_cryptographer;
-        private bool m_verifyChecksum;
-        private VerificationManager m_verificationManager;
+        private bool m_compressFiles;
+        private FileCompressor m_fileCompressor;
 
     }
 

@@ -126,8 +126,6 @@ namespace SaveSystemPackage {
         internal async UniTask Serialize (CancellationToken token) {
             if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (Settings.VerifyChecksum && Settings.VerificationManager == null)
-                throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             if (ObjectsCount == 0 && Data.Count == 0)
                 return;
@@ -141,10 +139,10 @@ namespace SaveSystemPackage {
                 data = memoryStream.ToArray();
             }
 
+            if (Settings.CompressFiles)
+                data = Settings.FileCompressor.Compress(data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Encrypt(data);
-            if (Settings.VerifyChecksum)
-                data = await Settings.VerificationManager.SetChecksum(DataFile.Path, data);
 
             await DataFile.WriteAllBytesAsync(data, token);
             Logger.Log(Name, "Data saved");
@@ -154,8 +152,6 @@ namespace SaveSystemPackage {
         internal async UniTask Deserialize (CancellationToken token) {
             if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
-            if (Settings.VerifyChecksum && Settings.VerificationManager == null)
-                throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
             if (!DataFile.Exists) {
                 SetDefaults();
@@ -164,10 +160,10 @@ namespace SaveSystemPackage {
 
             byte[] data = await DataFile.ReadAllBytesAsync(token);
 
-            if (Settings.VerifyChecksum)
-                data = await Settings.VerificationManager.VerifyData(data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Decrypt(data);
+            if (Settings.CompressFiles)
+                data = Settings.FileCompressor.Decompress(data);
 
             await using var reader = new SaveReader(new MemoryStream(data));
 

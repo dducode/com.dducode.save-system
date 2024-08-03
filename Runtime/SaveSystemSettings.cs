@@ -4,10 +4,10 @@
 
 using System;
 using System.Text;
+using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
-using SaveSystemPackage.Verification;
 using UnityEngine;
 
 #if ENABLE_INPUT_SYSTEM
@@ -45,11 +45,11 @@ namespace SaveSystemPackage {
 
         public string playerTag = "Player";
 
+        public bool compressFiles;
+        public CompressionSettings compressionSettings;
+
         public bool encrypt = true;
         public EncryptionSettings encryptionSettings;
-
-        public bool verifyChecksum = true;
-        public VerificationSettings verificationSettings;
 
 
         internal static SaveSystemSettings Load () {
@@ -74,7 +74,6 @@ namespace SaveSystemPackage {
 
             AppendCommonSettings(result);
             AppendEncryptionSettings(result);
-            AppendAuthSettings(result);
 
             return result.ToString();
         }
@@ -99,13 +98,6 @@ namespace SaveSystemPackage {
             result.Append($"\nEncryption: {(encrypt ? "Enable" : "Disable")}");
             if (encrypt)
                 result.Append($"\nEncryption Settings: {{{encryptionSettings}}}");
-        }
-
-
-        private void AppendAuthSettings (StringBuilder result) {
-            result.Append($"\nAuthentication: {(verifyChecksum ? "Enable" : "Disable")}");
-            if (verifyChecksum)
-                result.Append($"\nAuthentication settings: {verificationSettings}");
         }
 
     }
