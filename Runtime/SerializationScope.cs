@@ -56,14 +56,15 @@ namespace SaveSystemPackage {
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
+            m_serializables.Add(key, serializable);
+            DiagnosticService.AddObject(serializable);
+
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
                 serializable.Deserialize(reader, reader.Read<int>());
                 Buffer.Delete(key);
             }
 
-            m_serializables.Add(key, serializable);
-            DiagnosticService.AddObject(serializable);
             Logger.Log(Name, $"Serializable object {serializable} registered in {Name}");
         }
 
@@ -76,14 +77,15 @@ namespace SaveSystemPackage {
             if (!obj.GetType().IsDefined(typeof(RuntimeSerializableAttribute), false))
                 throw new SerializationException($"The object {obj} must define RuntimeSerializable attribute");
 
+            m_objects.Add(key, obj);
+            DiagnosticService.AddObject(obj);
+
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
                 SerializationManager.DeserializeGraph(reader, obj);
                 Buffer.Delete(key);
             }
 
-            m_objects.Add(key, obj);
-            DiagnosticService.AddObject(obj);
             Logger.Log(Name, $"Serializable object {obj} registered in {Name}");
         }
 
@@ -217,14 +219,16 @@ namespace SaveSystemPackage {
             foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                m_serializables[key].Deserialize(localReader, localReader.Read<int>());
+                if (m_serializables.TryGetValue(key, out IRuntimeSerializable serializable))
+                    serializable.Deserialize(localReader, localReader.Read<int>());
                 --count;
             }
 
             foreach (KeyValuePair<string, object> unused in m_objects) {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                SerializationManager.DeserializeGraph(localReader, m_objects[key]);
+                if (m_objects.TryGetValue(key, out object obj))
+                    SerializationManager.DeserializeGraph(localReader, obj);
                 --count;
             }
 
