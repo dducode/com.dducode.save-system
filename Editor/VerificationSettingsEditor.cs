@@ -44,8 +44,8 @@ namespace SaveSystemPackage.Editor {
                     CryptoUtilities.GenerateKey
                 );
                 if (string.IsNullOrEmpty(settings.hashStoragePath))
-                    settings.hashStoragePath = "hash-storage.data";
-                settings.hashStoragePath = EditorGUILayout.TextField("Hash Storage Path", settings.hashStoragePath);
+                    settings.hashStoragePath = "hash-storage";
+                settings.hashStoragePath = EditorGUILayout.TextField("Hash Storage Name", settings.hashStoragePath);
             }
 
             GUI.enabled = true;

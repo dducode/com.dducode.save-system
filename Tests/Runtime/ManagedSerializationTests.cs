@@ -1,8 +1,6 @@
-﻿using System.IO;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.Attributes;
-using UnityEngine;
 
 namespace SaveSystemPackage.Tests {
 
@@ -11,7 +9,7 @@ namespace SaveSystemPackage.Tests {
         [Test]
         public async Task SerializationScopeTest () {
             var scope = new SerializationScope {
-                DataPath = Path.Combine(Application.temporaryCachePath, "test-objects.test")
+                DataFile = Storage.TestsDirectory.GetOrCreateFile("test-objects", "test")
             };
 
             for (var i = 0; i < 10; i++) {

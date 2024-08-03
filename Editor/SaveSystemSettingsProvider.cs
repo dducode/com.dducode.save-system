@@ -40,15 +40,15 @@ namespace SaveSystemPackage.Editor {
     #endif
 
         private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_dataPathProperty;
+        private SerializedProperty m_dataFileNameProperty;
 
         private SerializedProperty m_playerTagProperty;
 
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
 
-        private SerializedProperty m_authenticationProperty;
-        private SerializedProperty m_authenticationSettingsProperty;
+        private SerializedProperty m_verifyChecksumProperty;
+        private SerializedProperty m_verificationSettingsProperty;
 
 
         [SettingsProvider]
@@ -121,45 +121,55 @@ namespace SaveSystemPackage.Editor {
 
 
         private void InitializeCommonSettings () {
-            m_automaticInitializeProperty = m_serializedSettings.FindProperty("automaticInitialize");
-            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty("enabledSaveEvents");
-            m_enabledLogsProperty = m_serializedSettings.FindProperty("enabledLogs");
-            m_savePeriodProperty = m_serializedSettings.FindProperty("savePeriod");
-            m_dataPathProperty = m_serializedSettings.FindProperty("dataPath");
+            m_automaticInitializeProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.automaticInitialize)
+            );
+            m_enabledSaveEventsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.enabledSaveEvents)
+            );
+            m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
+            m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
+            m_dataFileNameProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.dataFileName));
         }
 
 
         private void InitializeUserActionsProperties () {
         #if ENABLE_BOTH_SYSTEMS
-            m_usedInputSystemProperty = m_serializedSettings.FindProperty("usedInputSystem");
+            m_usedInputSystemProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.usedInputSystem));
         #endif
 
         #if ENABLE_LEGACY_INPUT_MANAGER
-            m_quickSaveKeyProperty = m_serializedSettings.FindProperty("quickSaveKey");
-            m_screenCaptureKeyProperty = m_serializedSettings.FindProperty("screenCaptureKey");
+            m_quickSaveKeyProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.quickSaveKey));
+            m_screenCaptureKeyProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.screenCaptureKey));
         #endif
 
         #if ENABLE_INPUT_SYSTEM
-            m_quickSaveActionProperty = m_serializedSettings.FindProperty("quickSaveAction");
-            m_screenCaptureActionProperty = m_serializedSettings.FindProperty("screenCaptureAction");
+            m_quickSaveActionProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.quickSaveAction));
+            m_screenCaptureActionProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.screenCaptureAction)
+            );
         #endif
         }
 
 
         private void InitializeCheckpointsSettings () {
-            m_playerTagProperty = m_serializedSettings.FindProperty("playerTag");
+            m_playerTagProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.playerTag));
         }
 
 
         private void InitializeEncryptionSettings () {
-            m_encryptProperty = m_serializedSettings.FindProperty("encrypt");
-            m_encryptionSettingsProperty = m_serializedSettings.FindProperty("encryptionSettings");
+            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.encryptionSettings)
+            );
         }
 
 
         private void InitializeVerificationSettings () {
-            m_authenticationProperty = m_serializedSettings.FindProperty("verifyChecksum");
-            m_authenticationSettingsProperty = m_serializedSettings.FindProperty("verificationSettings");
+            m_verifyChecksumProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.verifyChecksum));
+            m_verificationSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.verificationSettings)
+            );
         }
 
 
@@ -174,9 +184,9 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_savePeriodProperty);
             GUI.enabled = true;
 
-            EditorGUILayout.PropertyField(m_dataPathProperty);
-            if (string.IsNullOrEmpty(m_dataPathProperty.stringValue))
-                m_dataPathProperty.stringValue = $"{Application.productName.ToPathFormat()}.data";
+            EditorGUILayout.PropertyField(m_dataFileNameProperty);
+            if (string.IsNullOrEmpty(m_dataFileNameProperty.stringValue))
+                m_dataFileNameProperty.stringValue = Application.productName.ToPathFormat();
 
             EditorGUILayout.Space(15);
         }
@@ -237,10 +247,10 @@ namespace SaveSystemPackage.Editor {
 
 
         private void DrawAuthenticationSettings () {
-            EditorGUILayout.PropertyField(m_authenticationProperty);
+            EditorGUILayout.PropertyField(m_verifyChecksumProperty);
 
-            if (m_authenticationProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_authenticationSettingsProperty, GUILayout.MaxWidth(500));
+            if (m_verifyChecksumProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_verificationSettingsProperty, GUILayout.MaxWidth(500));
                 EditorGUILayout.Space(15);
             }
         }

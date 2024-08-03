@@ -31,14 +31,9 @@ namespace SaveSystemPackage {
         }
 
         [NotNull]
-        internal string DataPath {
-            get => m_dataPath;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataPath));
-
-                m_dataPath = value;
-            }
+        internal Internal.File DataFile {
+            get => m_dataFile;
+            set => m_dataFile = value ?? throw new ArgumentNullException(nameof(DataFile));
         }
 
         internal SerializationSettings Settings { get; } = new();
@@ -46,7 +41,7 @@ namespace SaveSystemPackage {
         private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
-        private string m_dataPath;
+        private Internal.File m_dataFile;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private readonly Dictionary<string, object> m_objects = new();
         private int ObjectsCount => m_serializables.Count + m_objects.Count;
@@ -61,14 +56,15 @@ namespace SaveSystemPackage {
             if (serializable == null)
                 throw new ArgumentNullException(nameof(serializable));
 
+            m_serializables.Add(key, serializable);
+            DiagnosticService.AddObject(serializable);
+
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
                 serializable.Deserialize(reader, reader.Read<int>());
                 Buffer.Delete(key);
             }
 
-            m_serializables.Add(key, serializable);
-            DiagnosticService.AddObject(serializable);
             Logger.Log(Name, $"Serializable object {serializable} registered in {Name}");
         }
 
@@ -81,14 +77,15 @@ namespace SaveSystemPackage {
             if (!obj.GetType().IsDefined(typeof(RuntimeSerializableAttribute), false))
                 throw new SerializationException($"The object {obj} must define RuntimeSerializable attribute");
 
+            m_objects.Add(key, obj);
+            DiagnosticService.AddObject(obj);
+
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
                 SerializationManager.DeserializeGraph(reader, obj);
                 Buffer.Delete(key);
             }
 
-            m_objects.Add(key, obj);
-            DiagnosticService.AddObject(obj);
             Logger.Log(Name, $"Serializable object {obj} registered in {Name}");
         }
 
@@ -147,9 +144,9 @@ namespace SaveSystemPackage {
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Encrypt(data);
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.SetChecksum(DataPath, data);
+                data = await Settings.VerificationManager.SetChecksum(DataFile.Path, data);
 
-            await File.WriteAllBytesAsync(DataPath, data, token);
+            await DataFile.WriteAllBytesAsync(data, token);
             Logger.Log(Name, "Data saved");
         }
 
@@ -160,15 +157,15 @@ namespace SaveSystemPackage {
             if (Settings.VerifyChecksum && Settings.VerificationManager == null)
                 throw new InvalidOperationException("Authentication enabled but authentication manager doesn't set");
 
-            if (!File.Exists(DataPath)) {
+            if (!DataFile.Exists) {
                 SetDefaults();
                 return;
             }
 
-            byte[] data = await File.ReadAllBytesAsync(DataPath, token);
+            byte[] data = await DataFile.ReadAllBytesAsync(token);
 
             if (Settings.VerifyChecksum)
-                await Settings.VerificationManager.VerifyData(DataPath, data);
+                data = await Settings.VerificationManager.VerifyData(data);
             if (Settings.Encrypt)
                 data = Settings.Cryptographer.Decrypt(data);
 
@@ -222,14 +219,16 @@ namespace SaveSystemPackage {
             foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                m_serializables[key].Deserialize(localReader, localReader.Read<int>());
+                if (m_serializables.TryGetValue(key, out IRuntimeSerializable serializable))
+                    serializable.Deserialize(localReader, localReader.Read<int>());
                 --count;
             }
 
             foreach (KeyValuePair<string, object> unused in m_objects) {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
                 string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
-                SerializationManager.DeserializeGraph(localReader, m_objects[key]);
+                if (m_objects.TryGetValue(key, out object obj))
+                    SerializationManager.DeserializeGraph(localReader, obj);
                 --count;
             }
 

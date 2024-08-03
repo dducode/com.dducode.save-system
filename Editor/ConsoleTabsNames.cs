@@ -2,8 +2,8 @@
 
     internal enum ConsoleTabsNames {
 
-        SavedFiles,
-        HandlersTracker
+        FileExplorer,
+        ObjectsTracker
 
     }
 

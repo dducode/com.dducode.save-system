@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Serialization;
+using Directory = SaveSystemPackage.Internal.Directory;
+using File = SaveSystemPackage.Internal.File;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -25,16 +27,10 @@ namespace SaveSystemPackage {
                 if (string.Equals(m_name, value))
                     return;
 
+                SaveSystem.ThrowIfProfileExistsWithName(value);
                 string oldName = m_name;
                 m_name = value;
                 ProfileScope.Name = $"{value} scope";
-
-                DataFolder = m_name;
-                DataPath = Path.Combine(DataFolder, $"{m_name.ToPathFormat()}.profiledata");
-                string oldPath = Path.Combine(DataFolder, $"{oldName}.profiledata");
-
-                if (File.Exists(oldPath))
-                    File.Move(oldPath, DataPath);
 
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
@@ -44,24 +40,9 @@ namespace SaveSystemPackage {
         public DataBuffer Data => ProfileScope.Data;
 
         [NotNull]
-        internal string DataFolder {
-            get => m_dataFolder;
-            private set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(DataFolder));
-
-                string newDir = Path.Combine(SaveSystem.ProfilesFolder, value.ToPathFormat());
-
-                if (string.Equals(m_dataFolder, newDir))
-                    return;
-
-                if (Directory.Exists(m_dataFolder))
-                    Directory.Move(m_dataFolder, newDir);
-                else
-                    Directory.CreateDirectory(newDir);
-
-                m_dataFolder = newDir;
-            }
+        internal Directory DataDirectory {
+            get => m_dataDirectory;
+            set => m_dataDirectory = value ?? throw new ArgumentNullException(nameof(DataDirectory));
         }
 
         [NotNull]
@@ -77,15 +58,15 @@ namespace SaveSystemPackage {
 
         internal bool HasChanges => Data.HasChanges;
 
-        private string DataPath {
-            get => ProfileScope.DataPath;
-            set => ProfileScope.DataPath = value;
+        internal File DataFile {
+            get => ProfileScope.DataFile;
+            set => ProfileScope.DataFile = value;
         }
 
         private SerializationScope ProfileScope { get; set; }
 
         private string m_name;
-        private string m_dataFolder;
+        private Directory m_dataDirectory;
         private string m_scenesFolder;
 
         private SceneSerializationContext m_sceneContext;
@@ -104,8 +85,6 @@ namespace SaveSystemPackage {
                 }
             };
 
-            DataFolder = name;
-            DataPath = Path.Combine(DataFolder, $"{name.ToPathFormat()}.profiledata");
             OnInitialized();
         }
 
@@ -163,12 +142,12 @@ namespace SaveSystemPackage {
 
 
         public override string ToString () {
-            return $"name: {Name}, path: {Path.GetRelativePath(Storage.StorageDataPath, DataPath)}";
+            return $"name: {Name}, path: {DataFile.FullName}";
         }
 
 
         internal async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
-            string[] entries = Directory.GetFileSystemEntries(DataFolder);
+            File[] entries = DataDirectory.EnumerateFiles().ToArray();
             if (entries.Length == 0)
                 return Array.Empty<byte>();
 
@@ -177,9 +156,10 @@ namespace SaveSystemPackage {
 
             writer.Write(entries.Length);
 
-            foreach (string path in entries) {
-                writer.Write(path);
-                writer.Write(await File.ReadAllBytesAsync(path, token));
+            foreach (File file in entries) {
+                writer.Write(file.Name);
+                writer.Write(file.Extension);
+                writer.Write(await file.ReadAllBytesAsync(token));
             }
 
             return memoryStream.ToArray();
@@ -193,8 +173,11 @@ namespace SaveSystemPackage {
             await using var reader = new SaveReader(new MemoryStream(data));
             var entriesCount = reader.Read<int>();
 
-            for (var i = 0; i < entriesCount; i++)
-                await File.WriteAllBytesAsync(reader.ReadString(), reader.ReadArray<byte>(), token);
+            for (var i = 0; i < entriesCount; i++) {
+                await DataDirectory
+                   .GetOrCreateFile(reader.ReadString(), reader.ReadString())
+                   .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
+            }
         }
 
 

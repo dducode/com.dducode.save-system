@@ -12,7 +12,7 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public class Cryptographer {
+    public sealed class Cryptographer {
 
         [NotNull]
         public IKeyProvider PasswordProvider {
@@ -45,12 +45,12 @@ namespace SaveSystemPackage.Security {
         private KeyGenerationParams m_generationParams;
 
 
-        public Cryptographer (EncryptionSettings settings) {
+        internal Cryptographer (EncryptionSettings settings) {
             SetSettings(settings);
         }
 
 
-        public Cryptographer (
+        internal Cryptographer (
             IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
         ) {
             m_passwordProvider = passwordProvider;
@@ -59,7 +59,7 @@ namespace SaveSystemPackage.Security {
         }
 
 
-        public void SetSettings (EncryptionSettings settings) {
+        internal void SetSettings (EncryptionSettings settings) {
             if (!settings.useCustomProviders) {
                 m_passwordProvider = new DefaultKeyProvider(settings.password);
                 m_saltProvider = new DefaultKeyProvider(settings.saltKey);
@@ -74,7 +74,7 @@ namespace SaveSystemPackage.Security {
         /// </summary>
         /// <param name="data"> Data to be encrypted </param>
         /// <returns> Encrypted data </returns>
-        public virtual byte[] Encrypt ([NotNull] byte[] data) {
+        internal byte[] Encrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
@@ -103,7 +103,7 @@ namespace SaveSystemPackage.Security {
         /// </summary>
         /// <param name="data"> Data containing encrypted data </param>
         /// <returns> Decrypted data </returns>
-        public virtual byte[] Decrypt ([NotNull] byte[] data) {
+        internal byte[] Decrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 

@@ -1,5 +1,7 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using SaveSystemPackage.Internal;
 using UnityEngine;
+using Directory = SaveSystemPackage.Internal.Directory;
 
 // ReSharper disable UnusedMember.Global
 
@@ -10,12 +12,32 @@ namespace SaveSystemPackage {
     /// </summary>
     public static class Storage {
 
-        internal static readonly string StorageDataPath = IniDataPath();
+        private const string ScreenshotsName = "screenshots";
+
+        internal static Directory Root =>
+            s_root ??= Directory.CreateRoot("save-system", Application.persistentDataPath);
+
+        internal static Directory InternalDirectory => Root.GetOrCreateDirectory(".internal", true);
+        internal static Directory ScenesDirectory => Root.GetOrCreateDirectory("scenes");
+        internal static Directory ProfilesDirectory => Root.GetOrCreateDirectory("profiles");
+        internal static Directory ScreenshotsDirectory => Root.GetOrCreateDirectory(ScreenshotsName);
+
+        internal static Directory TestsDirectory =>
+            s_testsDirectory ??= Directory.CreateRoot("tests", Application.temporaryCachePath);
+
+        internal static File HashStorageFile { get; set; }
+
+        private static Directory s_root;
+        private static Directory s_internalDirectory;
+        private static Directory s_scenesDirectory;
+        private static Directory s_profilesDirectory;
+        private static Directory s_screenshotsDirectory;
+        private static Directory s_testsDirectory;
 
 
         /// <returns> Returns the size of the data in bytes </returns>
         public static long GetDataSize () {
-            return GetDataSize(StorageDataPath);
+            return Root.DataSize;
         }
 
 
@@ -30,20 +52,12 @@ namespace SaveSystemPackage {
 
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
-            return GetDataSize(StorageDataPath) > 0;
+            return Root.DataSize > 0;
         }
 
 
-        internal static string GetFullPath (string filePath) {
-            return Path.IsPathRooted(filePath) ? filePath : Path.Combine(StorageDataPath, filePath);
-        }
-
-
-        /// <summary>
-        /// Creates new directories if they're not exists and returns full path
-        /// </summary>
-        internal static string PrepareBeforeUsing (string path) {
-            return GetFullPath(path);
+        internal static bool ScreenshotsDirectoryExists () {
+            return Root.ContainsDirectory(ScreenshotsName);
         }
 
 
@@ -81,38 +95,9 @@ namespace SaveSystemPackage {
         /// <summary>
         /// It's unsafe calling. Make sure you want it
         /// </summary>
+        [Conditional("UNITY_EDITOR")]
         internal static void DeleteAllData () {
-            string[] data = Directory.GetFileSystemEntries(StorageDataPath);
-
-            foreach (string filePath in data) {
-                if (File.GetAttributes(filePath).HasFlag(FileAttributes.Directory))
-                    Directory.Delete(filePath, true);
-                else
-                    File.Delete(filePath);
-            }
-        }
-
-
-        private static string IniDataPath () {
-            string storage = Path.Combine(Application.persistentDataPath, "save-system");
-            if (!Directory.Exists(storage))
-                Directory.CreateDirectory(storage);
-            return storage;
-        }
-
-
-        private static long GetDataSize (string path) {
-            string[] data = Directory.GetFileSystemEntries(path);
-            var dataSize = 0L;
-
-            foreach (string filePath in data) {
-                if (Directory.Exists(filePath))
-                    dataSize += GetDataSize(filePath);
-                else
-                    dataSize += new FileInfo(filePath).Length;
-            }
-
-            return dataSize;
+            Root.Clear();
         }
 
     }

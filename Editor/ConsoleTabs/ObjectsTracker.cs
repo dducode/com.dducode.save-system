@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace SaveSystemPackage.Editor.ConsoleTabs {
 
-    internal class TrackerTab : IConsoleTab {
+    internal class ObjectsTracker : IConsoleTab {
 
         public void Draw () {
             if (!EditorApplication.isPlaying) {

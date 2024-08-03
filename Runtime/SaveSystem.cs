@@ -3,7 +3,7 @@
 #endif
 
 using System;
-using System.IO;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
@@ -13,6 +13,7 @@ using SaveSystemPackage.Serialization;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using File = SaveSystemPackage.Internal.File;
 using Logger = SaveSystemPackage.Internal.Logger;
 using MemoryStream = System.IO.MemoryStream;
 
@@ -27,44 +28,17 @@ namespace SaveSystemPackage {
     /// </summary>
     public static partial class SaveSystem {
 
-        internal static readonly string InternalFolder = SetInternalFolder();
-
-        internal static string ProfilesFolder {
-            get {
-                if (string.IsNullOrEmpty(m_profilesFolder)) {
-                    m_profilesFolder = Storage.PrepareBeforeUsing("profiles");
-                    Directory.CreateDirectory(m_profilesFolder);
-                }
-
-                return m_profilesFolder;
-            }
-        }
-
-        internal static string ScenesFolder {
-            get {
-                if (string.IsNullOrEmpty(m_scenesFolder)) {
-                    m_scenesFolder = Storage.PrepareBeforeUsing("scenes");
-                    Directory.CreateDirectory(m_scenesFolder);
-                }
-
-                return m_scenesFolder;
-            }
-        }
-
-        internal static string DefaultHashStoragePath { get; private set; }
+        internal static event Action OnUpdateSystem;
 
         /// It will be canceled before exit game
-        private static CancellationTokenSource m_exitCancellation;
+        private static CancellationTokenSource s_exitCancellation;
 
-        private static readonly SynchronizationPoint SynchronizationPoint = new();
+        private static readonly SynchronizationPoint s_synchronizationPoint = new();
 
-        private static string m_profilesFolder;
-        private static string m_scenesFolder;
+        private static bool s_periodicSaveEnabled;
+        private static float s_periodicSaveLastTime;
 
-        private static bool m_periodicSaveEnabled;
-        private static float m_periodicSaveLastTime;
-
-        private static bool m_autoSaveEnabled;
+        private static bool s_autoSaveEnabled;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -101,14 +75,12 @@ namespace SaveSystemPackage {
             }
 
             Settings = settings;
-            DefaultHashStoragePath = Path.Combine(InternalFolder, settings.verificationSettings.hashStoragePath);
-        }
 
+            if (!settings.verificationSettings.useCustomStorage) {
+                string storageFileName = settings.verificationSettings.hashStoragePath;
 
-        private static string SetInternalFolder () {
-            string folder = Storage.PrepareBeforeUsing(".internal");
-            Directory.CreateDirectory(folder).Attributes |= FileAttributes.Hidden;
-            return folder;
+                Storage.HashStorageFile = Storage.InternalDirectory.GetOrCreateFile(storageFileName, "data");
+            }
         }
 
 
@@ -124,22 +96,24 @@ namespace SaveSystemPackage {
 
 
         private static void UpdateSystem () {
-            if (m_exitCancellation.IsCancellationRequested)
+            if (s_exitCancellation.IsCancellationRequested)
                 return;
 
             /*
              * Call saving request only in the one state machine
              * This is necessary to prevent sharing of the same file
              */
-            SynchronizationPoint.ExecuteScheduledTask(m_exitCancellation.Token);
+            s_synchronizationPoint.ExecuteScheduledTask(s_exitCancellation.Token);
 
             UpdateUserInputs();
 
-            if (m_periodicSaveEnabled)
+            if (s_periodicSaveEnabled)
                 PeriodicSave();
 
-            if (m_autoSaveEnabled)
+            if (s_autoSaveEnabled)
                 AutoSave();
+
+            OnUpdateSystem?.Invoke();
         }
 
 
@@ -195,9 +169,9 @@ namespace SaveSystemPackage {
 
 
         private static void PeriodicSave () {
-            if (m_periodicSaveLastTime + Settings.SavePeriod < Time.time) {
+            if (s_periodicSaveLastTime + Settings.SavePeriod < Time.time) {
                 ScheduleSave(SaveType.PeriodicSave);
-                m_periodicSaveLastTime = Time.time;
+                s_periodicSaveLastTime = Time.time;
             }
         }
 
@@ -221,8 +195,8 @@ namespace SaveSystemPackage {
 
 
         private static void SetupEvents (SaveEvents enabledSaveEvents) {
-            m_periodicSaveEnabled = false;
-            m_autoSaveEnabled = false;
+            s_periodicSaveEnabled = false;
+            s_autoSaveEnabled = false;
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
 
@@ -230,16 +204,16 @@ namespace SaveSystemPackage {
                 case SaveEvents.None:
                     break;
                 case not SaveEvents.All:
-                    m_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
-                    m_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
+                    s_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
+                    s_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
                         Application.focusChanged += OnFocusLost;
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
                         Application.lowMemory += OnLowMemory;
                     break;
                 case SaveEvents.All:
-                    m_periodicSaveEnabled = true;
-                    m_autoSaveEnabled = true;
+                    s_periodicSaveEnabled = true;
+                    s_autoSaveEnabled = true;
                     Application.focusChanged += OnFocusLost;
                     Application.lowMemory += OnLowMemory;
                     break;
@@ -259,7 +233,7 @@ namespace SaveSystemPackage {
 
 
         private static void ScheduleSave (SaveType saveType) {
-            SynchronizationPoint.ScheduleTask(async token => await CommonSavingTask(saveType, token));
+            s_synchronizationPoint.ScheduleTask(async token => await CommonSavingTask(saveType, token));
         }
 
 
@@ -294,43 +268,37 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadToCloudStorage (
-            ICloudStorage cloudStorage, CancellationToken token = default
-        ) {
+        private static async UniTask UploadToCloudStorage (CancellationToken token = default) {
             StorageData gameData = await Game.ExportGameData(token);
             if (gameData != null)
-                await cloudStorage.Push(gameData);
+                await CloudStorage.Push(gameData);
 
-            string[] profiles = Directory.GetFileSystemEntries(InternalFolder, "*.profile");
-            if (profiles.Length > 0)
-                await UploadProfiles(cloudStorage, profiles, token);
+            await UploadProfiles(CloudStorage, token);
 
-            if (File.Exists(DefaultHashStoragePath)) {
+            if (Storage.HashStorageFile.Exists) {
                 var dataTable = new StorageData(
-                    await File.ReadAllBytesAsync(DefaultHashStoragePath, token),
-                    Path.GetFileName(DefaultHashStoragePath)
+                    await Storage.HashStorageFile.ReadAllBytesAsync(token), Storage.HashStorageFile.Name
                 );
-                await cloudStorage.Push(dataTable);
+                await CloudStorage.Push(dataTable);
             }
 
-            if (!string.IsNullOrEmpty(m_screenshotsFolder) && Directory.Exists(m_screenshotsFolder)) {
-                string[] screenshots = Directory.GetFileSystemEntries(ScreenshotsFolder, "*.png");
-                if (screenshots.Length > 0)
-                    await UploadScreenshots(cloudStorage, screenshots, token);
-            }
+            if (Storage.ScreenshotsDirectoryExists())
+                await UploadScreenshots(CloudStorage, token);
         }
 
 
-        private static async UniTask UploadProfiles (
-            ICloudStorage cloudStorage, string[] paths, CancellationToken token
-        ) {
+        private static async UniTask UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(paths.Length);
+            File[] profiles = Storage.InternalDirectory.EnumerateFiles("profile").ToArray();
+            if (profiles.Length == 0)
+                return;
 
-            foreach (string path in paths) {
-                writer.Write(Path.GetFileName(path));
-                await using var reader = new SaveReader(File.Open(path, FileMode.Open));
+            writer.Write(profiles.Length);
+
+            foreach (File file in profiles) {
+                writer.Write(file.Name);
+                await using var reader = new SaveReader(file.Open());
                 string typeName = reader.ReadString();
                 var type = Type.GetType(typeName);
 
@@ -340,7 +308,7 @@ namespace SaveSystemPackage {
                 }
 
                 var profile = (SaveProfile)Activator.CreateInstance(type);
-                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
                 writer.Write(await profile.ExportProfileData(token));
@@ -350,38 +318,38 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadScreenshots (
-            ICloudStorage cloudStorage, string[] paths, CancellationToken token
-        ) {
+        private static async UniTask UploadScreenshots (ICloudStorage cloudStorage, CancellationToken token) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
-            writer.Write(paths.Length);
+            File[] screenshots = Storage.ScreenshotsDirectory.EnumerateFiles("png").ToArray();
+            if (screenshots.Length == 0)
+                return;
 
-            foreach (string path in paths) {
-                writer.Write(Path.GetFileName(path));
-                writer.Write(await File.ReadAllBytesAsync(path, token));
+            writer.Write(screenshots.Length);
+
+            foreach (File screenshot in screenshots) {
+                writer.Write(screenshot.Name);
+                writer.Write(await screenshot.ReadAllBytesAsync(token));
             }
 
             await cloudStorage.Push(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllScreenshotsFile));
         }
 
 
-        private static async UniTask DownloadFromCloudStorage (
-            ICloudStorage cloudStorage, CancellationToken token = default
-        ) {
-            StorageData gameData = await cloudStorage.Pull(Path.GetFileName(Game.DataPath));
+        private static async UniTask DownloadFromCloudStorage (CancellationToken token = default) {
+            StorageData gameData = await CloudStorage.Pull(Game.DataFile.Name);
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
 
-            StorageData profiles = await cloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
+            StorageData profiles = await CloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
             if (profiles != null)
                 await DownloadProfiles(profiles);
 
-            StorageData dataTable = await cloudStorage.Pull(Path.GetFileName(DefaultHashStoragePath));
+            StorageData dataTable = await CloudStorage.Pull(Storage.HashStorageFile.Name);
             if (dataTable != null)
-                await File.WriteAllBytesAsync(DefaultHashStoragePath, dataTable.rawData, token);
+                await Storage.HashStorageFile.WriteAllBytesAsync(dataTable.rawData, token);
 
-            StorageData screenshots = await cloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
+            StorageData screenshots = await CloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
                 await DownloadScreenshots(screenshots);
         }
@@ -392,8 +360,8 @@ namespace SaveSystemPackage {
             var count = reader.Read<int>();
 
             for (var i = 0; i < count; i++) {
-                string path = Path.Combine(InternalFolder, reader.ReadString());
-                await using var writer = new SaveWriter(File.Open(path, FileMode.OpenOrCreate));
+                File file = Storage.InternalDirectory.GetOrCreateFile(reader.ReadString(), "profile");
+                await using var writer = new SaveWriter(file.Open());
                 string typeName = reader.ReadString();
                 var type = Type.GetType(typeName);
 
@@ -403,7 +371,7 @@ namespace SaveSystemPackage {
                 }
 
                 var profile = (SaveProfile)Activator.CreateInstance(type);
-                profile.Initialize(reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
                 await profile.ImportProfileData(reader.ReadArray<byte>());
@@ -416,9 +384,9 @@ namespace SaveSystemPackage {
             var count = reader.Read<int>();
 
             for (var i = 0; i < count; i++) {
-                await File.WriteAllBytesAsync(
-                    Path.Combine(ScreenshotsFolder, reader.ReadString()), reader.ReadArray<byte>()
-                );
+                await Storage.ScreenshotsDirectory
+                   .GetOrCreateFile(reader.ReadString(), "png")
+                   .WriteAllBytesAsync(reader.ReadArray<byte>());
             }
         }
 

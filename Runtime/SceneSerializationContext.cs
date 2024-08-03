@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
@@ -34,9 +33,9 @@ namespace SaveSystemPackage {
         internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
 
-        private string DataPath {
-            get => SceneScope.DataPath;
-            set => SceneScope.DataPath = value;
+        private Internal.File DataFile {
+            get => SceneScope.DataFile;
+            set => SceneScope.DataFile = value;
         }
 
 
@@ -51,14 +50,14 @@ namespace SaveSystemPackage {
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
 
-            if (profile == null)
+            if (profile == null) {
                 SaveSystem.Game.SceneContext = this;
-            else
+                DataFile = Storage.ScenesDirectory.GetOrCreateFile(fileName, "scenedata");
+            }
+            else {
                 profile.SceneContext = this;
-
-            DataPath = Path.Combine(
-                profile == null ? SaveSystem.ScenesFolder : profile.DataFolder, $"{fileName}.scenedata"
-            );
+                DataFile = profile.DataDirectory.GetOrCreateFile(fileName, "scenedata");
+            }
 
             RegisterRecorders();
         }
@@ -118,15 +117,15 @@ namespace SaveSystemPackage {
 
 
         internal async UniTask<StorageData> ExportSceneData (CancellationToken token = default) {
-            return File.Exists(DataPath)
-                ? new StorageData(await File.ReadAllBytesAsync(DataPath, token), Path.GetFileName(DataPath))
+            return DataFile.Exists
+                ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
                 : null;
         }
 
 
         internal async UniTask ImportSceneData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
-                await File.WriteAllBytesAsync(DataPath, data, token);
+                await DataFile.WriteAllBytesAsync(data, token);
         }
 
 

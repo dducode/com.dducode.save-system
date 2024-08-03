@@ -1,6 +1,6 @@
-﻿using System.IO;
-using System.Text;
+﻿using System.Text;
 using NUnit.Framework;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Serialization;
 using UnityEngine;
 
@@ -10,7 +10,7 @@ namespace SaveSystemPackage.Tests {
 
         private const string PositionsKey = "positions";
 
-        private readonly string m_filePath = Storage.GetFullPath(nameof(DataBufferTests) + ".test");
+        private readonly File m_file = Storage.TestsDirectory.GetOrCreateFile(nameof(DataBufferTests), "test");
 
 
         [Test, Order(0)]
@@ -22,7 +22,7 @@ namespace SaveSystemPackage.Tests {
                 positions[i] = Random.insideUnitSphere;
 
             buffer.Write(PositionsKey, positions);
-            using var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate));
+            using var writer = new SaveWriter(m_file.Open());
             writer.Write(buffer);
 
             var message = new StringBuilder();
@@ -34,7 +34,7 @@ namespace SaveSystemPackage.Tests {
 
         [Test, Order(1)]
         public void ReadArray () {
-            using var reader = new SaveReader(File.Open(m_filePath, FileMode.Open));
+            using var reader = new SaveReader(m_file.Open());
             DataBuffer buffer = reader.ReadDataBuffer();
             Vector3[] positions = buffer.ReadArray<Vector3>(PositionsKey);
 
