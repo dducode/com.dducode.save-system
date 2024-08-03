@@ -2,9 +2,11 @@
 using System.IO.Compression;
 using SaveSystemPackage.Internal;
 
+// ReSharper disable UnusedMember.Global
+// ReSharper disable VirtualMemberNeverOverridden.Global
+
 namespace SaveSystemPackage.Compressing {
 
-    // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
     public class FileCompressor {
 
         private CompressionLevel m_compressionLevel;
@@ -18,7 +20,12 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        public FileCompressor (SaveSystemSettings settings) {
+        public FileCompressor (CompressionLevel compressionLevel) {
+            CompressionLevel = compressionLevel;
+        }
+
+
+        internal FileCompressor (SaveSystemSettings settings) {
             SetSettings(settings);
         }
 
