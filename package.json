@@ -13,5 +13,12 @@
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/dducode"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Save System",
+      "description": "Contains sample scenes to demonstrate saving and loading game objects data (positions, rotations, etc.)",
+      "path": "Samples~"
+    }
+  ]
 }

@@ -1,0 +1,54 @@
+{
+    "name": "New Controls",
+    "maps": [
+        {
+            "name": "UserActions",
+            "id": "4d2d0780-a220-4a0c-aaf0-70d1f7f628c2",
+            "actions": [
+                {
+                    "name": "QuickSave",
+                    "type": "Button",
+                    "id": "5e4d9fd5-fd5d-49eb-ba0d-2575f70b35f6",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "ScreenCapture",
+                    "type": "Button",
+                    "id": "02d7d433-c3cb-4e1b-a963-1b4795a4cc47",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "c369303c-2c99-4fd0-83fa-19571791323f",
+                    "path": "<Keyboard>/0",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "QuickSave",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "449525a2-7307-4da9-a2ff-f8fbd001c437",
+                    "path": "<Keyboard>/printScreen",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ScreenCapture",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

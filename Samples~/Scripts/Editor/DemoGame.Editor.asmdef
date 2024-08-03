@@ -1,0 +1,18 @@
+{
+    "name": "DemoGame.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:c686fe21b1aaa9a41afd55607566bd4c"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
