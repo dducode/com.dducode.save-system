@@ -72,7 +72,7 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal void Initialize ([NotNull] string name, bool encrypt, bool verify) {
+        internal void Initialize ([NotNull] string name, bool encrypt) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
@@ -80,8 +80,7 @@ namespace SaveSystemPackage {
             ProfileScope = new SerializationScope {
                 Name = $"{name} profile scope",
                 Settings = {
-                    Encrypt = encrypt,
-                    VerifyChecksum = verify,
+                    Encrypt = encrypt
                 }
             };
 

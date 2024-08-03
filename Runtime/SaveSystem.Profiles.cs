@@ -29,7 +29,7 @@ namespace SaveSystemPackage {
 
             File file = Storage.InternalDirectory.CreateFile(formattedName, "profile");
             using var writer = new SaveWriter(file.Open());
-            InitializeProfile(profile, name, encrypt, verify);
+            InitializeProfile(profile, name, encrypt);
             SerializeProfile(writer, profile);
             return profile;
         }
@@ -46,7 +46,7 @@ namespace SaveSystemPackage {
 
                 if (string.Equals(reader.ReadString(), type.AssemblyQualifiedName)) {
                     var profile = Activator.CreateInstance<TProfile>();
-                    InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                    InitializeProfile(profile, reader.ReadString(), reader.Read<bool>());
                     SerializationManager.DeserializeGraph(reader, profile);
                     yield return profile;
                 }
@@ -98,9 +98,9 @@ namespace SaveSystemPackage {
         }
 
 
-        private static void InitializeProfile (SaveProfile profile, string name, bool encrypt, bool verify) {
+        private static void InitializeProfile (SaveProfile profile, string name, bool encrypt) {
             string formattedName = name.ToPathFormat();
-            profile.Initialize(name, encrypt, verify);
+            profile.Initialize(name, encrypt);
             profile.DataDirectory = Storage.ProfilesDirectory.GetOrCreateDirectory(formattedName);
             profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
         }
@@ -111,7 +111,6 @@ namespace SaveSystemPackage {
             writer.Write(type.AssemblyQualifiedName);
             writer.Write(profile.Name);
             writer.Write(profile.Settings.Encrypt);
-            writer.Write(profile.Settings.VerifyChecksum);
             SerializationManager.SerializeGraph(writer, profile);
         }
 

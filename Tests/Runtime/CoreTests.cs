@@ -7,7 +7,6 @@ using SaveSystemPackage.CheckPoints;
 using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Tests.TestObjects;
-using SaveSystemPackage.Verification;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
@@ -22,7 +21,6 @@ namespace SaveSystemPackage.Tests {
 
         private const string Password = "password";
         private const string SaltKey = "salt";
-        private const string VerifyHashKey = "1593f666-b209-4e70-af46-58dd9ca791c9";
 
         private TestProfile m_profile;
 
@@ -126,7 +124,6 @@ namespace SaveSystemPackage.Tests {
 
             m_profile.RegisterSerializables(nameof(spheres), spheres);
             SaveSystem.Game.Settings.Encrypt = false;
-            SaveSystem.Game.Settings.VerifyChecksum = false;
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
             SaveSystem.Settings.SavePeriod = 3;
             SaveSystem.Settings.EnabledLogs = LogLevel.All;
@@ -192,43 +189,6 @@ namespace SaveSystemPackage.Tests {
             m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
             await SaveSystem.Game.Load();
             await UniTask.WaitForSeconds(1);
-        }
-
-
-        [Test]
-        public async Task SerializeWithAuthentication () {
-            var sphereFactory = new DynamicObjectGroup<TestObject>(
-                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
-            );
-            sphereFactory.CreateObjects(250);
-
-            SaveSystem.Game.Settings.VerifyChecksum = true;
-            SaveSystem.Game.Settings.VerificationManager = new VerificationManager(
-                new DefaultHashStorage(), HashAlgorithmName.SHA1
-            );
-
-            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Game.Save();
-            await UniTask.WaitForSeconds(1);
-        }
-
-
-        [Test]
-        public async Task DeserializeWithAuthentication () {
-            var sphereFactory = new DynamicObjectGroup<TestObject>(
-                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
-            );
-
-            SaveSystem.Game.Settings.VerifyChecksum = true;
-            SaveSystem.Game.Settings.VerificationManager = new VerificationManager(
-                new DefaultHashStorage(), HashAlgorithmName.SHA1
-            );
-
-            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Game.Load();
-            await UniTask.WaitForSeconds(1);
-
-            PlayerPrefs.DeleteKey(VerifyHashKey);
         }
 
 

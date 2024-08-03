@@ -23,9 +23,6 @@ namespace SaveSystemPackage {
         private bool encrypt;
 
         [SerializeField]
-        private bool verifyChecksum;
-
-        [SerializeField]
         private string fileName;
 
         public SerializationSettings Settings => SceneScope.Settings;
@@ -43,8 +40,7 @@ namespace SaveSystemPackage {
             SceneScope = new SerializationScope {
                 Name = $"{gameObject.scene.name} scene scope",
                 Settings = {
-                    Encrypt = encrypt,
-                    VerifyChecksum = verifyChecksum
+                    Encrypt = encrypt
                 }
             };
 

@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using SaveSystemPackage.Internal;
 using UnityEngine;
 using Directory = SaveSystemPackage.Internal.Directory;
 
@@ -24,8 +23,6 @@ namespace SaveSystemPackage {
 
         internal static Directory TestsDirectory =>
             s_testsDirectory ??= Directory.CreateRoot("tests", Application.temporaryCachePath);
-
-        internal static File HashStorageFile { get; set; }
 
         private static Directory s_root;
         private static Directory s_internalDirectory;

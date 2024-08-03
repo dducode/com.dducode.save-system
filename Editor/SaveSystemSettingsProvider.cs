@@ -47,9 +47,6 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
 
-        private SerializedProperty m_verifyChecksumProperty;
-        private SerializedProperty m_verificationSettingsProperty;
-
 
         [SettingsProvider]
         public static SettingsProvider CreateSaveSystemSettingsProvider () {
@@ -87,7 +84,6 @@ namespace SaveSystemPackage.Editor {
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
             DrawEncryptionSettings();
-            DrawAuthenticationSettings();
             EditorGUIUtility.labelWidth = width;
 
             m_serializedSettings.ApplyModifiedProperties();
@@ -114,7 +110,6 @@ namespace SaveSystemPackage.Editor {
             InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
             InitializeEncryptionSettings();
-            InitializeVerificationSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -161,14 +156,6 @@ namespace SaveSystemPackage.Editor {
             m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
             m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
                 nameof(SaveSystemSettings.encryptionSettings)
-            );
-        }
-
-
-        private void InitializeVerificationSettings () {
-            m_verifyChecksumProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.verifyChecksum));
-            m_verificationSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.verificationSettings)
             );
         }
 
@@ -241,16 +228,6 @@ namespace SaveSystemPackage.Editor {
 
             if (m_encryptProperty.boolValue) {
                 EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
-                EditorGUILayout.Space(15);
-            }
-        }
-
-
-        private void DrawAuthenticationSettings () {
-            EditorGUILayout.PropertyField(m_verifyChecksumProperty);
-
-            if (m_verifyChecksumProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_verificationSettingsProperty, GUILayout.MaxWidth(500));
                 EditorGUILayout.Space(15);
             }
         }
