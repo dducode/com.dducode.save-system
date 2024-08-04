@@ -45,9 +45,9 @@ namespace SaveSystemPackage {
                         return;
 
                     if (FileCompressor == null)
-                        FileCompressor = new FileCompressor(settings);
+                        FileCompressor = new FileCompressor(settings.compressionSettings);
                     else
-                        FileCompressor.SetSettings(settings);
+                        FileCompressor.SetSettings(settings.compressionSettings);
                 }
             }
         }

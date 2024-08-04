@@ -33,36 +33,34 @@ namespace SaveSystemPackage.Internal {
         private readonly Dictionary<string, Directory> m_directories = new();
 
 
-        internal static Directory CreateRoot (string name, string path) {
-            return new Directory(name, path);
+        internal static Directory CreateRoot (string name, string path, FileAttributes attributes = 0) {
+            return new Directory(name, path, attributes);
         }
 
 
-        private Directory (string name, string path, bool isHidden = false) {
+        private Directory (string name, string path, FileAttributes attributes = 0) {
             Name = name;
             RootPath = path;
             Root = this;
             DirectoryInfo info = System.IO.Directory.CreateDirectory(Path);
-            if (isHidden)
-                info.Attributes |= FileAttributes.Hidden;
+            info.Attributes |= attributes;
             Init();
         }
 
 
-        private Directory (string name, Directory parent, bool isHidden = false) {
+        private Directory (string name, Directory parent, FileAttributes attributes = 0) {
             Parent = parent;
             Name = parent.GenerateUniqueName(name);
             Root = parent.Root;
             DirectoryInfo info = System.IO.Directory.CreateDirectory(Path);
-            if (isHidden)
-                info.Attributes |= FileAttributes.Hidden;
+            info.Attributes |= attributes;
             Init();
         }
 
 
-        internal Directory GetOrCreateDirectory (string name, bool isHidden = false) {
+        internal Directory GetOrCreateDirectory (string name, FileAttributes attributes = 0) {
             if (!m_directories.ContainsKey(name))
-                m_directories.Add(name, new Directory(name, this, isHidden));
+                m_directories.Add(name, new Directory(name, this, attributes));
             return m_directories[name];
         }
 

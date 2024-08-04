@@ -10,6 +10,7 @@ namespace SaveSystemPackage.Editor {
 
         private bool m_editProperties;
         private bool m_foldout = true;
+        private bool m_showSecureValues;
 
 
         public override float GetPropertyHeight (SerializedProperty property, GUIContent label) {
@@ -23,6 +24,7 @@ namespace SaveSystemPackage.Editor {
 
             EditorGUI.indentLevel++;
             m_editProperties = EditorGUILayout.ToggleLeft("Edit Properties", m_editProperties);
+            m_showSecureValues = EditorGUILayout.ToggleLeft("Show Secure Values", m_showSecureValues);
             GUI.enabled = m_editProperties;
 
             if (m_editProperties) {
@@ -38,10 +40,10 @@ namespace SaveSystemPackage.Editor {
 
             if (!settings.useCustomCryptographer) {
                 settings.password = DrawingUtilities.DrawKeyProperty(
-                    settings.password, "Password", "Generate Password", CryptoUtilities.GenerateKey
+                    settings.password, "Password", "Generate Password", CryptoUtilities.GenerateKey, m_showSecureValues
                 );
                 settings.saltKey = DrawingUtilities.DrawKeyProperty(
-                    settings.saltKey, "Salt Key", "Generate Salt Key", CryptoUtilities.GenerateKey
+                    settings.saltKey, "Salt Key", "Generate Salt Key", CryptoUtilities.GenerateKey, m_showSecureValues
                 );
                 m_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_foldout, "Key Generation Parameters");
 

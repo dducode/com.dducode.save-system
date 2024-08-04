@@ -1,22 +1,33 @@
-﻿using System;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using SaveSystemPackage.Security;
+using HashAlgorithmName = SaveSystemPackage.Security.HashAlgorithmName;
 
 namespace SaveSystemPackage.Internal.Cryptography {
 
     internal class DefaultKeyProvider : IKeyProvider {
 
-        private readonly string m_key;
+        private readonly byte[] m_key;
+        private readonly Cryptographer m_cryptographer;
 
 
         internal DefaultKeyProvider (string key) {
-            m_key = Convert.ToBase64String(SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(key)));
+            byte[] hash = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(key));
+            m_cryptographer = new Cryptographer(
+                new RandomSessionKeyProvider(),
+                new RandomSessionKeyProvider(),
+                new KeyGenerationParams {
+                    hashAlgorithm = HashAlgorithmName.SHA1,
+                    keyLength = AESKeyLength._128Bit,
+                    iterations = 10
+                }
+            );
+            m_key = m_cryptographer.Encrypt(hash);
         }
 
 
         public byte[] GetKey () {
-            return Convert.FromBase64String(m_key);
+            return m_cryptographer.Decrypt(m_key);
         }
 
     }

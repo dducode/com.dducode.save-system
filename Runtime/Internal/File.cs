@@ -40,6 +40,7 @@ namespace SaveSystemPackage.Internal {
             Name = Directory.GenerateUniqueName(name);
             Extension = extension;
             FullName = $"{Name}.{Extension}";
+            m_fileInfo = new FileInfo(Path);
         }
 
 
