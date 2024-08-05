@@ -8,8 +8,8 @@ namespace SaveSystemPackage.Internal.Cryptography {
         private readonly byte[] m_randomKey;
 
 
-        public RandomSessionKeyProvider () {
-            m_randomKey = new byte[16];
+        internal RandomSessionKeyProvider (int keyLength = 16) {
+            m_randomKey = new byte[keyLength];
             RandomNumberGenerator.Fill(m_randomKey);
         }
 
