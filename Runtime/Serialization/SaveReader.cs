@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using SaveSystemPackage.Security;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -144,6 +145,11 @@ namespace SaveSystemPackage.Serialization {
 
         public DataBuffer ReadDataBuffer () {
             return new DataBuffer(this);
+        }
+
+
+        public SecureDataBuffer ReadSecureDataBuffer () {
+            return new SecureDataBuffer(this);
         }
 
 

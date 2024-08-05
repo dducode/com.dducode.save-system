@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using UnityEngine;
 using Directory = SaveSystemPackage.Internal.Directory;
 
@@ -16,7 +17,7 @@ namespace SaveSystemPackage {
         internal static Directory Root =>
             s_root ??= Directory.CreateRoot("save-system", Application.persistentDataPath);
 
-        internal static Directory InternalDirectory => Root.GetOrCreateDirectory(".internal", true);
+        internal static Directory InternalDirectory => Root.GetOrCreateDirectory(".internal", FileAttributes.Hidden);
         internal static Directory ScenesDirectory => Root.GetOrCreateDirectory("scenes");
         internal static Directory ProfilesDirectory => Root.GetOrCreateDirectory("profiles");
         internal static Directory ScreenshotsDirectory => Root.GetOrCreateDirectory(ScreenshotsName);

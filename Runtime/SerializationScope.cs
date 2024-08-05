@@ -9,6 +9,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Attributes;
 using SaveSystemPackage.Internal.Diagnostic;
+using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -38,6 +39,7 @@ namespace SaveSystemPackage {
 
         internal SerializationSettings Settings { get; } = new();
         internal DataBuffer Data { get; private set; } = new();
+        internal SecureDataBuffer SecureData { get; private set; } = new();
         private DataBuffer Buffer { get; set; } = new();
 
         private string m_name;
@@ -127,7 +129,7 @@ namespace SaveSystemPackage {
             if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
 
-            if (ObjectsCount == 0 && Data.Count == 0)
+            if (ObjectsCount == 0 && Data.Count == 0 && SecureData.Count == 0)
                 return;
 
             byte[] data;
@@ -135,6 +137,7 @@ namespace SaveSystemPackage {
             using (var memoryStream = new MemoryStream()) {
                 await using var writer = new SaveWriter(memoryStream);
                 writer.Write(Data);
+                writer.Write(SecureData);
                 SerializeObjects(writer);
                 data = memoryStream.ToArray();
             }
@@ -168,6 +171,7 @@ namespace SaveSystemPackage {
             await using var reader = new SaveReader(new MemoryStream(data));
 
             Data = reader.ReadDataBuffer();
+            SecureData = reader.ReadSecureDataBuffer();
             DeserializeObjects(reader);
             Logger.Log(Name, "Data loaded");
         }
@@ -175,6 +179,7 @@ namespace SaveSystemPackage {
 
         internal void Clear () {
             Data.Clear();
+            SecureData.Clear();
             m_serializables.Clear();
         }
 

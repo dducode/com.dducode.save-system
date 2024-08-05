@@ -7,15 +7,13 @@ namespace SaveSystemPackage.Editor {
     internal static class DrawingUtilities {
 
         internal static string DrawKeyProperty (
-            string key, string title, string buttonTitle, Func<string> generateKeyAction
+            string key, string title, string buttonTitle, Func<string> generateKeyAction, bool showPassword
         ) {
             using var scope = new GUILayout.HorizontalScope();
 
-            key = EditorGUILayout.TextField(title, key, GUILayout.MaxWidth(500));
-            bool isNullOrEmpty = string.IsNullOrEmpty(key);
-            bool buttonIsPressed = GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false));
+            key = showPassword ? EditorGUILayout.TextField(title, key) : EditorGUILayout.PasswordField(title, key);
 
-            if (isNullOrEmpty || buttonIsPressed)
+            if (string.IsNullOrEmpty(key) || GUILayout.Button(buttonTitle, GUILayout.ExpandWidth(false)))
                 return generateKeyAction();
 
             return key;

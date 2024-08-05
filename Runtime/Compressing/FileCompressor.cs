@@ -25,13 +25,13 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        internal FileCompressor (SaveSystemSettings settings) {
+        internal FileCompressor (CompressionSettings settings) {
             SetSettings(settings);
         }
 
 
-        internal void SetSettings (SaveSystemSettings settings) {
-            m_compressionLevel = settings.compressionSettings.compressionLevel;
+        internal void SetSettings (CompressionSettings settings) {
+            m_compressionLevel = settings.compressionLevel;
         }
 
 
