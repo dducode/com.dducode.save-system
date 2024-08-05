@@ -5,6 +5,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 using File = SaveSystemPackage.Internal.File;
 
 // ReSharper disable UnusedMember.Global
@@ -28,6 +29,7 @@ namespace SaveSystemPackage {
 
         public SerializationSettings Settings => GameScope.Settings;
         public DataBuffer Data => GameScope.Data;
+        public SecureDataBuffer SecureData => GameScope.SecureData;
 
         [NotNull]
         internal File DataFile {

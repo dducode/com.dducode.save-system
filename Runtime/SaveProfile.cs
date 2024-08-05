@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
 using Directory = SaveSystemPackage.Internal.Directory;
 using File = SaveSystemPackage.Internal.File;
@@ -38,6 +39,7 @@ namespace SaveSystemPackage {
 
         public SerializationSettings Settings => ProfileScope.Settings;
         public DataBuffer Data => ProfileScope.Data;
+        public SecureDataBuffer SecureData => ProfileScope.SecureData;
 
         [NotNull]
         internal Directory DataDirectory {

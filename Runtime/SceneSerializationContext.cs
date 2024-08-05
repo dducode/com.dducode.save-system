@@ -6,6 +6,7 @@ using Cysharp.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Internal.Extensions;
+using SaveSystemPackage.Security;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -33,6 +34,8 @@ namespace SaveSystemPackage {
 
         public SerializationSettings Settings => SceneScope.Settings;
         public DataBuffer Data => SceneScope.Data;
+        public SecureDataBuffer SecureData => SceneScope.SecureData;
+
         internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
 
