@@ -1,6 +1,6 @@
 {
   "name": "com.dducode.save-system",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "displayName": "Save System",
   "unity": "2021.3",
   "description": "Use this save system to save and load your game objects",
@@ -13,12 +13,5 @@
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/dducode"
-  },
-  "samples": [
-    {
-      "displayName": "Save System",
-      "description": "Contains sample scenes to demonstrate saving and loading game objects data (positions, rotations, etc.)",
-      "path": "Samples~"
-    }
-  ]
+  }
 }
