@@ -72,7 +72,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal async Task<byte[]> ReadAllBytesAsync (CancellationToken token = default) {
+        internal async Task<byte[]> ReadAllBytesAsync (CancellationToken token) {
             return await System.IO.File.ReadAllBytesAsync(Path, token);
         }
 
@@ -87,7 +87,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal async Task WriteAllBytesAsync (byte[] bytes, CancellationToken token = default) {
+        internal async Task WriteAllBytesAsync (byte[] bytes, CancellationToken token) {
             await System.IO.File.WriteAllBytesAsync(Path, bytes, token);
         }
 

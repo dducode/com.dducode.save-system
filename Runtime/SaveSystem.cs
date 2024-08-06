@@ -31,13 +31,12 @@ namespace SaveSystemPackage {
         internal static event Action OnUpdateSystem;
 
         /// It will be canceled before exit game
-        private static CancellationTokenSource s_exitCancellation;
+        internal static CancellationTokenSource exitCancellation;
 
         private static readonly SynchronizationPoint s_synchronizationPoint = new();
 
         private static bool s_periodicSaveEnabled;
         private static float s_periodicSaveLastTime;
-
         private static bool s_autoSaveEnabled;
 
 
@@ -90,14 +89,14 @@ namespace SaveSystemPackage {
 
 
         private static void UpdateSystem () {
-            if (s_exitCancellation.IsCancellationRequested)
+            if (exitCancellation.IsCancellationRequested)
                 return;
 
             /*
              * Call saving request only in the one state machine
              * This is necessary to prevent sharing of the same file
              */
-            s_synchronizationPoint.ExecuteScheduledTask(s_exitCancellation.Token);
+            s_synchronizationPoint.ExecuteScheduledTask(exitCancellation.Token);
 
             UpdateUserInputs();
 
@@ -330,15 +329,15 @@ namespace SaveSystemPackage {
 
             StorageData profiles = await CloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
             if (profiles != null)
-                await DownloadProfiles(profiles);
+                await DownloadProfiles(profiles, token);
 
             StorageData screenshots = await CloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
-                await DownloadScreenshots(screenshots);
+                await DownloadScreenshots(screenshots, token);
         }
 
 
-        private static async Task DownloadProfiles (StorageData profiles) {
+        private static async Task DownloadProfiles (StorageData profiles, CancellationToken token) {
             await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
             var count = reader.Read<int>();
 
@@ -357,19 +356,19 @@ namespace SaveSystemPackage {
                 InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
                 SerializationManager.DeserializeGraph(reader, profile);
                 SerializeProfile(writer, profile);
-                await profile.ImportProfileData(reader.ReadArray<byte>());
+                await profile.ImportProfileData(reader.ReadArray<byte>(), token);
             }
         }
 
 
-        private static async Task DownloadScreenshots (StorageData screenshots) {
+        private static async Task DownloadScreenshots (StorageData screenshots, CancellationToken token) {
             await using var reader = new SaveReader(new MemoryStream(screenshots.rawData));
             var count = reader.Read<int>();
 
             for (var i = 0; i < count; i++) {
                 await Storage.ScreenshotsDirectory
                    .GetOrCreateFile(reader.ReadString(), "png")
-                   .WriteAllBytesAsync(reader.ReadArray<byte>());
+                   .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
             }
         }
 

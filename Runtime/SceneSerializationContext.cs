@@ -102,7 +102,12 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Save (CancellationToken token = default) {
+        public async Task Save () {
+            await Save(SaveSystem.exitCancellation.Token);
+        }
+
+
+        public async Task Save (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await SceneScope.Serialize(token);
@@ -113,7 +118,12 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Load (CancellationToken token = default) {
+        public async Task Load () {
+            await Load(SaveSystem.exitCancellation.Token);
+        }
+
+
+        public async Task Load (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await SceneScope.Deserialize(token);
@@ -124,14 +134,14 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async Task<StorageData> ExportSceneData (CancellationToken token = default) {
+        internal async Task<StorageData> ExportSceneData (CancellationToken token) {
             return DataFile.Exists
                 ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
                 : null;
         }
 
 
-        internal async Task ImportSceneData (byte[] data, CancellationToken token = default) {
+        internal async Task ImportSceneData (byte[] data, CancellationToken token) {
             if (data.Length > 0)
                 await DataFile.WriteAllBytesAsync(data, token);
         }

@@ -122,7 +122,12 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Save (CancellationToken token = default) {
+        public async Task Save () {
+            await Save(SaveSystem.exitCancellation.Token);
+        }
+
+
+        public async Task Save (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await ProfileScope.Serialize(token);
@@ -135,7 +140,12 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Load (CancellationToken token = default) {
+        public async Task Load () {
+            await Load(SaveSystem.exitCancellation.Token);
+        }
+
+
+        public async Task Load (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await ProfileScope.Deserialize(token);
@@ -151,7 +161,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async Task<byte[]> ExportProfileData (CancellationToken token = default) {
+        internal async Task<byte[]> ExportProfileData (CancellationToken token) {
             File[] entries = DataDirectory.EnumerateFiles().ToArray();
             if (entries.Length == 0)
                 return Array.Empty<byte>();
@@ -171,7 +181,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async Task ImportProfileData (byte[] data, CancellationToken token = default) {
+        internal async Task ImportProfileData (byte[] data, CancellationToken token) {
             if (data.Length == 0)
                 return;
 

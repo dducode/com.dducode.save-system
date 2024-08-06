@@ -50,7 +50,7 @@ namespace SaveSystemPackage {
 
                 SetOnExitPlayModeCallback();
                 SetPlayerLoop();
-                s_exitCancellation = new CancellationTokenSource();
+                exitCancellation = new CancellationTokenSource();
                 Logger.Log(nameof(SaveSystem), "Initialized");
             }
             catch (Exception ex) {
@@ -62,14 +62,24 @@ namespace SaveSystemPackage {
         }
 
 
+        /// <inheritdoc cref="LoadSceneAsync(Func{Task},CancellationToken)"/>
+        public static async Task LoadSceneAsync (Func<Task> sceneLoading) {
+            await LoadSceneAsync(sceneLoading, exitCancellation.Token);
+        }
+
+
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async Task LoadSceneAsync (
-            Func<Task> sceneLoading, CancellationToken token = default
-        ) {
+        public static async Task LoadSceneAsync (Func<Task> sceneLoading, CancellationToken token) {
             await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
             await SceneLoader.LoadSceneAsync(sceneLoading);
+        }
+
+
+        /// <inheritdoc cref="LoadSceneAsync{TData}(Func{Task},TData,CancellationToken)"/>
+        public static async Task LoadSceneAsync<TData> (Func<Task> sceneLoading, TData passedData) {
+            await LoadSceneAsync(sceneLoading, passedData, exitCancellation.Token);
         }
 
 
@@ -77,7 +87,7 @@ namespace SaveSystemPackage {
         /// Save the game and load a scene
         /// </summary>
         public static async Task LoadSceneAsync<TData> (
-            Func<Task> sceneLoading, TData passedData, CancellationToken token = default
+            Func<Task> sceneLoading, TData passedData, CancellationToken token
         ) {
             await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
             await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
@@ -90,9 +100,9 @@ namespace SaveSystemPackage {
         /// <param name="exitCode"> if the exit code is zero, the game will be saved </param>
         public static async Task ExitGame (int exitCode = 0) {
             s_synchronizationPoint.Clear();
-            s_exitCancellation.Cancel();
+            exitCancellation.Cancel();
             if (exitCode == 0)
-                await s_synchronizationPoint.ExecuteTask(async () => await Game.Save());
+                await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(default));
 
         #if UNITY_EDITOR
             EditorApplication.ExitPlaymode();
@@ -102,7 +112,12 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async Task UploadToCloud (CancellationToken token = default) {
+        public static async Task UploadToCloud () {
+            await UploadToCloud(exitCancellation.Token);
+        }
+
+
+        public static async Task UploadToCloud (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await s_synchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(token));
@@ -113,7 +128,12 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async Task DownloadFromCloud (CancellationToken token = default) {
+        public static async Task DownloadFromCloud () {
+            await DownloadFromCloud(exitCancellation.Token);
+        }
+
+
+        public static async Task DownloadFromCloud (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await s_synchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(token));

@@ -68,7 +68,7 @@ namespace SaveSystemPackage {
                 byte[] data;
 
                 try {
-                    data = await file.ReadAllBytesAsync(s_exitCancellation.Token);
+                    data = await file.ReadAllBytesAsync(exitCancellation.Token);
                 }
                 catch (OperationCanceledException) {
                     Logger.LogWarning(nameof(SaveSystem), "Screenshots loading canceled");

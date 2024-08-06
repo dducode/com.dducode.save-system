@@ -24,7 +24,7 @@ namespace SaveSystemPackage {
             Application.lowMemory -= OnLowMemory;
 
             s_synchronizationPoint.Clear();
-            s_exitCancellation.Cancel();
+            exitCancellation.Cancel();
             s_periodicSaveLastTime = 0;
             Settings = null;
             Game = null;

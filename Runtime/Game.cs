@@ -92,7 +92,13 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Start saving immediately and wait it
         /// </summary>
-        public async Task Save (CancellationToken token = default) {
+        public async Task Save () {
+            await Save(SaveSystem.exitCancellation.Token);
+        }
+
+
+        /// <inheritdoc cref="Save()"/>
+        public async Task Save (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await GameScope.Serialize(token);
@@ -110,7 +116,13 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Start loading and wait it
         /// </summary>
-        public async Task Load (CancellationToken token = default) {
+        public async Task Load () {
+            await Load(SaveSystem.exitCancellation.Token);
+        }
+
+
+        /// <inheritdoc cref="Load()"/>
+        public async Task Load (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await GameScope.Deserialize(token);
@@ -121,14 +133,14 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async Task<StorageData> ExportGameData (CancellationToken token = default) {
+        internal async Task<StorageData> ExportGameData (CancellationToken token) {
             return DataFile.Exists
                 ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
                 : null;
         }
 
 
-        internal async Task ImportGameData (byte[] data, CancellationToken token = default) {
+        internal async Task ImportGameData (byte[] data, CancellationToken token) {
             if (data.Length > 0)
                 await DataFile.WriteAllBytesAsync(data, token);
         }
