@@ -5,7 +5,7 @@
 using System;
 using System.Linq;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Templates;
@@ -231,7 +231,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask CommonSavingTask (SaveType saveType, CancellationToken token) {
+        private static async Task CommonSavingTask (SaveType saveType, CancellationToken token) {
             OnSaveStart?.Invoke(saveType);
             HandlingResult result;
 
@@ -262,7 +262,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadToCloudStorage (CancellationToken token = default) {
+        private static async Task UploadToCloudStorage (CancellationToken token = default) {
             StorageData gameData = await Game.ExportGameData(token);
             if (gameData != null)
                 await CloudStorage.Push(gameData);
@@ -274,7 +274,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
+        private static async Task UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
             File[] profiles = Storage.InternalDirectory.EnumerateFiles("profile").ToArray();
@@ -305,7 +305,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask UploadScreenshots (ICloudStorage cloudStorage, CancellationToken token) {
+        private static async Task UploadScreenshots (ICloudStorage cloudStorage, CancellationToken token) {
             var memoryStream = new MemoryStream();
             await using var writer = new SaveWriter(memoryStream);
             File[] screenshots = Storage.ScreenshotsDirectory.EnumerateFiles("png").ToArray();
@@ -323,7 +323,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask DownloadFromCloudStorage (CancellationToken token = default) {
+        private static async Task DownloadFromCloudStorage (CancellationToken token = default) {
             StorageData gameData = await CloudStorage.Pull(Game.DataFile.Name);
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
@@ -338,7 +338,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask DownloadProfiles (StorageData profiles) {
+        private static async Task DownloadProfiles (StorageData profiles) {
             await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
             var count = reader.Read<int>();
 
@@ -362,7 +362,7 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async UniTask DownloadScreenshots (StorageData screenshots) {
+        private static async Task DownloadScreenshots (StorageData screenshots) {
             await using var reader = new SaveReader(new MemoryStream(screenshots.rawData));
             var count = reader.Read<int>();
 

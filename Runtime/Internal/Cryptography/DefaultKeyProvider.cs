@@ -1,7 +1,6 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using SaveSystemPackage.Security;
-using HashAlgorithmName = SaveSystemPackage.Security.HashAlgorithmName;
 
 namespace SaveSystemPackage.Internal.Cryptography {
 
@@ -16,11 +15,7 @@ namespace SaveSystemPackage.Internal.Cryptography {
             m_cryptographer = new Cryptographer(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
-                new KeyGenerationParams {
-                    hashAlgorithm = HashAlgorithmName.SHA1,
-                    keyLength = AESKeyLength._128Bit,
-                    iterations = 10
-                }
+                KeyGenerationParams.Default
             );
             m_key = m_cryptographer.Encrypt(hash);
         }

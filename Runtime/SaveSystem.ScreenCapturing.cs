@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using Unity.Collections;
 using UnityEngine;
@@ -45,14 +45,14 @@ namespace SaveSystemPackage {
                 var width = (uint)screenshot.width;
                 var height = (uint)screenshot.height;
 
-                await UniTask.RunOnThreadPool(async () => {
+                await Task.Run(async () => {
                     NativeArray<byte> data = ImageConversion.EncodeNativeArrayToPNG(
                         rawData, graphicsFormat, width, height
                     );
                     await screenshotFile.WriteAllBytesAsync(data.ToArray(), token);
                     rawData.Dispose();
                     data.Dispose();
-                }, cancellationToken: token);
+                }, token);
                 Logger.Log(nameof(SaveSystem), $"Screenshot \"{screenshotFile.Name}\" saved");
             });
 
@@ -65,7 +65,16 @@ namespace SaveSystemPackage {
                 yield break;
 
             foreach (File file in Storage.ScreenshotsDirectory.EnumerateFiles("png")) {
-                byte[] data = await file.ReadAllBytesAsync();
+                byte[] data;
+
+                try {
+                    data = await file.ReadAllBytesAsync(s_exitCancellation.Token);
+                }
+                catch (OperationCanceledException) {
+                    Logger.LogWarning(nameof(SaveSystem), "Screenshots loading canceled");
+                    yield break;
+                }
+
                 var screenshot = new Texture2D(2, 2);
                 screenshot.LoadImage(data);
                 screenshot.name = file.Name;

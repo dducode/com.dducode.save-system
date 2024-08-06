@@ -1,5 +1,5 @@
 ﻿using System;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,28 +8,28 @@ namespace SaveSystemPackage.Internal {
 
     internal static class SceneLoader {
 
-        private static UniTaskCompletionSource<Scene> s_tcs;
+        private static TaskCompletionSource<Scene> s_tcs;
 
 
-        internal static async UniTask LoadSceneAsync (Func<UniTask> asyncSceneLoading) {
+        internal static async Task LoadSceneAsync (Func<Task> asyncSceneLoading) {
             SetupTask();
             ExecuteSceneHandling(await WaitForLoading(asyncSceneLoading));
         }
 
 
-        internal static async UniTask LoadSceneAsync<TData> (Func<UniTask> asyncSceneLoading, TData data) {
+        internal static async Task LoadSceneAsync<TData> (Func<Task> asyncSceneLoading, TData data) {
             SetupTask();
             ExecuteSceneHandling(await WaitForLoading(asyncSceneLoading), data);
         }
 
 
         private static void SetupTask () {
-            s_tcs = new UniTaskCompletionSource<Scene>();
+            s_tcs = new TaskCompletionSource<Scene>();
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
 
-        private static async UniTask<Scene> WaitForLoading (Func<UniTask> asyncSceneLoading) {
+        private static async Task<Scene> WaitForLoading (Func<Task> asyncSceneLoading) {
             await asyncSceneLoading();
             return await s_tcs.Task;
         }

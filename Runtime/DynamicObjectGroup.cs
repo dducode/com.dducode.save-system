@@ -128,6 +128,8 @@ namespace SaveSystemPackage {
 
 
         public void Deserialize (SaveReader reader, int previousVersion) {
+            ClearNullObjects();
+
             var count = reader.Read<int>();
             if (count == 0)
                 return;
@@ -177,6 +179,9 @@ namespace SaveSystemPackage {
             m_objects.RemoveAll(obj => obj is Object unityObject && unityObject == null);
             m_serializables.RemoveAll(serializable =>
                 serializable is Object unityObject && unityObject == null
+            );
+            m_serializables.RemoveAll(serializable =>
+                serializable is ISerializationAdapter<TDynamic> {Target: Object unityObject} && unityObject == null
             );
         }
 

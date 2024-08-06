@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.Attributes;
 using SaveSystemPackage.Internal.Diagnostic;
 using SaveSystemPackage.Security;
@@ -125,7 +125,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async UniTask Serialize (CancellationToken token) {
+        internal async Task Serialize (CancellationToken token) {
             if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
 
@@ -152,7 +152,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async UniTask Deserialize (CancellationToken token) {
+        internal async Task Deserialize (CancellationToken token) {
             if (Settings.Encrypt && Settings.Cryptographer == null)
                 throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
 
@@ -200,7 +200,8 @@ namespace SaveSystemPackage {
                 serializable.Serialize(localWriter);
 
                 writer.Write(stream.ToArray());
-                writer.Write(Encoding.UTF8.GetBytes(key));
+                byte[] bytes = Encoding.UTF8.GetBytes(key);
+                writer.Write(bytes);
             }
 
             foreach ((string key, object graph) in m_objects) {
@@ -219,7 +220,8 @@ namespace SaveSystemPackage {
 
             foreach (KeyValuePair<string, IRuntimeSerializable> unused in m_serializables) {
                 using var localReader = new SaveReader(new MemoryStream(reader.ReadArray<byte>()));
-                string key = Encoding.UTF8.GetString(reader.ReadArray<byte>());
+                byte[] bytes = reader.ReadArray<byte>();
+                string key = Encoding.UTF8.GetString(bytes);
                 if (m_serializables.TryGetValue(key, out IRuntimeSerializable serializable))
                     serializable.Deserialize(localReader, localReader.Read<int>());
                 --count;

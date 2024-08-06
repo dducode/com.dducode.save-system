@@ -5,7 +5,6 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "SaveSystem",
-        "UniTask",
         "SaveSystem.Editor",
         "Unity.InputSystem"
     ],

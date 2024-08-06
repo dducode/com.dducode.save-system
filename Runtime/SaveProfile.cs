@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
@@ -122,7 +122,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask Save (CancellationToken token = default) {
+        public async Task Save (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await ProfileScope.Serialize(token);
@@ -135,7 +135,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask Load (CancellationToken token = default) {
+        public async Task Load (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await ProfileScope.Deserialize(token);
@@ -151,7 +151,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async UniTask<byte[]> ExportProfileData (CancellationToken token = default) {
+        internal async Task<byte[]> ExportProfileData (CancellationToken token = default) {
             File[] entries = DataDirectory.EnumerateFiles().ToArray();
             if (entries.Length == 0)
                 return Array.Empty<byte>();
@@ -171,7 +171,7 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async UniTask ImportProfileData (byte[] data, CancellationToken token = default) {
+        internal async Task ImportProfileData (byte[] data, CancellationToken token = default) {
             if (data.Length == 0)
                 return;
 

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using UnityEngine;
@@ -65,8 +65,8 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async UniTask LoadSceneAsync (
-            Func<UniTask> sceneLoading, CancellationToken token = default
+        public static async Task LoadSceneAsync (
+            Func<Task> sceneLoading, CancellationToken token = default
         ) {
             await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
             await SceneLoader.LoadSceneAsync(sceneLoading);
@@ -76,8 +76,8 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async UniTask LoadSceneAsync<TData> (
-            Func<UniTask> sceneLoading, TData passedData, CancellationToken token = default
+        public static async Task LoadSceneAsync<TData> (
+            Func<Task> sceneLoading, TData passedData, CancellationToken token = default
         ) {
             await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
             await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
@@ -88,7 +88,7 @@ namespace SaveSystemPackage {
         /// Save the game and exit
         /// </summary>
         /// <param name="exitCode"> if the exit code is zero, the game will be saved </param>
-        public static async UniTask ExitGame (int exitCode = 0) {
+        public static async Task ExitGame (int exitCode = 0) {
             s_synchronizationPoint.Clear();
             s_exitCancellation.Cancel();
             if (exitCode == 0)
@@ -102,7 +102,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async UniTask UploadToCloud (CancellationToken token = default) {
+        public static async Task UploadToCloud (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await s_synchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(token));
@@ -113,7 +113,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public static async UniTask DownloadFromCloud (CancellationToken token = default) {
+        public static async Task DownloadFromCloud (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await s_synchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(token));

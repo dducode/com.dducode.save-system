@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Internal.Extensions;
@@ -102,7 +102,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask Save (CancellationToken token = default) {
+        public async Task Save (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await SceneScope.Serialize(token);
@@ -113,7 +113,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async UniTask Load (CancellationToken token = default) {
+        public async Task Load (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await SceneScope.Deserialize(token);
@@ -124,14 +124,14 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async UniTask<StorageData> ExportSceneData (CancellationToken token = default) {
+        internal async Task<StorageData> ExportSceneData (CancellationToken token = default) {
             return DataFile.Exists
                 ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
                 : null;
         }
 
 
-        internal async UniTask ImportSceneData (byte[] data, CancellationToken token = default) {
+        internal async Task ImportSceneData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
                 await DataFile.WriteAllBytesAsync(data, token);
         }

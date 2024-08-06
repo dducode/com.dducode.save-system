@@ -1,11 +1,11 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace SaveSystemPackage.CloudSave {
 
     public interface ICloudStorage {
 
-        public UniTask Push (StorageData data);
-        public UniTask<StorageData> Pull (string fileName);
+        public Task Push (StorageData data);
+        public Task<StorageData> Pull (string fileName);
 
     }
 
