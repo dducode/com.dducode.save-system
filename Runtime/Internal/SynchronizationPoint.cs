@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace SaveSystemPackage.Internal {
@@ -10,10 +10,10 @@ namespace SaveSystemPackage.Internal {
 
         internal bool IsPerformed { get; private set; }
 
-        private readonly Queue<Func<CancellationToken, UniTask>> m_queue = new();
+        private readonly Queue<Func<CancellationToken, Task>> m_queue = new();
 
 
-        internal void ScheduleTask (Func<CancellationToken, UniTask> task, bool priority = false) {
+        internal void ScheduleTask (Func<CancellationToken, Task> task, bool priority = false) {
             if (priority || m_queue.Count == 0)
                 m_queue.Enqueue(task);
         }
@@ -21,7 +21,7 @@ namespace SaveSystemPackage.Internal {
 
         internal async void ExecuteScheduledTask (CancellationToken token) {
             try {
-                await WaitCurrentExecution(token);
+                await WaitCurrentExecution();
 
                 if (m_queue.Count == 0)
                     return;
@@ -37,7 +37,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal async UniTask ExecuteTask (Func<UniTask> task) {
+        internal async Task ExecuteTask (Func<Task> task) {
             await WaitCurrentExecution();
 
             IsPerformed = true;
@@ -56,9 +56,9 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        private async UniTask WaitCurrentExecution (CancellationToken token = default) {
+        private async Task WaitCurrentExecution () {
             while (IsPerformed)
-                await UniTask.Yield(token);
+                await Task.Yield();
         }
 
     }

@@ -65,7 +65,7 @@ namespace SaveSystemPackage {
 
         private void OnEnable () {
             if (string.IsNullOrEmpty(dataFileName))
-                dataFileName = $"{Application.productName.ToPathFormat()}.data";
+                dataFileName = $"{Application.productName.ToPathFormat()}";
         }
 
 

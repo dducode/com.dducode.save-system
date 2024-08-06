@@ -1,7 +1,6 @@
 ﻿using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.Serialization;
 using UnityEngine;
@@ -40,11 +39,11 @@ namespace SaveSystemPackage.Tests {
 
         [Test]
         public async Task WriteReadMesh () {
-            const float duration = 1.5f;
+            const int duration = 1500;
 
             var gameObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             Debug.Log("Create object");
-            await UniTask.WaitForSeconds(duration);
+            await Task.Delay(duration);
 
             var meshFilter = gameObject.GetComponent<MeshFilter>();
             Mesh mesh = meshFilter.mesh;
@@ -54,13 +53,13 @@ namespace SaveSystemPackage.Tests {
 
             Object.Destroy(meshFilter.mesh);
             Debug.Log("Destroy mesh");
-            await UniTask.WaitForSeconds(duration);
+            await Task.Delay(duration);
 
             await using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open)))
                 meshFilter.mesh = reader.ReadMeshData();
 
             Debug.Log("Load mesh");
-            await UniTask.WaitForSeconds(duration);
+            await Task.Delay(duration);
         }
 
 

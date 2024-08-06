@@ -1,6 +1,5 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.Serialization;
 using SaveSystemPackage.Tests.TestObjects;
@@ -34,9 +33,9 @@ namespace SaveSystemPackage.Tests {
             await using (var writer = new SaveWriter(File.Open(m_filePath, FileMode.OpenOrCreate)))
                 objectGroup.Serialize(writer);
 
-            await UniTask.WaitForSeconds(1);
+            await Task.Delay(1000);
             objectGroup.DoForAll(obj => Object.Destroy(obj.gameObject));
-            await UniTask.WaitForSeconds(0.2f);
+            await Task.Delay(200);
         }
 
 
@@ -49,7 +48,7 @@ namespace SaveSystemPackage.Tests {
             await using (var reader = new SaveReader(File.Open(m_filePath, FileMode.Open)))
                 objectGroup.Deserialize(reader, 0);
 
-            await UniTask.WaitForSeconds(1);
+            await Task.Delay(1000);
         }
 
 

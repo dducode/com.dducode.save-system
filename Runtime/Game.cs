@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
@@ -92,7 +92,7 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Start saving immediately and wait it
         /// </summary>
-        public async UniTask Save (CancellationToken token = default) {
+        public async Task Save (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await GameScope.Serialize(token);
@@ -110,7 +110,7 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Start loading and wait it
         /// </summary>
-        public async UniTask Load (CancellationToken token = default) {
+        public async Task Load (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
                 await GameScope.Deserialize(token);
@@ -121,14 +121,14 @@ namespace SaveSystemPackage {
         }
 
 
-        internal async UniTask<StorageData> ExportGameData (CancellationToken token = default) {
+        internal async Task<StorageData> ExportGameData (CancellationToken token = default) {
             return DataFile.Exists
                 ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
                 : null;
         }
 
 
-        internal async UniTask ImportGameData (byte[] data, CancellationToken token = default) {
+        internal async Task ImportGameData (byte[] data, CancellationToken token = default) {
             if (data.Length > 0)
                 await DataFile.WriteAllBytesAsync(data, token);
         }

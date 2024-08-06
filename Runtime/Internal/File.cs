@@ -1,6 +1,6 @@
 ﻿using System.IO;
 using System.Threading;
-using Cysharp.Threading.Tasks;
+using System.Threading.Tasks;
 
 namespace SaveSystemPackage.Internal {
 
@@ -72,7 +72,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal async UniTask<byte[]> ReadAllBytesAsync (CancellationToken token = default) {
+        internal async Task<byte[]> ReadAllBytesAsync (CancellationToken token = default) {
             return await System.IO.File.ReadAllBytesAsync(Path, token);
         }
 
@@ -87,7 +87,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal async UniTask WriteAllBytesAsync (byte[] bytes, CancellationToken token = default) {
+        internal async Task WriteAllBytesAsync (byte[] bytes, CancellationToken token = default) {
             await System.IO.File.WriteAllBytesAsync(Path, bytes, token);
         }
 

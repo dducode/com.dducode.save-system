@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.CheckPoints;
 using SaveSystemPackage.Internal.Cryptography;
@@ -150,7 +149,7 @@ namespace SaveSystemPackage.Tests {
 
 
         [Test, Category("Encryption"), Order(0)]
-        public async Task SerializeWithEncryption () {
+        public async Task Encryption () {
             var sphereFactory = new DynamicObjectGroup<TestObject>(
                 new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
             );
@@ -158,37 +157,21 @@ namespace SaveSystemPackage.Tests {
 
             var generationParams = KeyGenerationParams.Default;
             generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystem.Game.Settings.Encrypt = true;
-            SaveSystem.Game.Settings.Cryptographer = new Cryptographer(
+            m_profile.Settings.Encrypt = true;
+            m_profile.Settings.CompressFiles = false;
+            m_profile.Settings.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 generationParams
             );
 
             m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Game.Save();
-            await UniTask.WaitForSeconds(1);
-        }
-
-
-        [Test, Category("Encryption"), Order(1)]
-        public async Task DeserializeWithDecryption () {
-            var sphereFactory = new DynamicObjectGroup<TestObject>(
-                new TestObjectFactory(PrimitiveType.Sphere), new TestObjectProvider()
-            );
-
-            var generationParams = KeyGenerationParams.Default;
-            generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            SaveSystem.Game.Settings.Encrypt = true;
-            SaveSystem.Game.Settings.Cryptographer = new Cryptographer(
-                new DefaultKeyProvider(Password),
-                new DefaultKeyProvider(SaltKey),
-                generationParams
-            );
-
-            m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);
-            await SaveSystem.Game.Load();
-            await UniTask.WaitForSeconds(1);
+            await m_profile.Save();
+            await Task.Delay(1000).ConfigureAwait(true);
+            sphereFactory.DoForAll(obj => Object.Destroy(obj.gameObject));
+            await Task.Delay(1000).ConfigureAwait(true);
+            await m_profile.Load();
+            await Task.Delay(1000).ConfigureAwait(true);
         }
 
 
