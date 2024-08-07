@@ -153,8 +153,10 @@ namespace SaveSystemPackage {
 
 
         private void RegisterRecorders () {
-            foreach (ComponentRecorder recorder in FindObjectsByType<ComponentRecorder>(FindObjectsSortMode.None))
+            foreach (ComponentRecorder recorder in FindObjectsByType<ComponentRecorder>(FindObjectsSortMode.None)) {
+                recorder.Initialize();
                 RegisterSerializable(recorder.Id, recorder);
+            }
         }
 
     }

@@ -15,7 +15,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         private CharacterController m_characterController;
 
 
-        private void Awake () {
+        public override void Initialize () {
             Target = transform;
             m_characterController = GetComponent<CharacterController>();
         }

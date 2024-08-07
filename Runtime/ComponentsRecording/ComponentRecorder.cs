@@ -14,6 +14,8 @@ namespace SaveSystemPackage.ComponentsRecording {
         public abstract void Serialize (SaveWriter writer);
         public abstract void Deserialize (SaveReader reader, int previousVersion);
 
+        public abstract void Initialize ();
+
     }
 
 }

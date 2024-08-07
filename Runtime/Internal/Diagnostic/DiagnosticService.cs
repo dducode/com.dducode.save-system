@@ -1,55 +1,58 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using Object = UnityEngine.Object;
+using System.Text;
+using SaveSystemPackage.Serialization;
 
 namespace SaveSystemPackage.Internal.Diagnostic {
 
     internal static class DiagnosticService {
 
-        internal static readonly Dictionary<Type, List<GCHandle>> Dict = new();
-        internal static int ObjectsCount => Dict.Count;
+        internal static readonly Dictionary<Type, List<ObjectData>> Objects = new();
+        internal static int ObjectsCount => Objects.Count;
 
 
         [Conditional("UNITY_EDITOR")]
-        internal static void AddObject<TObject> (TObject obj) {
+        internal static void AddObject<TObject> (string key, TObject obj) {
             Type objectType = obj.GetType();
 
-            if (!Dict.ContainsKey(objectType))
-                Dict.Add(objectType, new List<GCHandle>());
-            Dict[objectType].Add(GCHandle.Alloc(obj, GCHandleType.Weak));
+            if (!Objects.ContainsKey(objectType))
+                Objects.Add(objectType, new List<ObjectData>());
+
+            Objects[objectType].Add(CreateObjectData(key, obj));
         }
 
 
         [Conditional("UNITY_EDITOR")]
-        internal static void AddObjects<TObject> (IEnumerable<TObject> objects) {
-            TObject[] array = objects.ToArray();
-            if (array.Length == 0)
+        internal static void AddObjects<TObject> (string[] keys, TObject[] objects) {
+            if (keys.Length != objects.Length)
+                throw new InvalidOperationException("Keys count must match to objects count");
+            if (keys.Length == 0)
                 return;
 
-            Type objectsType = array.First().GetType();
+            Type objectsType = objects.First().GetType();
 
-            if (!Dict.ContainsKey(objectsType))
-                Dict.Add(objectsType, new List<GCHandle>());
+            if (!Objects.ContainsKey(objectsType))
+                Objects.Add(objectsType, new List<ObjectData>());
 
-            foreach (TObject obj in array)
-                Dict[objectsType].Add(GCHandle.Alloc(obj, GCHandleType.Weak));
+            for (var i = 0; i < objects.Length; i++)
+                Objects[objectsType].Add(CreateObjectData(keys[i], objects[i]));
         }
 
 
         [Conditional("UNITY_EDITOR")]
         internal static void ClearNullObjects () {
-            Type[] keys = Dict.Keys.ToArray();
+            Type[] keys = Objects.Keys.ToArray();
 
-            for (var i = 0; i < Dict.Count; i++) {
+            for (var i = 0; i < Objects.Count; i++) {
                 Type key = keys[i];
-                List<GCHandle> list = Dict[key];
-                list.RemoveAll(handle => handle.Target == null || handle.Target is Object unityObj && unityObj == null);
+                List<ObjectData> list = Objects[key];
+                list.RemoveAll(data => !data.reference.TryGetTarget(out object _));
 
                 if (list.Count == 0) {
-                    Dict.Remove(key);
+                    Objects.Remove(key);
                     i--;
                 }
             }
@@ -58,7 +61,23 @@ namespace SaveSystemPackage.Internal.Diagnostic {
 
         [Conditional("UNITY_EDITOR")]
         internal static void Clear () {
-            Dict.Clear();
+            Objects.Clear();
+        }
+
+
+        private static ObjectData CreateObjectData<TObject> (string key, TObject obj) {
+            using var stream = new MemoryStream();
+
+            using (var writer = new SaveWriter(stream)) {
+                if (obj is IRuntimeSerializable serializable)
+                    serializable.Serialize(writer);
+                else
+                    SerializationManager.SerializeGraph(writer, obj);
+            }
+
+            int clearDataSize = stream.ToArray().Length;
+            int totalDataSize = clearDataSize + Encoding.UTF8.GetBytes(key).Length;
+            return new ObjectData(new WeakReference<object>(obj), totalDataSize, clearDataSize);
         }
 
     }

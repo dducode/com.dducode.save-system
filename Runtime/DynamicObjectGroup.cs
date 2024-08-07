@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using SaveSystemPackage.Attributes;
-using SaveSystemPackage.Internal.Diagnostic;
 using SaveSystemPackage.Serialization;
 using ArgumentException = System.ArgumentException;
 using Object = UnityEngine.Object;
@@ -134,8 +133,7 @@ namespace SaveSystemPackage {
             if (count == 0)
                 return;
 
-            IEnumerable<TDynamic> objects = CreateObjects(count);
-            DiagnosticService.AddObjects(objects);
+            CreateObjects(count);
 
             foreach (IRuntimeSerializable serializable in m_serializables)
                 serializable.Deserialize(reader, previousVersion);
@@ -161,8 +159,6 @@ namespace SaveSystemPackage {
                     $"Object {obj} is not serializable, besides impossible get adapter to object because get adapter function is not set";
                 throw new InvalidOperationException(errorMessage);
             }
-
-            DiagnosticService.AddObject(obj);
         }
 
 

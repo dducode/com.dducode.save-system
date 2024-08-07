@@ -59,7 +59,7 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(serializable));
 
             m_serializables.Add(key, serializable);
-            DiagnosticService.AddObject(serializable);
+            DiagnosticService.AddObject(key, serializable);
 
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
@@ -80,7 +80,7 @@ namespace SaveSystemPackage {
                 throw new SerializationException($"The object {obj} must define RuntimeSerializable attribute");
 
             m_objects.Add(key, obj);
-            DiagnosticService.AddObject(obj);
+            DiagnosticService.AddObject(key, obj);
 
             if (Buffer.Count > 0 && Buffer.ContainsKey(key)) {
                 using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(key)));
@@ -108,8 +108,11 @@ namespace SaveSystemPackage {
             if (objects.Length == 0)
                 return;
 
+            var keys = new string[objects.Length];
+
             for (var i = 0; i < objects.Length; i++) {
                 var singleKey = $"{key}_{i}";
+                keys[i] = singleKey;
 
                 if (Buffer.Count > 0 && Buffer.ContainsKey(singleKey)) {
                     using var reader = new SaveReader(new MemoryStream(Buffer.ReadArray<byte>(singleKey)));
@@ -120,7 +123,7 @@ namespace SaveSystemPackage {
                 m_serializables.Add(singleKey, objects[i]);
             }
 
-            DiagnosticService.AddObjects(objects);
+            DiagnosticService.AddObjects(keys, objects);
             Logger.Log(Name, $"Serializable objects was registered in {Name}");
         }
 
