@@ -15,9 +15,7 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Creates new save profile and stores it in the internal storage
         /// </summary>
-        public static TProfile CreateProfile<TProfile> (
-            [NotNull] string name, bool? encrypt = null, bool? compressFiles = null
-        ) where TProfile : SaveProfile {
+        public static TProfile CreateProfile<TProfile> ([NotNull] string name) where TProfile : SaveProfile {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
@@ -29,7 +27,7 @@ namespace SaveSystemPackage {
 
             File file = Storage.InternalDirectory.CreateFile(formattedName, "profile");
             using var writer = new SaveWriter(file.Open());
-            InitializeProfile(profile, name, encrypt, compressFiles);
+            InitializeProfile(profile, name);
             SerializeProfile(writer, profile);
             return profile;
         }
@@ -46,7 +44,7 @@ namespace SaveSystemPackage {
 
                 if (string.Equals(reader.ReadString(), type.AssemblyQualifiedName)) {
                     var profile = Activator.CreateInstance<TProfile>();
-                    InitializeProfile(profile, reader.ReadString(), reader.Read<bool>(), reader.Read<bool>());
+                    InitializeProfile(profile, reader.ReadString());
                     SerializationManager.DeserializeGraph(reader, profile);
                     yield return profile;
                 }
@@ -98,9 +96,9 @@ namespace SaveSystemPackage {
         }
 
 
-        private static void InitializeProfile (SaveProfile profile, string name, bool? encrypt, bool? compressFiles) {
+        private static void InitializeProfile (SaveProfile profile, string name) {
             string formattedName = name.ToPathFormat();
-            profile.Initialize(name, encrypt, compressFiles);
+            profile.Initialize(name);
             profile.DataDirectory = Storage.ProfilesDirectory.GetOrCreateDirectory(formattedName);
             profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
         }
@@ -110,8 +108,6 @@ namespace SaveSystemPackage {
             Type type = profile.GetType();
             writer.Write(type.AssemblyQualifiedName);
             writer.Write(profile.Name);
-            writer.Write(profile.Settings.Encrypt);
-            writer.Write(profile.Settings.CompressFiles);
             SerializationManager.SerializeGraph(writer, profile);
         }
 

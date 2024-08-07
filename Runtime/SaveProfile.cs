@@ -37,7 +37,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        public SerializationSettings Settings => ProfileScope.Settings;
+        public SerializationSettings OverriddenSettings => ProfileScope.OverriddenSettings;
         public DataBuffer Data => ProfileScope.Data;
         public SecureDataBuffer SecureData => ProfileScope.SecureData;
 
@@ -74,21 +74,14 @@ namespace SaveSystemPackage {
         private SceneSerializationContext m_sceneContext;
 
 
-        internal void Initialize ([NotNull] string name, bool? encrypt, bool? compressFiles) {
+        internal void Initialize ([NotNull] string name) {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-
-            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
-                ProfileScope = new SerializationScope {
-                    Name = $"{name} profile scope",
-                    Settings = {
-                        Encrypt = encrypt ?? settings.encrypt,
-                        CompressFiles = compressFiles ?? settings.compressFiles
-                    }
-                };
-            }
+            ProfileScope = new SerializationScope {
+                Name = $"{name} profile scope"
+            };
 
             OnInitialized();
         }

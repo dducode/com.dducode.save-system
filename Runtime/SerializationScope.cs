@@ -37,16 +37,24 @@ namespace SaveSystemPackage {
             set => m_dataFile = value ?? throw new ArgumentNullException(nameof(DataFile));
         }
 
-        internal SerializationSettings Settings { get; } = new();
+        internal SerializationSettings OverriddenSettings => m_overridenSettings ??= Settings.Clone();
         internal DataBuffer Data { get; private set; } = new();
         internal SecureDataBuffer SecureData { get; private set; } = new();
-        private DataBuffer Buffer { get; set; } = new();
+        private SerializationSettings Settings { get; }
+        private DataBuffer Buffer { get; } = new();
 
         private string m_name;
         private Internal.File m_dataFile;
+        private SerializationSettings m_overridenSettings;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private readonly Dictionary<string, object> m_objects = new();
         private int ObjectsCount => m_serializables.Count + m_objects.Count;
+
+
+        internal SerializationScope () {
+            using SaveSystemSettings settings = SaveSystemSettings.Load();
+            Settings = settings;
+        }
 
 
         /// <summary>
@@ -129,8 +137,12 @@ namespace SaveSystemPackage {
 
 
         internal async Task Serialize (CancellationToken token) {
-            if (Settings.Encrypt && Settings.Cryptographer == null)
-                throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
+            SerializationSettings settings = m_overridenSettings ?? Settings;
+
+            if (settings.Encrypt && settings.Cryptographer == null)
+                throw new InvalidOperationException("The encryption enabled but a cryptographer doesn't set");
+            if (settings.CompressFiles && settings.FileCompressor == null)
+                throw new InvalidOperationException("The file compression enabled but a compressor doesn't set");
 
             if (ObjectsCount == 0 && Data.Count == 0 && SecureData.Count == 0)
                 return;
@@ -145,10 +157,10 @@ namespace SaveSystemPackage {
                 data = memoryStream.ToArray();
             }
 
-            if (Settings.CompressFiles)
-                data = Settings.FileCompressor.Compress(data);
-            if (Settings.Encrypt)
-                data = Settings.Cryptographer.Encrypt(data);
+            if (settings.CompressFiles)
+                data = settings.FileCompressor.Compress(data);
+            if (settings.Encrypt)
+                data = settings.Cryptographer.Encrypt(data);
 
             await DataFile.WriteAllBytesAsync(data, token);
             Logger.Log(Name, "Data saved");
@@ -156,8 +168,12 @@ namespace SaveSystemPackage {
 
 
         internal async Task Deserialize (CancellationToken token) {
-            if (Settings.Encrypt && Settings.Cryptographer == null)
-                throw new InvalidOperationException("Encryption enabled but cryptographer doesn't set");
+            SerializationSettings settings = m_overridenSettings ?? Settings;
+
+            if (settings.Encrypt && settings.Cryptographer == null)
+                throw new InvalidOperationException("The encryption enabled but a cryptographer doesn't set");
+            if (settings.CompressFiles && settings.FileCompressor == null)
+                throw new InvalidOperationException("The file compression enabled but a compressor doesn't set");
 
             if (!DataFile.Exists) {
                 SetDefaults();
@@ -166,10 +182,10 @@ namespace SaveSystemPackage {
 
             byte[] data = await DataFile.ReadAllBytesAsync(token);
 
-            if (Settings.Encrypt)
-                data = Settings.Cryptographer.Decrypt(data);
-            if (Settings.CompressFiles)
-                data = Settings.FileCompressor.Decompress(data);
+            if (settings.Encrypt)
+                data = settings.Cryptographer.Decrypt(data);
+            if (settings.CompressFiles)
+                data = settings.FileCompressor.Decompress(data);
 
             await using var reader = new SaveReader(new MemoryStream(data));
 

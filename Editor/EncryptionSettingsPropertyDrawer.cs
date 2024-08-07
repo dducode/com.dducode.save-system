@@ -24,7 +24,8 @@ namespace SaveSystemPackage.Editor {
 
             EditorGUI.indentLevel++;
             m_editProperties = EditorGUILayout.ToggleLeft("Edit Properties", m_editProperties);
-            m_showSecureValues = EditorGUILayout.ToggleLeft("Show Secure Values", m_showSecureValues);
+            if (!settings.useCustomCryptographer)
+                m_showSecureValues = EditorGUILayout.ToggleLeft("Show Secure Values", m_showSecureValues);
             GUI.enabled = m_editProperties;
 
             if (m_editProperties) {
@@ -38,7 +39,10 @@ namespace SaveSystemPackage.Editor {
                 "Use Custom Cryptographer", settings.useCustomCryptographer
             );
 
-            if (!settings.useCustomCryptographer) {
+            if (settings.useCustomCryptographer) {
+                EditorGUILayout.ObjectField("Cryptographer", settings.cryptographer, typeof(Cryptographer), false);
+            }
+            else {
                 settings.password = DrawingUtilities.DrawKeyProperty(
                     settings.password, "Password", "Generate Password", CryptoUtilities.GenerateKey, m_showSecureValues
                 );

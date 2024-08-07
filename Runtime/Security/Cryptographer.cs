@@ -4,6 +4,7 @@ using System.IO;
 using System.Security.Cryptography;
 using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Internal.Extensions;
+using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
@@ -12,7 +13,7 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public class Cryptographer {
+    public class Cryptographer : ScriptableObject {
 
         [NotNull]
         public IKeyProvider PasswordProvider {
@@ -45,24 +46,21 @@ namespace SaveSystemPackage.Security {
         private KeyGenerationParams m_generationParams;
 
 
-        public Cryptographer (
+        public static Cryptographer CreateInstance (
             IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
         ) {
-            m_passwordProvider = passwordProvider;
-            m_saltProvider = saltProvider;
-            m_generationParams = generationParams;
+            var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
+            cryptographer.m_passwordProvider = passwordProvider;
+            cryptographer.m_saltProvider = saltProvider;
+            cryptographer.m_generationParams = generationParams;
+            return cryptographer;
         }
 
 
-        internal Cryptographer (EncryptionSettings settings) {
-            SetSettings(settings);
-        }
-
-
-        internal void SetSettings (EncryptionSettings settings) {
-            m_passwordProvider = new DefaultKeyProvider(settings.password);
-            m_saltProvider = new DefaultKeyProvider(settings.saltKey);
-            m_generationParams = settings.keyGenerationParams;
+        internal static Cryptographer CreateInstance (EncryptionSettings settings) {
+            var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
+            cryptographer.SetSettings(settings);
+            return cryptographer;
         }
 
 
@@ -118,6 +116,13 @@ namespace SaveSystemPackage.Security {
             aes.Clear();
 
             return buffer;
+        }
+
+
+        internal void SetSettings (EncryptionSettings settings) {
+            m_passwordProvider = new DefaultKeyProvider(settings.password);
+            m_saltProvider = new DefaultKeyProvider(settings.saltKey);
+            m_generationParams = settings.keyGenerationParams;
         }
 
 

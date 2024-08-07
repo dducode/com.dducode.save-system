@@ -22,7 +22,10 @@ namespace SaveSystemPackage.Editor {
                 "Use Custom Compressor", settings.useCustomCompressor
             );
 
-            if (!settings.useCustomCompressor) {
+            if (settings.useCustomCompressor) {
+                EditorGUILayout.ObjectField("File Compressor", settings.fileCompressor, typeof(FileCompressor), false);
+            }
+            else {
                 settings.compressionLevel = (CompressionLevel)EditorGUILayout.EnumPopup(
                     "Compression Level", settings.compressionLevel
                 );

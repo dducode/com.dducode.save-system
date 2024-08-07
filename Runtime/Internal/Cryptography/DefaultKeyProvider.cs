@@ -12,7 +12,7 @@ namespace SaveSystemPackage.Internal.Cryptography {
 
         internal DefaultKeyProvider (string key) {
             byte[] hash = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(key));
-            m_cryptographer = new Cryptographer(
+            m_cryptographer = Cryptographer.CreateInstance(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 KeyGenerationParams.Default

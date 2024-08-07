@@ -122,7 +122,8 @@ namespace SaveSystemPackage.Tests {
             }
 
             m_profile.RegisterSerializables(nameof(spheres), spheres);
-            SaveSystem.Game.Settings.Encrypt = false;
+            m_profile.OverriddenSettings.Encrypt = false;
+            m_profile.OverriddenSettings.CompressFiles = false;
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
             SaveSystem.Settings.SavePeriod = 3;
             SaveSystem.Settings.EnabledLogs = LogLevel.All;
@@ -155,14 +156,12 @@ namespace SaveSystemPackage.Tests {
             );
             sphereFactory.CreateObjects(250);
 
-            var generationParams = KeyGenerationParams.Default;
-            generationParams.hashAlgorithm = HashAlgorithmName.SHA1;
-            m_profile.Settings.Encrypt = true;
-            m_profile.Settings.CompressFiles = false;
-            m_profile.Settings.Cryptographer = new Cryptographer(
+            m_profile.OverriddenSettings.Encrypt = true;
+            m_profile.OverriddenSettings.CompressFiles = false;
+            m_profile.OverriddenSettings.Cryptographer = Cryptographer.CreateInstance(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
-                generationParams
+                KeyGenerationParams.Default
             );
 
             m_profile.RegisterSerializable(nameof(sphereFactory), sphereFactory);

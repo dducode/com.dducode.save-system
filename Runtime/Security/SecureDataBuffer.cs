@@ -13,7 +13,7 @@ namespace SaveSystemPackage.Security {
 
 
         public SecureDataBuffer () {
-            m_cryptographer = new Cryptographer(
+            m_cryptographer = Cryptographer.CreateInstance(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 new KeyGenerationParams {
@@ -26,7 +26,7 @@ namespace SaveSystemPackage.Security {
 
 
         internal SecureDataBuffer (SaveReader reader) : base(reader) {
-            m_cryptographer = new Cryptographer(
+            m_cryptographer = Cryptographer.CreateInstance(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 new KeyGenerationParams {

@@ -27,7 +27,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        public SerializationSettings Settings => GameScope.Settings;
+        public SerializationSettings OverriddenSettings => GameScope.OverriddenSettings;
         public DataBuffer Data => GameScope.Data;
         public SecureDataBuffer SecureData => GameScope.SecureData;
 
@@ -55,11 +55,7 @@ namespace SaveSystemPackage {
 
         internal Game (SaveSystemSettings settings) {
             GameScope = new SerializationScope {
-                Name = "Game scope",
-                Settings = {
-                    Encrypt = settings.encrypt,
-                    CompressFiles = settings.compressFiles
-                }
+                Name = "Game scope"
             };
 
             DataFile = Storage.Root.GetOrCreateFile(settings.dataFileName, "data");
