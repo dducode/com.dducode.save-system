@@ -1,13 +1,16 @@
 ﻿using System.IO;
 using System.IO.Compression;
-using SaveSystemPackage.Internal;
+using UnityEngine;
+using CompressionLevel = System.IO.Compression.CompressionLevel;
+using Logger = SaveSystemPackage.Internal.Logger;
 
+// ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable VirtualMemberNeverOverridden.Global
 
 namespace SaveSystemPackage.Compressing {
 
-    public class FileCompressor {
+    public class FileCompressor : ScriptableObject {
 
         public CompressionLevel CompressionLevel {
             get => m_compressionLevel;
@@ -20,6 +23,20 @@ namespace SaveSystemPackage.Compressing {
         private CompressionLevel m_compressionLevel;
 
 
+        public static FileCompressor CreateInstance (CompressionLevel compressionLevel) {
+            var fileCompressor = ScriptableObject.CreateInstance<FileCompressor>();
+            fileCompressor.m_compressionLevel = compressionLevel;
+            return fileCompressor;
+        }
+
+
+        internal static FileCompressor CreateInstance (CompressionSettings settings) {
+            var fileCompressor = ScriptableObject.CreateInstance<FileCompressor>();
+            fileCompressor.SetSettings(settings);
+            return fileCompressor;
+        }
+
+
         public FileCompressor (CompressionLevel compressionLevel) {
             m_compressionLevel = compressionLevel;
         }
@@ -27,11 +44,6 @@ namespace SaveSystemPackage.Compressing {
 
         internal FileCompressor (CompressionSettings settings) {
             SetSettings(settings);
-        }
-
-
-        internal void SetSettings (CompressionSettings settings) {
-            m_compressionLevel = settings.compressionLevel;
         }
 
 
@@ -50,6 +62,11 @@ namespace SaveSystemPackage.Compressing {
             // ReSharper disable once MustUseReturnValue
             decompressor.Read(buffer);
             return buffer;
+        }
+
+
+        internal void SetSettings (CompressionSettings settings) {
+            m_compressionLevel = settings.compressionLevel;
         }
 
     }

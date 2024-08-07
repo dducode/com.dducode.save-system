@@ -15,7 +15,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         public Rigidbody Target { get; private set; }
 
 
-        private void Awake () {
+        public override void Initialize () {
             Target = GetComponent<Rigidbody>();
         }
 

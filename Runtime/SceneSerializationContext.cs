@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.ComponentsRecording;
+using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Security;
 using UnityEngine;
@@ -24,20 +25,26 @@ namespace SaveSystemPackage {
         private bool overrideProjectSettings;
 
         [SerializeField]
+        private bool compressFiles;
+
+        [SerializeField]
+        private CompressionSettings compressionSettings;
+
+        [SerializeField]
         private bool encrypt;
 
         [SerializeField]
-        private bool compressFiles;
+        private EncryptionSettings encryptionSettings;
 
         [SerializeField]
         private string fileName;
 
-        public SerializationSettings Settings => SceneScope.Settings;
         public DataBuffer Data => SceneScope.Data;
         public SecureDataBuffer SecureData => SceneScope.SecureData;
 
         internal bool HasChanges => Data.HasChanges;
         private SerializationScope SceneScope { get; set; }
+        private SerializationSettings OverriddenSettings => SceneScope.OverriddenSettings;
 
         private Internal.File DataFile {
             get => SceneScope.DataFile;
@@ -46,14 +53,26 @@ namespace SaveSystemPackage {
 
 
         private void Awake () {
-            using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
-                SceneScope = new SerializationScope {
-                    Name = $"{gameObject.scene.name} scene scope",
-                    Settings = {
-                        Encrypt = overrideProjectSettings ? encrypt : settings.encrypt,
-                        CompressFiles = overrideProjectSettings ? compressFiles : settings.compressFiles
-                    }
-                };
+            SceneScope = new SerializationScope {
+                Name = $"{gameObject.scene.name} scene scope"
+            };
+
+            if (overrideProjectSettings) {
+                OverriddenSettings.Encrypt = encrypt;
+
+                if (encrypt) {
+                    OverriddenSettings.Cryptographer = encryptionSettings.useCustomCryptographer
+                        ? encryptionSettings.cryptographer
+                        : Cryptographer.CreateInstance(encryptionSettings);
+                }
+
+                OverriddenSettings.CompressFiles = compressFiles;
+
+                if (compressFiles) {
+                    OverriddenSettings.FileCompressor = compressionSettings.useCustomCompressor
+                        ? compressionSettings.fileCompressor
+                        : FileCompressor.CreateInstance(compressionSettings);
+                }
             }
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
@@ -107,29 +126,26 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Save (CancellationToken token) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await SceneScope.Serialize(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(SceneScope.Name, "Data saving canceled");
-            }
-        }
-
-
         public async Task Load () {
-            await Load(SaveSystem.exitCancellation.Token);
-        }
+            CancellationToken token = SaveSystem.exitCancellation.Token;
 
-
-        public async Task Load (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await SceneScope.Deserialize(token);
             }
             catch (OperationCanceledException) {
                 Logger.Log(SceneScope.Name, "Data loading canceled");
+            }
+        }
+
+
+        internal async Task Save (CancellationToken token) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await SceneScope.Serialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(SceneScope.Name, "Data saving canceled");
             }
         }
 
@@ -153,8 +169,10 @@ namespace SaveSystemPackage {
 
 
         private void RegisterRecorders () {
-            foreach (ComponentRecorder recorder in FindObjectsByType<ComponentRecorder>(FindObjectsSortMode.None))
+            foreach (ComponentRecorder recorder in FindObjectsByType<ComponentRecorder>(FindObjectsSortMode.None)) {
+                recorder.Initialize();
                 RegisterSerializable(recorder.Id, recorder);
+            }
         }
 
     }

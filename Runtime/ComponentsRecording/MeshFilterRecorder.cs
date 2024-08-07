@@ -11,7 +11,7 @@ namespace SaveSystemPackage.ComponentsRecording {
         public MeshFilter Target { get; private set; }
 
 
-        private void Awake () {
+        public override void Initialize () {
             Target = GetComponent<MeshFilter>();
         }
 

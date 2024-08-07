@@ -7,6 +7,7 @@ namespace SaveSystemPackage.Compressing {
     public class CompressionSettings {
 
         public bool useCustomCompressor;
+        public FileCompressor fileCompressor;
         public CompressionLevel compressionLevel = CompressionLevel.NoCompression;
 
 

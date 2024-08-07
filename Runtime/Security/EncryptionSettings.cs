@@ -7,6 +7,7 @@ namespace SaveSystemPackage.Security {
     public class EncryptionSettings {
 
         public bool useCustomCryptographer;
+        public Cryptographer cryptographer;
         public string password = CryptoUtilities.GenerateKey();
         public string saltKey = CryptoUtilities.GenerateKey();
         public KeyGenerationParams keyGenerationParams = KeyGenerationParams.Default;
