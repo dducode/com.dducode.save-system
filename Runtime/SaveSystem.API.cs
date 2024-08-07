@@ -62,34 +62,20 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="LoadSceneAsync(Func{Task},CancellationToken)"/>
-        public static async Task LoadSceneAsync (Func<Task> sceneLoading) {
-            await LoadSceneAsync(sceneLoading, exitCancellation.Token);
-        }
-
-
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async Task LoadSceneAsync (Func<Task> sceneLoading, CancellationToken token) {
-            await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
+        public static async Task LoadSceneAsync (Func<Task> sceneLoading) {
+            await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(exitCancellation.Token));
             await SceneLoader.LoadSceneAsync(sceneLoading);
         }
 
 
-        /// <inheritdoc cref="LoadSceneAsync{TData}(Func{Task},TData,CancellationToken)"/>
-        public static async Task LoadSceneAsync<TData> (Func<Task> sceneLoading, TData passedData) {
-            await LoadSceneAsync(sceneLoading, passedData, exitCancellation.Token);
-        }
-
-
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async Task LoadSceneAsync<TData> (
-            Func<Task> sceneLoading, TData passedData, CancellationToken token
-        ) {
-            await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(token));
+        public static async Task LoadSceneAsync<TData> (Func<Task> sceneLoading, TData passedData) {
+            await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(exitCancellation.Token));
             await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
         }
 
@@ -113,11 +99,8 @@ namespace SaveSystemPackage {
 
 
         public static async Task UploadToCloud () {
-            await UploadToCloud(exitCancellation.Token);
-        }
+            CancellationToken token = exitCancellation.Token;
 
-
-        public static async Task UploadToCloud (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await s_synchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(token));
@@ -129,11 +112,8 @@ namespace SaveSystemPackage {
 
 
         public static async Task DownloadFromCloud () {
-            await DownloadFromCloud(exitCancellation.Token);
-        }
+            CancellationToken token = exitCancellation.Token;
 
-
-        public static async Task DownloadFromCloud (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await s_synchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(token));

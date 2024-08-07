@@ -107,29 +107,26 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Save (CancellationToken token) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await SceneScope.Serialize(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(SceneScope.Name, "Data saving canceled");
-            }
-        }
-
-
         public async Task Load () {
-            await Load(SaveSystem.exitCancellation.Token);
-        }
+            CancellationToken token = SaveSystem.exitCancellation.Token;
 
-
-        public async Task Load (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await SceneScope.Deserialize(token);
             }
             catch (OperationCanceledException) {
                 Logger.Log(SceneScope.Name, "Data loading canceled");
+            }
+        }
+
+
+        internal async Task Save (CancellationToken token) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await SceneScope.Serialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(SceneScope.Name, "Data saving canceled");
             }
         }
 

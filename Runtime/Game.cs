@@ -97,8 +97,23 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="Save()"/>
-        public async Task Save (CancellationToken token) {
+        /// <summary>
+        /// Start loading and wait it
+        /// </summary>
+        public async Task Load () {
+            CancellationToken token = SaveSystem.exitCancellation.Token;
+
+            try {
+                token.ThrowIfCancellationRequested();
+                await GameScope.Deserialize(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(GameScope.Name, "Data loading canceled");
+            }
+        }
+
+
+        internal async Task Save (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await GameScope.Serialize(token);
@@ -109,26 +124,6 @@ namespace SaveSystemPackage {
             }
             catch (OperationCanceledException) {
                 Logger.Log(GameScope.Name, "Data saving canceled");
-            }
-        }
-
-
-        /// <summary>
-        /// Start loading and wait it
-        /// </summary>
-        public async Task Load () {
-            await Load(SaveSystem.exitCancellation.Token);
-        }
-
-
-        /// <inheritdoc cref="Load()"/>
-        public async Task Load (CancellationToken token) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await GameScope.Deserialize(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(GameScope.Name, "Data loading canceled");
             }
         }
 

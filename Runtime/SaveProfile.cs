@@ -127,25 +127,9 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task Save (CancellationToken token) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await ProfileScope.Serialize(token);
-                if (SceneContext != null)
-                    await SceneContext.Save(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(ProfileScope.Name, "Data saving canceled");
-            }
-        }
-
-
         public async Task Load () {
-            await Load(SaveSystem.exitCancellation.Token);
-        }
+            CancellationToken token = SaveSystem.exitCancellation.Token;
 
-
-        public async Task Load (CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
                 await ProfileScope.Deserialize(token);
@@ -158,6 +142,19 @@ namespace SaveSystemPackage {
 
         public override string ToString () {
             return $"name: {Name}, path: {DataFile.FullName}";
+        }
+
+
+        internal async Task Save (CancellationToken token) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await ProfileScope.Serialize(token);
+                if (SceneContext != null)
+                    await SceneContext.Save(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(ProfileScope.Name, "Data saving canceled");
+            }
         }
 
 
