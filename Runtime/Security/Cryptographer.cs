@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Internal.Extensions;
@@ -120,6 +121,67 @@ namespace SaveSystemPackage.Security {
             var buffer = new byte[data.Length - 16];
             // ReSharper disable once MustUseReturnValue
             cryptoStream.Read(buffer);
+            aes.Clear();
+            key.Free();
+
+            return buffer;
+        }
+
+
+        /// <summary>
+        /// Encrypts any data from a byte array
+        /// </summary>
+        /// <param name="data"> Data to be encrypted </param>
+        /// <returns> Encrypted data </returns>
+        public virtual async Task<byte[]> EncryptAsync ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            byte[] iv = GetIV();
+
+            using var memoryStream = new MemoryStream();
+            memoryStream.Write(iv);
+
+            using var aes = Aes.Create();
+            Key key = await Task.Run(() =>
+                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
+            );
+
+            await using var cryptoStream = new CryptoStream(
+                memoryStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
+            );
+
+            await cryptoStream.WriteAsync(data);
+            cryptoStream.FlushFinalBlock();
+            aes.Clear();
+            key.Free();
+
+            return memoryStream.ToArray();
+        }
+
+
+        /// <summary>
+        /// Decrypts any data from a byte array
+        /// </summary>
+        /// <param name="data"> Data containing encrypted data </param>
+        /// <returns> Decrypted data </returns>
+        public virtual async Task<byte[]> DecryptAsync ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            using var aes = Aes.Create();
+            Key key = await Task.Run(() =>
+                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
+            );
+            byte[] iv = data[..16];
+
+            await using var cryptoStream = new CryptoStream(
+                new MemoryStream(data[16..]), aes.CreateDecryptor(key.value, iv), CryptoStreamMode.Read
+            );
+
+            var buffer = new byte[data.Length - 16];
+            // ReSharper disable once MustUseReturnValue
+            await cryptoStream.ReadAsync(buffer);
             aes.Clear();
             key.Free();
 

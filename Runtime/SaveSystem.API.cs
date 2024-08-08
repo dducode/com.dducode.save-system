@@ -65,18 +65,18 @@ namespace SaveSystemPackage {
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async Task LoadSceneAsync (Func<Task> sceneLoading) {
+        public static async Task LoadSceneAsync (int index) {
             await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(exitCancellation.Token));
-            await SceneLoader.LoadSceneAsync(sceneLoading);
+            await SceneLoader.LoadSceneAsync(index);
         }
 
 
         /// <summary>
         /// Save the game and load a scene
         /// </summary>
-        public static async Task LoadSceneAsync<TData> (Func<Task> sceneLoading, TData passedData) {
+        public static async Task LoadSceneAsync<TData> (int index, TData passedData) {
             await s_synchronizationPoint.ExecuteTask(async () => await Game.Save(exitCancellation.Token));
-            await SceneLoader.LoadSceneAsync(sceneLoading, passedData);
+            await SceneLoader.LoadSceneAsync(index, passedData);
         }
 
 

@@ -57,7 +57,6 @@ namespace SaveSystemPackage.ComponentsRecording {
         }
 
 
-
         [Flags]
         private enum Properties {
 
