@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Cryptography;
@@ -132,8 +133,9 @@ namespace SaveSystemPackage.Security {
         /// Encrypts any data from a byte array
         /// </summary>
         /// <param name="data"> Data to be encrypted </param>
+        /// <param name="token"></param>
         /// <returns> Encrypted data </returns>
-        public virtual async Task<byte[]> EncryptAsync ([NotNull] byte[] data) {
+        public virtual async Task<byte[]> EncryptAsync ([NotNull] byte[] data, CancellationToken token = default) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
@@ -144,14 +146,13 @@ namespace SaveSystemPackage.Security {
 
             using var aes = Aes.Create();
             Key key = await Task.Run(() =>
-                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
-            );
+                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token);
 
             await using var cryptoStream = new CryptoStream(
                 memoryStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
             );
 
-            await cryptoStream.WriteAsync(data);
+            await cryptoStream.WriteAsync(data, token);
             cryptoStream.FlushFinalBlock();
             aes.Clear();
             key.Free();
@@ -164,15 +165,15 @@ namespace SaveSystemPackage.Security {
         /// Decrypts any data from a byte array
         /// </summary>
         /// <param name="data"> Data containing encrypted data </param>
+        /// <param name="token"></param>
         /// <returns> Decrypted data </returns>
-        public virtual async Task<byte[]> DecryptAsync ([NotNull] byte[] data) {
+        public virtual async Task<byte[]> DecryptAsync ([NotNull] byte[] data, CancellationToken token = default) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
             using var aes = Aes.Create();
             Key key = await Task.Run(() =>
-                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
-            );
+                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token);
             byte[] iv = data[..16];
 
             await using var cryptoStream = new CryptoStream(
@@ -181,7 +182,7 @@ namespace SaveSystemPackage.Security {
 
             var buffer = new byte[data.Length - 16];
             // ReSharper disable once MustUseReturnValue
-            await cryptoStream.ReadAsync(buffer);
+            await cryptoStream.ReadAsync(buffer, token);
             aes.Clear();
             key.Free();
 

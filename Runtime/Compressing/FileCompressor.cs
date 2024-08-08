@@ -1,5 +1,7 @@
 ﻿using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using UnityEngine;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
@@ -44,21 +46,19 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        public virtual byte[] Compress (byte[] data) {
+        public virtual async Task<byte[]> Compress (byte[] data, CancellationToken token = default) {
             var stream = new MemoryStream();
-            CompressionLevel = CompressionLevel.Optimal;
-            using (var compressor = new DeflateStream(stream, compressionLevel))
-                compressor.Write(data);
+            await using (var compressor = new DeflateStream(stream, compressionLevel))
+                await compressor.WriteAsync(data, token);
             return stream.ToArray();
         }
 
 
-        public virtual byte[] Decompress (byte[] data) {
-            var buffer = new byte[data.Length * 2];
-            using var decompressor = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress);
-            // ReSharper disable once MustUseReturnValue
-            decompressor.Read(buffer);
-            return buffer;
+        public virtual async Task<byte[]> Decompress (byte[] data, CancellationToken token = default) {
+            var stream = new MemoryStream();
+            await using (var decompressor = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress)) 
+                await decompressor.CopyToAsync(stream, token);
+            return stream.ToArray();
         }
 
 

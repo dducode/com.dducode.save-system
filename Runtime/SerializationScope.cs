@@ -153,9 +153,9 @@ namespace SaveSystemPackage {
             }
 
             if (settings.CompressFiles)
-                data = settings.FileCompressor.Compress(data);
+                data = await settings.FileCompressor.Compress(data, token);
             if (settings.Encrypt)
-                data = await settings.Cryptographer.EncryptAsync(data);
+                data = await settings.Cryptographer.EncryptAsync(data, token);
 
             await DataFile.WriteAllBytesAsync(data, token);
             Logger.Log(Name, "Data saved");
@@ -178,9 +178,9 @@ namespace SaveSystemPackage {
             byte[] data = await DataFile.ReadAllBytesAsync(token);
 
             if (settings.Encrypt)
-                data = await settings.Cryptographer.DecryptAsync(data);
+                data = await settings.Cryptographer.DecryptAsync(data, token);
             if (settings.CompressFiles)
-                data = settings.FileCompressor.Decompress(data);
+                data = await settings.FileCompressor.Decompress(data, token);
 
             await using var reader = new SaveReader(new MemoryStream(data));
 
