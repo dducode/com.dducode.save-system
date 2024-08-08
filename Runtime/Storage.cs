@@ -22,14 +22,17 @@ namespace SaveSystemPackage {
         internal static Directory ProfilesDirectory => Root.GetOrCreateDirectory("profiles");
         internal static Directory ScreenshotsDirectory => Root.GetOrCreateDirectory(ScreenshotsName);
 
-        internal static Directory TestsDirectory =>
-            s_testsDirectory ??= Directory.CreateRoot("tests", Application.temporaryCachePath);
+        internal static Directory CacheRoot =>
+            s_cacheRoot ??= Directory.CreateRoot("save-system", Application.temporaryCachePath);
+
+        internal static Directory TestsDirectory => CacheRoot.GetOrCreateDirectory("tests");
 
         private static Directory s_root;
         private static Directory s_internalDirectory;
         private static Directory s_scenesDirectory;
         private static Directory s_profilesDirectory;
         private static Directory s_screenshotsDirectory;
+        private static Directory s_cacheRoot;
         private static Directory s_testsDirectory;
 
 
