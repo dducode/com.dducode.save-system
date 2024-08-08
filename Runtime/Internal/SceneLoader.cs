@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -10,18 +11,18 @@ namespace SaveSystemPackage.Internal {
         private static TaskCompletionSource<Scene> s_tcs;
 
 
-        internal static async Task LoadSceneAsync (int index) {
+        internal static async Task LoadSceneAsync (Func<Task> sceneLoading) {
             SetupTask();
-            SceneManager.LoadSceneAsync(index);
-            SceneHandler handler = await ExecuteSceneHandling(await WaitForLoading());
+            await sceneLoading();
+            SceneHandler handler = await ExecuteSceneHandling(await WaitForCompleteScene());
             handler.StartScene();
         }
 
 
-        internal static async Task LoadSceneAsync<TData> (int index, TData data) {
+        internal static async Task LoadSceneAsync<TData> (Func<Task> sceneLoading, TData data) {
             SetupTask();
-            SceneManager.LoadSceneAsync(index);
-            SceneHandler<TData> handler = await ExecuteSceneHandling<TData>(await WaitForLoading());
+            await sceneLoading();
+            SceneHandler<TData> handler = await ExecuteSceneHandling<TData>(await WaitForCompleteScene());
             handler.StartScene(data);
         }
 
@@ -32,7 +33,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        private static async Task<Scene> WaitForLoading () {
+        private static async Task<Scene> WaitForCompleteScene () {
             return await s_tcs.Task;
         }
 
