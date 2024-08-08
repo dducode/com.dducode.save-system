@@ -1,8 +1,11 @@
 ﻿using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using UnityEngine;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
+using File = SaveSystemPackage.Internal.File;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
@@ -44,21 +47,41 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        public virtual byte[] Compress (byte[] data) {
-            var stream = new MemoryStream();
-            CompressionLevel = CompressionLevel.Optimal;
-            using (var compressor = new DeflateStream(stream, compressionLevel))
-                compressor.Write(data);
-            return stream.ToArray();
+        public virtual async Task Compress (Stream stream, CancellationToken token = default) {
+            stream.Position = 0;
+            File cacheFile = Storage.CacheRoot.CreateFile("compress", "temp");
+
+            try {
+                await using FileStream cacheStream = cacheFile.Open();
+                await using (var compressor = new DeflateStream(cacheStream, compressionLevel, true)) 
+                    await stream.CopyToAsync(compressor, token);
+                stream.SetLength(0);
+                cacheStream.Position = 0;
+                await cacheStream.CopyToAsync(stream, token);
+            }
+            finally {
+                cacheFile.Delete();
+                stream.Position = 0;
+            }
         }
 
 
-        public virtual byte[] Decompress (byte[] data) {
-            var buffer = new byte[data.Length * 2];
-            using var decompressor = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress);
-            // ReSharper disable once MustUseReturnValue
-            decompressor.Read(buffer);
-            return buffer;
+        public virtual async Task Decompress (Stream stream, CancellationToken token = default) {
+            stream.Position = 0;
+            File cacheFile = Storage.CacheRoot.CreateFile("decompress", "temp");
+
+            try {
+                await using FileStream cacheStream = cacheFile.Open();
+                await stream.CopyToAsync(cacheStream, token);
+                stream.SetLength(0);
+                cacheStream.Position = 0;
+                await using var decompressor = new DeflateStream(cacheStream, CompressionMode.Decompress);
+                await decompressor.CopyToAsync(stream, token);
+            }
+            finally {
+                cacheFile.Delete();
+                stream.Position = 0;
+            }
         }
 
 

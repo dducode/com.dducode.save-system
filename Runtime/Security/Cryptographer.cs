@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Cryptography;
@@ -18,11 +19,8 @@ namespace SaveSystemPackage.Security {
 
     public class Cryptographer : ScriptableObject, ICloneable<Cryptographer> {
 
-        private const string DecryptWarning =
-            "You decrypt data that has length more than 85 000. You can use stream decryption instead";
-
-        private const string EncryptWarning =
-            "You encrypt data that has length more than 85 000. You can use stream encryption instead";
+        private const string OperationWarning =
+            "You {0} data that has length more than 85 000. You can use stream {1} instead";
 
         [NotNull]
         public IKeyProvider PasswordProvider {
@@ -87,7 +85,7 @@ namespace SaveSystemPackage.Security {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length > 85_000)
-                Logger.LogWarning(nameof(Cryptographer), EncryptWarning);
+                Logger.LogWarning(nameof(Cryptographer), string.Format(OperationWarning, "encrypt", "encryption"));
 
             byte[] iv = GetIV();
 
@@ -119,7 +117,7 @@ namespace SaveSystemPackage.Security {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length > 85_000)
-                Logger.LogWarning(nameof(Cryptographer), DecryptWarning);
+                Logger.LogWarning(nameof(Cryptographer), string.Format(OperationWarning, "decrypt", "decryption"));
 
             using var aes = Aes.Create();
             Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();
@@ -143,38 +141,41 @@ namespace SaveSystemPackage.Security {
         /// Encrypts any data from a byte array
         /// </summary>
         /// <param name="stream"> Stream to be encrypted </param>
-        public virtual async Task Encrypt ([NotNull] Stream stream) {
+        /// <param name="token"></param>
+        public virtual async Task Encrypt ([NotNull] Stream stream, CancellationToken token = default) {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
             stream.Position = 0;
             File cacheFile = Storage.CacheRoot.CreateFile("encrypt", "temp");
 
-            await using (FileStream cacheStream = cacheFile.Open()) {
+            try {
+                await using FileStream cacheStream = cacheFile.Open();
+
                 byte[] iv = GetIV();
                 cacheStream.Write(iv);
 
                 using var aes = Aes.Create();
                 Key key = await Task.Run(() =>
-                    GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
-                );
+                    GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token);
 
                 await using var cryptoStream = new CryptoStream(
                     cacheStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
                 );
 
-                await stream.CopyToAsync(cryptoStream);
+                await stream.CopyToAsync(cryptoStream, token);
                 cryptoStream.FlushFinalBlock();
                 aes.Clear();
                 key.Free();
 
                 stream.SetLength(0);
                 cacheStream.Position = 0;
-                await cacheStream.CopyToAsync(stream);
+                await cacheStream.CopyToAsync(stream, token);
             }
-
-            cacheFile.Delete();
-            stream.Position = 0;
+            finally {
+                cacheFile.Delete();
+                stream.Position = 0;
+            }
         }
 
 
@@ -182,36 +183,40 @@ namespace SaveSystemPackage.Security {
         /// Decrypts any data from a byte array
         /// </summary>
         /// <param name="stream"> Stream containing encrypted data </param>
-        public virtual async Task Decrypt ([NotNull] Stream stream) {
+        /// <param name="token"></param>
+        public virtual async Task Decrypt ([NotNull] Stream stream, CancellationToken token = default) {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
             stream.Position = 0;
             File cacheFile = Storage.CacheRoot.CreateFile("decrypt", "temp");
 
-            await using (FileStream cacheStream = cacheFile.Open()) {
-                await stream.CopyToAsync(cacheStream);
+            try {
+                await using FileStream cacheStream = cacheFile.Open();
+
+                await stream.CopyToAsync(cacheStream, token);
                 stream.SetLength(0);
                 cacheStream.Position = 0;
                 var iv = new byte[16];
                 // ReSharper disable once MustUseReturnValue
-                cacheStream.Read(iv);
+                int readBytes = cacheStream.Read(iv);
+                cacheStream.Position = readBytes;
 
                 using var aes = Aes.Create();
                 Key key = await Task.Run(() =>
-                    GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
-                );
+                    GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token);
                 await using var cryptoStream = new CryptoStream(
                     cacheStream, aes.CreateDecryptor(key.value, iv), CryptoStreamMode.Read
                 );
 
-                await cryptoStream.CopyToAsync(stream);
+                await cryptoStream.CopyToAsync(stream, token);
                 aes.Clear();
                 key.Free();
             }
-
-            cacheFile.Delete();
-            stream.Position = 0;
+            finally {
+                cacheFile.Delete();
+                stream.Position = 0;
+            }
         }
 
 
