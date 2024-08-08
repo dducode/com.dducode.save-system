@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.IO.Compression;
+using SaveSystemPackage.Internal;
 using UnityEngine;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 using Logger = SaveSystemPackage.Internal.Logger;
@@ -10,22 +11,23 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Compressing {
 
-    public class FileCompressor : ScriptableObject {
+    public class FileCompressor : ScriptableObject, ICloneable<FileCompressor> {
 
         public CompressionLevel CompressionLevel {
-            get => m_compressionLevel;
+            get => compressionLevel;
             set {
-                m_compressionLevel = value;
-                Logger.Log(nameof(FileCompressor), $"Set compression level: {m_compressionLevel}");
+                compressionLevel = value;
+                Logger.Log(nameof(FileCompressor), $"Set compression level: {compressionLevel}");
             }
         }
 
-        private CompressionLevel m_compressionLevel;
+        protected CompressionLevel compressionLevel;
 
 
-        public static FileCompressor CreateInstance (CompressionLevel compressionLevel) {
-            var fileCompressor = ScriptableObject.CreateInstance<FileCompressor>();
-            fileCompressor.m_compressionLevel = compressionLevel;
+        public static TCompressor CreateInstance<TCompressor> (CompressionLevel compressionLevel)
+            where TCompressor : FileCompressor {
+            var fileCompressor = ScriptableObject.CreateInstance<TCompressor>();
+            fileCompressor.compressionLevel = compressionLevel;
             return fileCompressor;
         }
 
@@ -37,20 +39,15 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        public FileCompressor (CompressionLevel compressionLevel) {
-            m_compressionLevel = compressionLevel;
-        }
-
-
-        internal FileCompressor (CompressionSettings settings) {
-            SetSettings(settings);
+        public virtual FileCompressor Clone () {
+            return CreateInstance<FileCompressor>(compressionLevel);
         }
 
 
         public virtual byte[] Compress (byte[] data) {
             var stream = new MemoryStream();
             CompressionLevel = CompressionLevel.Optimal;
-            using (var compressor = new DeflateStream(stream, m_compressionLevel))
+            using (var compressor = new DeflateStream(stream, compressionLevel))
                 compressor.Write(data);
             return stream.ToArray();
         }
@@ -66,7 +63,7 @@ namespace SaveSystemPackage.Compressing {
 
 
         internal void SetSettings (CompressionSettings settings) {
-            m_compressionLevel = settings.compressionLevel;
+            compressionLevel = settings.compressionLevel;
         }
 
     }

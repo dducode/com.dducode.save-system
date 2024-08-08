@@ -4,6 +4,8 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Security;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -112,9 +114,31 @@ namespace SaveSystemPackage {
             public InputAction ScreenCaptureAction { get; set; }
         #endif
 
+            public bool CompressFiles {
+                get => SerializationSettings.CompressFiles;
+                set => SerializationSettings.CompressFiles = value;
+            }
+
+            public FileCompressor FileCompressor {
+                get => SerializationSettings.FileCompressor;
+                set => SerializationSettings.FileCompressor = value;
+            }
+
+            public bool Encrypt {
+                get => SerializationSettings.Encrypt;
+                set => SerializationSettings.Encrypt = value;
+            }
+
+            public Cryptographer Cryptographer {
+                get => SerializationSettings.Cryptographer;
+                set => SerializationSettings.Cryptographer = value;
+            }
+
         #if ENABLE_BOTH_SYSTEMS
             public UsedInputSystem UsedInputSystem { get; private set; }
         #endif
+
+            internal SerializationSettings SerializationSettings { get; }
 
             private SaveEvents m_enabledSaveEvents;
             private float m_savePeriod;
@@ -138,6 +162,7 @@ namespace SaveSystemPackage {
                 PlayerTag = settings.playerTag;
 
                 SetupUserInputs(settings);
+                SerializationSettings = settings;
             }
 
 

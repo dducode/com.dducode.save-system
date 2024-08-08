@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
@@ -13,46 +14,46 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public class Cryptographer : ScriptableObject {
+    public class Cryptographer : ScriptableObject, ICloneable<Cryptographer> {
 
         [NotNull]
         public IKeyProvider PasswordProvider {
-            get => m_passwordProvider;
+            get => passwordProvider;
             set {
-                m_passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
+                passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
                 Logger.Log(nameof(Cryptographer), $"Set password provider: {value}");
             }
         }
 
         [NotNull]
         public IKeyProvider SaltProvider {
-            get => m_saltProvider;
+            get => saltProvider;
             set {
-                m_saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
+                saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
                 Logger.Log(nameof(Cryptographer), $"Set salt provider: {value}");
             }
         }
 
         public KeyGenerationParams GenerationParams {
-            get => m_generationParams;
+            get => generationParams;
             set {
-                m_generationParams = value;
+                generationParams = value;
                 Logger.Log(nameof(Cryptographer), $"Set key generation params: {value}");
             }
         }
 
-        private IKeyProvider m_passwordProvider;
-        private IKeyProvider m_saltProvider;
-        private KeyGenerationParams m_generationParams;
+        protected IKeyProvider passwordProvider;
+        protected IKeyProvider saltProvider;
+        protected KeyGenerationParams generationParams;
 
 
-        public static Cryptographer CreateInstance (
+        public static TCryptographer CreateInstance<TCryptographer> (
             IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
-        ) {
-            var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
-            cryptographer.m_passwordProvider = passwordProvider;
-            cryptographer.m_saltProvider = saltProvider;
-            cryptographer.m_generationParams = generationParams;
+        ) where TCryptographer : Cryptographer {
+            var cryptographer = ScriptableObject.CreateInstance<TCryptographer>();
+            cryptographer.passwordProvider = passwordProvider;
+            cryptographer.saltProvider = saltProvider;
+            cryptographer.generationParams = generationParams;
             return cryptographer;
         }
 
@@ -61,6 +62,11 @@ namespace SaveSystemPackage.Security {
             var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
             cryptographer.SetSettings(settings);
             return cryptographer;
+        }
+
+
+        public virtual Cryptographer Clone () {
+            return CreateInstance<Cryptographer>(passwordProvider.Clone(), saltProvider.Clone(), generationParams);
         }
 
 
@@ -120,9 +126,9 @@ namespace SaveSystemPackage.Security {
 
 
         internal void SetSettings (EncryptionSettings settings) {
-            m_passwordProvider = new DefaultKeyProvider(settings.password);
-            m_saltProvider = new DefaultKeyProvider(settings.saltKey);
-            m_generationParams = settings.keyGenerationParams;
+            passwordProvider = new DefaultKeyProvider(settings.password);
+            saltProvider = new DefaultKeyProvider(settings.saltKey);
+            generationParams = settings.keyGenerationParams;
         }
 
 

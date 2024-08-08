@@ -14,8 +14,19 @@ namespace SaveSystemPackage.Internal.Cryptography {
         }
 
 
+        private RandomSessionKeyProvider (byte[] key) {
+            m_randomKey = new byte[key.Length];
+            key.CopyTo(m_randomKey, key.Length);
+        }
+
+
         public byte[] GetKey () {
             return m_randomKey;
+        }
+
+
+        public IKeyProvider Clone () {
+            return new RandomSessionKeyProvider(m_randomKey);
         }
 
     }

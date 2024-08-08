@@ -23,7 +23,7 @@
 
             [Test, Order(0)]
             public async Task EncryptLoremIpsum () {
-                var cryptographer = Cryptographer.CreateInstance(
+                var cryptographer = Cryptographer.CreateInstance<Cryptographer>(
                     new DefaultKeyProvider("password"),
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
@@ -37,7 +37,7 @@
 
             [Test, Order(1)]
             public async Task DecryptLoremIpsum () {
-                var cryptographer = Cryptographer.CreateInstance(
+                var cryptographer = Cryptographer.CreateInstance<Cryptographer>(
                     new DefaultKeyProvider("password"),
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default

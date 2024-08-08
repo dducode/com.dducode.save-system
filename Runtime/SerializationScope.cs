@@ -37,10 +37,11 @@ namespace SaveSystemPackage {
             set => m_dataFile = value ?? throw new ArgumentNullException(nameof(DataFile));
         }
 
-        internal SerializationSettings OverriddenSettings => m_overridenSettings ??= Settings.Clone();
+        internal SerializationSettings OverriddenSettings =>
+            m_overridenSettings ??= SaveSystem.Settings.SerializationSettings.Clone();
+
         internal DataBuffer Data { get; private set; } = new();
         internal SecureDataBuffer SecureData { get; private set; } = new();
-        private SerializationSettings Settings { get; }
         private DataBuffer Buffer { get; } = new();
 
         private string m_name;
@@ -49,12 +50,6 @@ namespace SaveSystemPackage {
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private readonly Dictionary<string, object> m_objects = new();
         private int ObjectsCount => m_serializables.Count + m_objects.Count;
-
-
-        internal SerializationScope () {
-            using SaveSystemSettings settings = SaveSystemSettings.Load();
-            Settings = settings;
-        }
 
 
         /// <summary>
@@ -137,7 +132,7 @@ namespace SaveSystemPackage {
 
 
         internal async Task Serialize (CancellationToken token) {
-            SerializationSettings settings = m_overridenSettings ?? Settings;
+            SerializationSettings settings = m_overridenSettings ?? SaveSystem.Settings.SerializationSettings;
 
             if (settings.Encrypt && settings.Cryptographer == null)
                 throw new InvalidOperationException("The encryption enabled but a cryptographer doesn't set");
@@ -168,7 +163,7 @@ namespace SaveSystemPackage {
 
 
         internal async Task Deserialize (CancellationToken token) {
-            SerializationSettings settings = m_overridenSettings ?? Settings;
+            SerializationSettings settings = m_overridenSettings ?? SaveSystem.Settings.SerializationSettings;
 
             if (settings.Encrypt && settings.Cryptographer == null)
                 throw new InvalidOperationException("The encryption enabled but a cryptographer doesn't set");
