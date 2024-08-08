@@ -23,13 +23,13 @@ namespace SaveSystemPackage.Internal.Cryptography {
 
         private DefaultKeyProvider (byte[] key, Cryptographer cryptographer) {
             m_key = new byte[key.Length];
-            key.CopyTo(m_key, key.Length);
+            key.CopyTo(m_key, 0);
             m_cryptographer = cryptographer.Clone();
         }
 
 
-        public byte[] GetKey () {
-            return m_cryptographer.Decrypt(m_key);
+        public Key GetKey () {
+            return new Key(m_cryptographer.Decrypt(m_key));
         }
 
 

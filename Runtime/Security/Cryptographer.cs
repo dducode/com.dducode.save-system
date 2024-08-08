@@ -85,15 +85,16 @@ namespace SaveSystemPackage.Security {
             memoryStream.Write(iv);
 
             using var aes = Aes.Create();
-            byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
+            Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();
 
             using var cryptoStream = new CryptoStream(
-                memoryStream, aes.CreateEncryptor(key, iv), CryptoStreamMode.Write
+                memoryStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
             );
 
             cryptoStream.Write(data);
             cryptoStream.FlushFinalBlock();
             aes.Clear();
+            key.Free();
 
             return memoryStream.ToArray();
         }
@@ -109,17 +110,18 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(data));
 
             using var aes = Aes.Create();
-            byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
+            Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();
             byte[] iv = data[..16];
 
             using var cryptoStream = new CryptoStream(
-                new MemoryStream(data[16..]), aes.CreateDecryptor(key, iv), CryptoStreamMode.Read
+                new MemoryStream(data[16..]), aes.CreateDecryptor(key.value, iv), CryptoStreamMode.Read
             );
 
             var buffer = new byte[data.Length - 16];
             // ReSharper disable once MustUseReturnValue
             cryptoStream.Read(buffer);
             aes.Clear();
+            key.Free();
 
             return buffer;
         }
@@ -132,10 +134,18 @@ namespace SaveSystemPackage.Security {
         }
 
 
-        private byte[] GetKey (byte[] password, byte[] salt, KeyGenerationParams generationParams) {
-            return new Rfc2898DeriveBytes(
-                password, salt, generationParams.iterations, generationParams.hashAlgorithm.SelectAlgorithmName()
-            ).GetBytes((int)generationParams.keyLength);
+        private Key GetKey (Key password, Key salt, KeyGenerationParams generationParams) {
+            password.Pin();
+            salt.Pin();
+            var key = new Key(
+                new Rfc2898DeriveBytes(
+                    password.value, salt.value, generationParams.iterations,
+                    generationParams.hashAlgorithm.SelectAlgorithmName()
+                ).GetBytes((int)generationParams.keyLength)
+            );
+            password.Free();
+            salt.Free();
+            return key;
         }
 
 

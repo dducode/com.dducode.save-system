@@ -16,12 +16,12 @@ namespace SaveSystemPackage.Internal.Cryptography {
 
         private RandomSessionKeyProvider (byte[] key) {
             m_randomKey = new byte[key.Length];
-            key.CopyTo(m_randomKey, key.Length);
+            key.CopyTo(m_randomKey, 0);
         }
 
 
-        public byte[] GetKey () {
-            return m_randomKey;
+        public Key GetKey () {
+            return new Key(m_randomKey, true);
         }
 
 
