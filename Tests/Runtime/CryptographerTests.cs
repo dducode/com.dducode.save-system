@@ -23,12 +23,12 @@
 
             [Test, Order(0)]
             public async Task EncryptLoremIpsum () {
-                var cryptographer = Cryptographer.CreateInstance(
+                var cryptographer = Cryptographer.CreateInstance<Cryptographer>(
                     new DefaultKeyProvider("password"),
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
                 );
-                byte[] encrypted = cryptographer.Encrypt(await File.ReadAllBytesAsync(m_sourcePath));
+                byte[] encrypted = await cryptographer.EncryptAsync(await File.ReadAllBytesAsync(m_sourcePath));
                 await File.WriteAllBytesAsync(m_encryptPath, encrypted);
 
                 EditorUtility.RevealInFinder(m_encryptPath);
@@ -37,12 +37,12 @@
 
             [Test, Order(1)]
             public async Task DecryptLoremIpsum () {
-                var cryptographer = Cryptographer.CreateInstance(
+                var cryptographer = Cryptographer.CreateInstance<Cryptographer>(
                     new DefaultKeyProvider("password"),
                     new DefaultKeyProvider("salt"),
                     KeyGenerationParams.Default
                 );
-                byte[] decrypted = cryptographer.Decrypt(await File.ReadAllBytesAsync(m_encryptPath));
+                byte[] decrypted = await cryptographer.DecryptAsync(await File.ReadAllBytesAsync(m_encryptPath));
                 await File.WriteAllBytesAsync(m_decryptPath, decrypted);
 
                 EditorUtility.RevealInFinder(m_decryptPath);

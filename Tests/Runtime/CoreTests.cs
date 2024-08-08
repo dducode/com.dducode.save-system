@@ -158,7 +158,7 @@ namespace SaveSystemPackage.Tests {
 
             m_profile.OverriddenSettings.Encrypt = true;
             m_profile.OverriddenSettings.CompressFiles = false;
-            m_profile.OverriddenSettings.Cryptographer = Cryptographer.CreateInstance(
+            m_profile.OverriddenSettings.Cryptographer = Cryptographer.CreateInstance<Cryptographer>(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 KeyGenerationParams.Default

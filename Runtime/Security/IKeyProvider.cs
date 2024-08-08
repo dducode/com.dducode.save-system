@@ -1,8 +1,10 @@
-﻿namespace SaveSystemPackage.Security {
+﻿using SaveSystemPackage.Internal;
 
-    public interface IKeyProvider {
+namespace SaveSystemPackage.Security {
 
-        public byte[] GetKey ();
+    public interface IKeyProvider : ICloneable<IKeyProvider> {
+
+        public Key GetKey ();
 
     }
 

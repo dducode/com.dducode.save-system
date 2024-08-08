@@ -11,15 +11,19 @@ namespace SaveSystemPackage.Internal {
         private static TaskCompletionSource<Scene> s_tcs;
 
 
-        internal static async Task LoadSceneAsync (Func<Task> asyncSceneLoading) {
+        internal static async Task LoadSceneAsync (Func<Task> sceneLoading) {
             SetupTask();
-            ExecuteSceneHandling(await WaitForLoading(asyncSceneLoading));
+            await sceneLoading();
+            SceneHandler handler = await ExecuteSceneHandling(await WaitForCompleteScene());
+            handler.StartScene();
         }
 
 
-        internal static async Task LoadSceneAsync<TData> (Func<Task> asyncSceneLoading, TData data) {
+        internal static async Task LoadSceneAsync<TData> (Func<Task> sceneLoading, TData data) {
             SetupTask();
-            ExecuteSceneHandling(await WaitForLoading(asyncSceneLoading), data);
+            await sceneLoading();
+            SceneHandler<TData> handler = await ExecuteSceneHandling<TData>(await WaitForCompleteScene());
+            handler.StartScene(data);
         }
 
 
@@ -29,18 +33,17 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        private static async Task<Scene> WaitForLoading (Func<Task> asyncSceneLoading) {
-            await asyncSceneLoading();
+        private static async Task<Scene> WaitForCompleteScene () {
             return await s_tcs.Task;
         }
 
 
-        private static void ExecuteSceneHandling (Scene loadedScene) {
+        private static async Task<SceneHandler> ExecuteSceneHandling (Scene loadedScene) {
             GameObject gameObject = loadedScene.FindWithTag(Tags.SceneHandlerTag);
 
             if (gameObject == null) {
                 Logger.LogError(nameof(SceneLoader), $"There is no target with {Tags.SceneHandlerTag} tag");
-                return;
+                return null;
             }
 
             var sceneHandler = gameObject.GetComponent<SceneHandler>();
@@ -49,19 +52,21 @@ namespace SaveSystemPackage.Internal {
                 Logger.LogError(nameof(SceneLoader),
                     $"Game object {gameObject.name} has {Tags.SceneHandlerTag} tag, but hasn't {nameof(SceneHandler)} component"
                 );
-                return;
+                return null;
             }
 
-            sceneHandler.StartScene();
+            if (sceneHandler.sceneContext != null)
+                await sceneHandler.sceneContext.Load();
+            return sceneHandler;
         }
 
 
-        private static void ExecuteSceneHandling<TData> (Scene loadedScene, TData data) {
+        private static async Task<SceneHandler<TData>> ExecuteSceneHandling<TData> (Scene loadedScene) {
             GameObject gameObject = loadedScene.FindWithTag(Tags.SceneHandlerTag);
 
             if (gameObject == null) {
                 Logger.LogError(nameof(SceneLoader), $"There is no target with {Tags.SceneHandlerTag} tag");
-                return;
+                return null;
             }
 
             var sceneHandler = gameObject.GetComponent<SceneHandler<TData>>();
@@ -70,10 +75,12 @@ namespace SaveSystemPackage.Internal {
                 Logger.LogError(nameof(SceneLoader),
                     $"Game object {gameObject.name} has {Tags.SceneHandlerTag} tag, but hasn't {nameof(SceneHandler<TData>)} component"
                 );
-                return;
+                return null;
             }
 
-            sceneHandler.StartScene(data);
+            if (sceneHandler.sceneContext != null)
+                await sceneHandler.sceneContext.Load();
+            return sceneHandler;
         }
 
 

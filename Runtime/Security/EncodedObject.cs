@@ -22,12 +22,12 @@ namespace SaveSystemPackage.Security {
             Array.Copy(bytes, encodedBytes, bytes.Length);
 
             foreach (RandomSessionKeyProvider provider in m_keyProviders) {
-                byte[] key = provider.GetKey();
+                Key key = provider.GetKey();
 
                 for (int i = 0, j = 0; i < bytes.Length; i++, j++) {
-                    if (j == key.Length)
+                    if (j == key.value.Length)
                         j = 0;
-                    encodedBytes[i] ^= key[j];
+                    encodedBytes[i] ^= key.value[j];
                 }
             }
 

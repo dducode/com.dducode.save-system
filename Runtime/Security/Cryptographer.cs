@@ -2,6 +2,8 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Internal.Extensions;
 using UnityEngine;
@@ -13,46 +15,46 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public class Cryptographer : ScriptableObject {
+    public class Cryptographer : ScriptableObject, ICloneable<Cryptographer> {
 
         [NotNull]
         public IKeyProvider PasswordProvider {
-            get => m_passwordProvider;
+            get => passwordProvider;
             set {
-                m_passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
+                passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
                 Logger.Log(nameof(Cryptographer), $"Set password provider: {value}");
             }
         }
 
         [NotNull]
         public IKeyProvider SaltProvider {
-            get => m_saltProvider;
+            get => saltProvider;
             set {
-                m_saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
+                saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
                 Logger.Log(nameof(Cryptographer), $"Set salt provider: {value}");
             }
         }
 
         public KeyGenerationParams GenerationParams {
-            get => m_generationParams;
+            get => generationParams;
             set {
-                m_generationParams = value;
+                generationParams = value;
                 Logger.Log(nameof(Cryptographer), $"Set key generation params: {value}");
             }
         }
 
-        private IKeyProvider m_passwordProvider;
-        private IKeyProvider m_saltProvider;
-        private KeyGenerationParams m_generationParams;
+        protected IKeyProvider passwordProvider;
+        protected IKeyProvider saltProvider;
+        protected KeyGenerationParams generationParams;
 
 
-        public static Cryptographer CreateInstance (
+        public static TCryptographer CreateInstance<TCryptographer> (
             IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
-        ) {
-            var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
-            cryptographer.m_passwordProvider = passwordProvider;
-            cryptographer.m_saltProvider = saltProvider;
-            cryptographer.m_generationParams = generationParams;
+        ) where TCryptographer : Cryptographer {
+            var cryptographer = ScriptableObject.CreateInstance<TCryptographer>();
+            cryptographer.passwordProvider = passwordProvider;
+            cryptographer.saltProvider = saltProvider;
+            cryptographer.generationParams = generationParams;
             return cryptographer;
         }
 
@@ -61,6 +63,11 @@ namespace SaveSystemPackage.Security {
             var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
             cryptographer.SetSettings(settings);
             return cryptographer;
+        }
+
+
+        public virtual Cryptographer Clone () {
+            return CreateInstance<Cryptographer>(passwordProvider.Clone(), saltProvider.Clone(), generationParams);
         }
 
 
@@ -79,15 +86,16 @@ namespace SaveSystemPackage.Security {
             memoryStream.Write(iv);
 
             using var aes = Aes.Create();
-            byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
+            Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();
 
             using var cryptoStream = new CryptoStream(
-                memoryStream, aes.CreateEncryptor(key, iv), CryptoStreamMode.Write
+                memoryStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
             );
 
             cryptoStream.Write(data);
             cryptoStream.FlushFinalBlock();
             aes.Clear();
+            key.Free();
 
             return memoryStream.ToArray();
         }
@@ -103,33 +111,103 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(data));
 
             using var aes = Aes.Create();
-            byte[] key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams);
+            Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();
             byte[] iv = data[..16];
 
             using var cryptoStream = new CryptoStream(
-                new MemoryStream(data[16..]), aes.CreateDecryptor(key, iv), CryptoStreamMode.Read
+                new MemoryStream(data[16..]), aes.CreateDecryptor(key.value, iv), CryptoStreamMode.Read
             );
 
             var buffer = new byte[data.Length - 16];
             // ReSharper disable once MustUseReturnValue
             cryptoStream.Read(buffer);
             aes.Clear();
+            key.Free();
+
+            return buffer;
+        }
+
+
+        /// <summary>
+        /// Encrypts any data from a byte array
+        /// </summary>
+        /// <param name="data"> Data to be encrypted </param>
+        /// <returns> Encrypted data </returns>
+        public virtual async Task<byte[]> EncryptAsync ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            byte[] iv = GetIV();
+
+            using var memoryStream = new MemoryStream();
+            memoryStream.Write(iv);
+
+            using var aes = Aes.Create();
+            Key key = await Task.Run(() =>
+                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
+            );
+
+            await using var cryptoStream = new CryptoStream(
+                memoryStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
+            );
+
+            await cryptoStream.WriteAsync(data);
+            cryptoStream.FlushFinalBlock();
+            aes.Clear();
+            key.Free();
+
+            return memoryStream.ToArray();
+        }
+
+
+        /// <summary>
+        /// Decrypts any data from a byte array
+        /// </summary>
+        /// <param name="data"> Data containing encrypted data </param>
+        /// <returns> Decrypted data </returns>
+        public virtual async Task<byte[]> DecryptAsync ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            using var aes = Aes.Create();
+            Key key = await Task.Run(() =>
+                GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin()
+            );
+            byte[] iv = data[..16];
+
+            await using var cryptoStream = new CryptoStream(
+                new MemoryStream(data[16..]), aes.CreateDecryptor(key.value, iv), CryptoStreamMode.Read
+            );
+
+            var buffer = new byte[data.Length - 16];
+            // ReSharper disable once MustUseReturnValue
+            await cryptoStream.ReadAsync(buffer);
+            aes.Clear();
+            key.Free();
 
             return buffer;
         }
 
 
         internal void SetSettings (EncryptionSettings settings) {
-            m_passwordProvider = new DefaultKeyProvider(settings.password);
-            m_saltProvider = new DefaultKeyProvider(settings.saltKey);
-            m_generationParams = settings.keyGenerationParams;
+            passwordProvider = new DefaultKeyProvider(settings.password);
+            saltProvider = new DefaultKeyProvider(settings.saltKey);
+            generationParams = settings.keyGenerationParams;
         }
 
 
-        private byte[] GetKey (byte[] password, byte[] salt, KeyGenerationParams generationParams) {
-            return new Rfc2898DeriveBytes(
-                password, salt, generationParams.iterations, generationParams.hashAlgorithm.SelectAlgorithmName()
-            ).GetBytes((int)generationParams.keyLength);
+        private Key GetKey (Key password, Key salt, KeyGenerationParams generationParams) {
+            password.Pin();
+            salt.Pin();
+            var key = new Key(
+                new Rfc2898DeriveBytes(
+                    password.value, salt.value, generationParams.iterations,
+                    generationParams.hashAlgorithm.SelectAlgorithmName()
+                ).GetBytes((int)generationParams.keyLength)
+            );
+            password.Free();
+            salt.Free();
+            return key;
         }
 
 

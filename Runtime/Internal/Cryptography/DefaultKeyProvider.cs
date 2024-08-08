@@ -12,7 +12,7 @@ namespace SaveSystemPackage.Internal.Cryptography {
 
         internal DefaultKeyProvider (string key) {
             byte[] hash = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(key));
-            m_cryptographer = Cryptographer.CreateInstance(
+            m_cryptographer = Cryptographer.CreateInstance<Cryptographer>(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 KeyGenerationParams.Default
@@ -21,8 +21,20 @@ namespace SaveSystemPackage.Internal.Cryptography {
         }
 
 
-        public byte[] GetKey () {
-            return m_cryptographer.Decrypt(m_key);
+        private DefaultKeyProvider (byte[] key, Cryptographer cryptographer) {
+            m_key = new byte[key.Length];
+            key.CopyTo(m_key, 0);
+            m_cryptographer = cryptographer.Clone();
+        }
+
+
+        public Key GetKey () {
+            return new Key(m_cryptographer.Decrypt(m_key));
+        }
+
+
+        public IKeyProvider Clone () {
+            return new DefaultKeyProvider(m_key, m_cryptographer);
         }
 
     }

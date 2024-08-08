@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage {
 
-    public sealed class SerializationSettings {
+    public sealed class SerializationSettings : ICloneable<SerializationSettings> {
 
         public bool Encrypt {
             get => m_encrypt;
@@ -18,7 +19,6 @@ namespace SaveSystemPackage {
                 }
             }
         }
-
 
         [NotNull]
         public Cryptographer Cryptographer {
@@ -38,7 +38,6 @@ namespace SaveSystemPackage {
             }
         }
 
-
         [NotNull]
         public FileCompressor FileCompressor {
             get => m_fileCompressor;
@@ -57,23 +56,28 @@ namespace SaveSystemPackage {
 
 
         private SerializationSettings (SaveSystemSettings settings) {
-            m_encrypt = settings.encrypt;
             m_compressFiles = settings.compressFiles;
-
-            if (m_encrypt)
-                SetupCryptographer(settings.encryptionSettings);
             if (m_compressFiles)
                 SetupFileCompressor(settings.compressionSettings);
+
+            m_encrypt = settings.encrypt;
+            if (m_encrypt)
+                SetupCryptographer(settings.encryptionSettings);
         }
 
 
         private SerializationSettings (SerializationSettings settings) {
-            Encrypt = settings.Encrypt;
-            CompressFiles = settings.CompressFiles;
+            m_compressFiles = settings.CompressFiles;
+            if (m_compressFiles)
+                m_fileCompressor = settings.FileCompressor.Clone();
+
+            m_encrypt = settings.Encrypt;
+            if (m_encrypt)
+                m_cryptographer = settings.Cryptographer.Clone();
         }
 
 
-        internal SerializationSettings Clone () {
+        public SerializationSettings Clone () {
             return new SerializationSettings(this);
         }
 
