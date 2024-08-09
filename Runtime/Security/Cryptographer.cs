@@ -156,8 +156,9 @@ namespace SaveSystemPackage.Security {
                 cacheStream.Write(iv);
 
                 using var aes = Aes.Create();
-                Key key = await Task.Run(() =>
-                    GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token);
+                Key key = await Task.Run(
+                    () => GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token
+                );
 
                 await using var cryptoStream = new CryptoStream(
                     cacheStream, aes.CreateEncryptor(key.value, iv), CryptoStreamMode.Write
@@ -203,8 +204,9 @@ namespace SaveSystemPackage.Security {
                 cacheStream.Position = readBytes;
 
                 using var aes = Aes.Create();
-                Key key = await Task.Run(() =>
-                    GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token);
+                Key key = await Task.Run(
+                    () => GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin(), token
+                );
                 await using var cryptoStream = new CryptoStream(
                     cacheStream, aes.CreateDecryptor(key.value, iv), CryptoStreamMode.Read
                 );

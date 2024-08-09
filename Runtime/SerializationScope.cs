@@ -157,7 +157,8 @@ namespace SaveSystemPackage {
                 if (settings.Encrypt)
                     await settings.Cryptographer.Encrypt(cacheStream, token);
 
-                await using (FileStream stream = DataFile.Open())
+                FileMode fileMode = DataFile.Exists ? FileMode.Truncate : FileMode.Create;
+                await using (FileStream stream = DataFile.Open(fileMode))
                     await cacheStream.CopyToAsync(stream, token);
                 Logger.Log(Name, "Data saved");
             }
