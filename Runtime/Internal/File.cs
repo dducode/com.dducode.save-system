@@ -57,8 +57,8 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal FileStream Open () {
-            return System.IO.File.Open(Path, FileMode.OpenOrCreate);
+        internal FileStream Open (FileMode fileMode = FileMode.OpenOrCreate) {
+            return System.IO.File.Open(Path, fileMode);
         }
 
 
@@ -94,6 +94,15 @@ namespace SaveSystemPackage.Internal {
 
         internal void Delete () {
             Directory.DeleteFile(Name);
+        }
+
+
+        internal void Clear () {
+            if (!Exists)
+                return;
+
+            using FileStream stream = System.IO.File.Open(Path, FileMode.Open);
+            stream.SetLength(0);
         }
 
     }

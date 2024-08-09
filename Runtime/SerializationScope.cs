@@ -11,6 +11,7 @@ using SaveSystemPackage.Attributes;
 using SaveSystemPackage.Internal.Diagnostic;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
+using File = SaveSystemPackage.Internal.File;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable UnusedMember.Global
@@ -32,7 +33,7 @@ namespace SaveSystemPackage {
         }
 
         [NotNull]
-        internal Internal.File DataFile {
+        internal File DataFile {
             get => m_dataFile;
             set => m_dataFile = value ?? throw new ArgumentNullException(nameof(DataFile));
         }
@@ -45,7 +46,7 @@ namespace SaveSystemPackage {
         private DataBuffer Buffer { get; } = new();
 
         private string m_name;
-        private Internal.File m_dataFile;
+        private File m_dataFile;
         private SerializationSettings m_overridenSettings;
         private readonly Dictionary<string, IRuntimeSerializable> m_serializables = new();
         private readonly Dictionary<string, object> m_objects = new();
@@ -142,23 +143,28 @@ namespace SaveSystemPackage {
             if (ObjectsCount == 0 && Data.Count == 0 && SecureData.Count == 0)
                 return;
 
-            byte[] data;
+            File cacheFile = Storage.CacheRoot.CreateFile("serialization", "temp");
 
-            using (var memoryStream = new MemoryStream()) {
-                await using var writer = new SaveWriter(memoryStream);
+            try {
+                await using FileStream cacheStream = cacheFile.Open();
+                await using var writer = new SaveWriter(cacheStream);
                 writer.Write(Data);
                 writer.Write(SecureData);
                 SerializeObjects(writer);
-                data = memoryStream.ToArray();
+
+                if (settings.CompressFiles)
+                    await settings.FileCompressor.Compress(cacheStream, token);
+                if (settings.Encrypt)
+                    await settings.Cryptographer.Encrypt(cacheStream, token);
+
+                FileMode fileMode = DataFile.Exists ? FileMode.Truncate : FileMode.Create;
+                await using (FileStream stream = DataFile.Open(fileMode))
+                    await cacheStream.CopyToAsync(stream, token);
+                Logger.Log(Name, "Data saved");
             }
-
-            if (settings.CompressFiles)
-                data = await settings.FileCompressor.Compress(data, token);
-            if (settings.Encrypt)
-                data = await settings.Cryptographer.EncryptAsync(data, token);
-
-            await DataFile.WriteAllBytesAsync(data, token);
-            Logger.Log(Name, "Data saved");
+            finally {
+                cacheFile.Delete();
+            }
         }
 
 
@@ -175,19 +181,27 @@ namespace SaveSystemPackage {
                 return;
             }
 
-            byte[] data = await DataFile.ReadAllBytesAsync(token);
+            File cacheFile = Storage.CacheRoot.CreateFile("deserialization", "temp");
 
-            if (settings.Encrypt)
-                data = await settings.Cryptographer.DecryptAsync(data, token);
-            if (settings.CompressFiles)
-                data = await settings.FileCompressor.Decompress(data, token);
+            try {
+                await using FileStream cacheStream = cacheFile.Open();
+                await using (FileStream stream = DataFile.Open())
+                    await stream.CopyToAsync(cacheStream, token);
 
-            await using var reader = new SaveReader(new MemoryStream(data));
+                if (settings.Encrypt)
+                    await settings.Cryptographer.Decrypt(cacheStream, token);
+                if (settings.CompressFiles)
+                    await settings.FileCompressor.Decompress(cacheStream, token);
 
-            Data = reader.ReadDataBuffer();
-            SecureData = reader.ReadSecureDataBuffer();
-            DeserializeObjects(reader);
-            Logger.Log(Name, "Data loaded");
+                await using var reader = new SaveReader(cacheStream);
+                Data = reader.ReadDataBuffer();
+                SecureData = reader.ReadSecureDataBuffer();
+                DeserializeObjects(reader);
+                Logger.Log(Name, "Data loaded");
+            }
+            finally {
+                cacheFile.Delete();
+            }
         }
 
 
