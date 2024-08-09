@@ -1,5 +1,5 @@
 ﻿using System;
-using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal.Security;
 
 namespace SaveSystemPackage.Security {
 

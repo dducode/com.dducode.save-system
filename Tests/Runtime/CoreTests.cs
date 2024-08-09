@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.CheckPoints;
-using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal.Security;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Tests.TestObjects;
 using UnityEngine;
@@ -158,7 +158,7 @@ namespace SaveSystemPackage.Tests {
 
             m_profile.OverriddenSettings.Encrypt = true;
             m_profile.OverriddenSettings.CompressFiles = false;
-            m_profile.OverriddenSettings.Cryptographer = Cryptographer.CreateInstance<Cryptographer>(
+            m_profile.OverriddenSettings.Cryptographer = new Cryptographer(
                 new DefaultKeyProvider(Password),
                 new DefaultKeyProvider(SaltKey),
                 KeyGenerationParams.Default

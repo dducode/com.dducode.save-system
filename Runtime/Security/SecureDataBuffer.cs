@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using SaveSystemPackage.Extensions;
-using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal.Security;
 using SaveSystemPackage.Serialization;
 
 namespace SaveSystemPackage.Security {
@@ -13,7 +13,7 @@ namespace SaveSystemPackage.Security {
 
 
         public SecureDataBuffer () {
-            m_cryptographer = Cryptographer.CreateInstance<Cryptographer>(
+            m_cryptographer = new Cryptographer(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 new KeyGenerationParams {
@@ -26,7 +26,7 @@ namespace SaveSystemPackage.Security {
 
 
         internal SecureDataBuffer (SaveReader reader) : base(reader) {
-            m_cryptographer = Cryptographer.CreateInstance<Cryptographer>(
+            m_cryptographer = new Cryptographer(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 new KeyGenerationParams {

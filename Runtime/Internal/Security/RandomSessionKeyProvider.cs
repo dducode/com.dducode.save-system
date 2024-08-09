@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using SaveSystemPackage.Security;
 
-namespace SaveSystemPackage.Internal.Cryptography {
+namespace SaveSystemPackage.Internal.Security {
 
     internal class RandomSessionKeyProvider : IKeyProvider {
 

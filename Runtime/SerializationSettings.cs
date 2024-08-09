@@ -23,7 +23,7 @@ namespace SaveSystemPackage {
         [NotNull]
         public Cryptographer Cryptographer {
             get => m_cryptographer;
-            set => m_cryptographer = value ? value : throw new ArgumentNullException(nameof(Cryptographer));
+            set => m_cryptographer = value ?? throw new ArgumentNullException(nameof(Cryptographer));
         }
 
         public bool CompressFiles {
@@ -41,7 +41,7 @@ namespace SaveSystemPackage {
         [NotNull]
         public FileCompressor FileCompressor {
             get => m_fileCompressor;
-            set => m_fileCompressor = value ? value : throw new ArgumentNullException(nameof(FileCompressor));
+            set => m_fileCompressor = value ?? throw new ArgumentNullException(nameof(FileCompressor));
         }
 
         private bool m_encrypt;
@@ -84,12 +84,12 @@ namespace SaveSystemPackage {
 
         private void SetupCryptographer (EncryptionSettings settings) {
             if (settings.useCustomCryptographer) {
-                Cryptographer = settings.cryptographer;
+                Cryptographer = settings.reference;
                 return;
             }
 
             if (Cryptographer == null)
-                Cryptographer = Cryptographer.CreateInstance(settings);
+                Cryptographer = new Cryptographer(settings);
             else
                 Cryptographer.SetSettings(settings);
         }
@@ -97,12 +97,12 @@ namespace SaveSystemPackage {
 
         private void SetupFileCompressor (CompressionSettings settings) {
             if (settings.useCustomCompressor) {
-                FileCompressor = settings.fileCompressor;
+                FileCompressor = settings.reference;
                 return;
             }
 
             if (FileCompressor == null)
-                FileCompressor = FileCompressor.CreateInstance(settings);
+                FileCompressor = new FileCompressor(settings);
             else
                 FileCompressor.SetSettings(settings);
         }

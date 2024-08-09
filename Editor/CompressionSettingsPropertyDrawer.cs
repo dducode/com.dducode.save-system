@@ -23,7 +23,9 @@ namespace SaveSystemPackage.Editor {
             );
 
             if (settings.useCustomCompressor) {
-                EditorGUILayout.ObjectField("File Compressor", settings.fileCompressor, typeof(FileCompressor), false);
+                EditorGUILayout.ObjectField(
+                    "File Compressor", settings.reference, typeof(FileCompressorReference), false
+                );
             }
             else {
                 settings.compressionLevel = (CompressionLevel)EditorGUILayout.EnumPopup(

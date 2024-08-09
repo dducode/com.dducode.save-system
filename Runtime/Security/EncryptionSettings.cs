@@ -1,5 +1,5 @@
 ﻿using System;
-using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal.Security;
 
 namespace SaveSystemPackage.Security {
 
@@ -7,7 +7,8 @@ namespace SaveSystemPackage.Security {
     public class EncryptionSettings {
 
         public bool useCustomCryptographer;
-        public Cryptographer cryptographer;
+        public CryptographerReference reference;
+        public bool useCustomProviders;
         public string password = CryptoUtilities.GenerateKey();
         public string saltKey = CryptoUtilities.GenerateKey();
         public KeyGenerationParams keyGenerationParams = KeyGenerationParams.Default;

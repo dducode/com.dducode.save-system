@@ -2,7 +2,7 @@
 using System.Text;
 using SaveSystemPackage.Security;
 
-namespace SaveSystemPackage.Internal.Cryptography {
+namespace SaveSystemPackage.Internal.Security {
 
     internal class DefaultKeyProvider : IKeyProvider {
 
@@ -12,7 +12,7 @@ namespace SaveSystemPackage.Internal.Cryptography {
 
         internal DefaultKeyProvider (string key) {
             byte[] hash = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(key));
-            m_cryptographer = Cryptographer.CreateInstance<Cryptographer>(
+            m_cryptographer = new Cryptographer(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 KeyGenerationParams.Default

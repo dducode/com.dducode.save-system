@@ -264,7 +264,7 @@ namespace SaveSystemPackage {
         private static async Task UploadToCloudStorage (CancellationToken token = default) {
             StorageData gameData = await Game.ExportGameData(token);
             if (gameData != null)
-                await CloudStorage.Push(gameData);
+                await CloudStorage.Upload(gameData);
 
             await UploadProfiles(CloudStorage, token);
 
@@ -300,7 +300,7 @@ namespace SaveSystemPackage {
                 writer.Write(await profile.ExportProfileData(token));
             }
 
-            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllProfilesFile));
+            await cloudStorage.Upload(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllProfilesFile));
         }
 
 
@@ -318,20 +318,20 @@ namespace SaveSystemPackage {
                 writer.Write(await screenshot.ReadAllBytesAsync(token));
             }
 
-            await cloudStorage.Push(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllScreenshotsFile));
+            await cloudStorage.Upload(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllScreenshotsFile));
         }
 
 
         private static async Task DownloadFromCloudStorage (CancellationToken token = default) {
-            StorageData gameData = await CloudStorage.Pull(Game.DataFile.Name);
+            StorageData gameData = await CloudStorage.Download(Game.DataFile.Name);
             if (gameData != null)
                 await Game.ImportGameData(gameData.rawData, token);
 
-            StorageData profiles = await CloudStorage.Pull(SaveSystemConstants.AllProfilesFile);
+            StorageData profiles = await CloudStorage.Download(SaveSystemConstants.AllProfilesFile);
             if (profiles != null)
                 await DownloadProfiles(profiles, token);
 
-            StorageData screenshots = await CloudStorage.Pull(SaveSystemConstants.AllScreenshotsFile);
+            StorageData screenshots = await CloudStorage.Download(SaveSystemConstants.AllScreenshotsFile);
             if (screenshots != null)
                 await DownloadScreenshots(screenshots, token);
         }

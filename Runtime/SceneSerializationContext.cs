@@ -62,16 +62,16 @@ namespace SaveSystemPackage {
 
                 if (encrypt) {
                     OverriddenSettings.Cryptographer = encryptionSettings.useCustomCryptographer
-                        ? encryptionSettings.cryptographer
-                        : Cryptographer.CreateInstance(encryptionSettings);
+                        ? encryptionSettings.reference
+                        : new Cryptographer(encryptionSettings);
                 }
 
                 OverriddenSettings.CompressFiles = compressFiles;
 
                 if (compressFiles) {
                     OverriddenSettings.FileCompressor = compressionSettings.useCustomCompressor
-                        ? compressionSettings.fileCompressor
-                        : FileCompressor.CreateInstance(compressionSettings);
+                        ? compressionSettings.reference
+                        : new FileCompressor(compressionSettings);
                 }
             }
 

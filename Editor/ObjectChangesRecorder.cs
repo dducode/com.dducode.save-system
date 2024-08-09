@@ -1,6 +1,6 @@
 ﻿using System;
 using SaveSystemPackage.ComponentsRecording;
-using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal.Security;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;

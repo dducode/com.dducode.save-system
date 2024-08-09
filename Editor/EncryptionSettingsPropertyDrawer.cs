@@ -1,5 +1,4 @@
-﻿using SaveSystemPackage.Internal.Cryptography;
-using SaveSystemPackage.Security;
+﻿using SaveSystemPackage.Security;
 using UnityEditor;
 using UnityEngine;
 
@@ -24,7 +23,7 @@ namespace SaveSystemPackage.Editor {
 
             EditorGUI.indentLevel++;
             m_editProperties = EditorGUILayout.ToggleLeft("Edit Properties", m_editProperties);
-            if (!settings.useCustomCryptographer)
+            if (!settings.useCustomCryptographer && !settings.useCustomProviders)
                 m_showSecureValues = EditorGUILayout.ToggleLeft("Show Secure Values", m_showSecureValues);
             GUI.enabled = m_editProperties;
 
@@ -40,15 +39,24 @@ namespace SaveSystemPackage.Editor {
             );
 
             if (settings.useCustomCryptographer) {
-                EditorGUILayout.ObjectField("Cryptographer", settings.cryptographer, typeof(Cryptographer), false);
+                EditorGUILayout.ObjectField(
+                    "Cryptographer", settings.reference, typeof(CryptographerReference), false
+                );
             }
             else {
-                settings.password = DrawingUtilities.DrawKeyProperty(
-                    settings.password, "Password", "Generate Password", CryptoUtilities.GenerateKey, m_showSecureValues
+                settings.useCustomProviders = EditorGUILayout.Toggle(
+                    "Use Custom Providers", settings.useCustomProviders
                 );
-                settings.saltKey = DrawingUtilities.DrawKeyProperty(
-                    settings.saltKey, "Salt Key", "Generate Salt Key", CryptoUtilities.GenerateKey, m_showSecureValues
-                );
+
+                if (!settings.useCustomProviders) {
+                    settings.password = DrawingUtilities.DrawKeyProperty(
+                        settings.password, "Password", "Generate Password", m_showSecureValues
+                    );
+                    settings.saltKey = DrawingUtilities.DrawKeyProperty(
+                        settings.saltKey, "Salt Key", "Generate Salt Key", m_showSecureValues
+                    );
+                }
+
                 m_foldout = EditorGUILayout.BeginFoldoutHeaderGroup(m_foldout, "Key Generation Parameters");
 
                 if (m_foldout) {

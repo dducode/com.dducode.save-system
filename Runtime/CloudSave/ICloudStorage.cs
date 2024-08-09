@@ -4,8 +4,8 @@ namespace SaveSystemPackage.CloudSave {
 
     public interface ICloudStorage {
 
-        public Task Push (StorageData data);
-        public Task<StorageData> Pull (string fileName);
+        public Task Upload (StorageData data);
+        public Task<StorageData> Download (string fileName);
 
     }
 

@@ -2,10 +2,12 @@
 using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using SaveSystemPackage.Internal.Cryptography;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Internal.Security;
 using SaveSystemPackage.Security;
 using UnityEditor;
 using UnityEngine;
+using File = System.IO.File;
 
 namespace SaveSystemPackage.Tests {
 
@@ -23,13 +25,13 @@ namespace SaveSystemPackage.Tests {
 
         [Test, Order(0)]
         public async Task EncryptLoremIpsum () {
-            var cryptographer = Cryptographer.CreateInstance<Cryptographer>(
+            var cryptographer = new Cryptographer(
                 new DefaultKeyProvider("password"),
                 new DefaultKeyProvider("salt"),
                 KeyGenerationParams.Default
             );
 
-            Internal.File cacheFile = Storage.CacheRoot.CreateFile("test-encrypt", "temp");
+            using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("test-encrypt");
 
             await using (FileStream cacheStream = cacheFile.Open()) {
                 await using FileStream stream = File.Open(m_sourcePath, FileMode.Open);
@@ -39,20 +41,19 @@ namespace SaveSystemPackage.Tests {
                 await cacheStream.CopyToAsync(targetStream);
             }
 
-            cacheFile.Delete();
             EditorUtility.RevealInFinder(m_encryptedFile.Path);
         }
 
 
         [Test, Order(1)]
         public async Task DecryptLoremIpsum () {
-            var cryptographer = Cryptographer.CreateInstance<Cryptographer>(
+            var cryptographer = new Cryptographer(
                 new DefaultKeyProvider("password"),
                 new DefaultKeyProvider("salt"),
                 KeyGenerationParams.Default
             );
 
-            Internal.File cacheFile = Storage.CacheRoot.CreateFile("test-decrypt", "temp");
+            using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("test-decrypt");
 
             await using (FileStream cacheStream = cacheFile.Open()) {
                 await using (FileStream stream = m_encryptedFile.Open())

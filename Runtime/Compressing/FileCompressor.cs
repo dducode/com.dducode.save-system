@@ -3,18 +3,16 @@ using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
-using UnityEngine;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
-using File = SaveSystemPackage.Internal.File;
 using Logger = SaveSystemPackage.Internal.Logger;
 
+// ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
-// ReSharper disable VirtualMemberNeverOverridden.Global
 
 namespace SaveSystemPackage.Compressing {
 
-    public class FileCompressor : ScriptableObject, ICloneable<FileCompressor> {
+    public class FileCompressor : ICloneable<FileCompressor> {
 
         public CompressionLevel CompressionLevel {
             get => compressionLevel;
@@ -27,40 +25,34 @@ namespace SaveSystemPackage.Compressing {
         protected CompressionLevel compressionLevel;
 
 
-        public static TCompressor CreateInstance<TCompressor> (CompressionLevel compressionLevel)
-            where TCompressor : FileCompressor {
-            var fileCompressor = ScriptableObject.CreateInstance<TCompressor>();
-            fileCompressor.compressionLevel = compressionLevel;
-            return fileCompressor;
+        public FileCompressor (CompressionLevel compressionLevel) {
+            this.compressionLevel = compressionLevel;
         }
 
 
-        internal static FileCompressor CreateInstance (CompressionSettings settings) {
-            var fileCompressor = ScriptableObject.CreateInstance<FileCompressor>();
-            fileCompressor.SetSettings(settings);
-            return fileCompressor;
+        internal FileCompressor (CompressionSettings settings) {
+            SetSettings(settings);
         }
 
 
         public virtual FileCompressor Clone () {
-            return CreateInstance<FileCompressor>(compressionLevel);
+            return new FileCompressor(compressionLevel);
         }
 
 
         public virtual async Task Compress (Stream stream, CancellationToken token = default) {
             stream.Position = 0;
-            File cacheFile = Storage.CacheRoot.CreateFile("compress", "temp");
 
             try {
+                using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("compress");
                 await using FileStream cacheStream = cacheFile.Open();
-                await using (var compressor = new DeflateStream(cacheStream, compressionLevel, true)) 
+                await using (var compressor = new DeflateStream(cacheStream, compressionLevel, true))
                     await stream.CopyToAsync(compressor, token);
                 stream.SetLength(0);
                 cacheStream.Position = 0;
                 await cacheStream.CopyToAsync(stream, token);
             }
             finally {
-                cacheFile.Delete();
                 stream.Position = 0;
             }
         }
@@ -68,9 +60,9 @@ namespace SaveSystemPackage.Compressing {
 
         public virtual async Task Decompress (Stream stream, CancellationToken token = default) {
             stream.Position = 0;
-            File cacheFile = Storage.CacheRoot.CreateFile("decompress", "temp");
 
             try {
+                using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("decompress");
                 await using FileStream cacheStream = cacheFile.Open();
                 await stream.CopyToAsync(cacheStream, token);
                 stream.SetLength(0);
@@ -79,7 +71,6 @@ namespace SaveSystemPackage.Compressing {
                 await decompressor.CopyToAsync(stream, token);
             }
             finally {
-                cacheFile.Delete();
                 stream.Position = 0;
             }
         }

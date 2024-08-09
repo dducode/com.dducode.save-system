@@ -72,6 +72,13 @@ namespace SaveSystemPackage.Internal {
         }
 
 
+        internal TempFile CreateTempFile (string name) {
+            var tempFile = new TempFile(name, "temp", this);
+            m_files.Add(tempFile.Name, tempFile);
+            return tempFile;
+        }
+
+
         internal IEnumerable<File> EnumerateFiles () {
             foreach (File file in m_files.Values)
                 yield return file;

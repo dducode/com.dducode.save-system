@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Attributes;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Diagnostic;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
@@ -143,28 +144,22 @@ namespace SaveSystemPackage {
             if (ObjectsCount == 0 && Data.Count == 0 && SecureData.Count == 0)
                 return;
 
-            File cacheFile = Storage.CacheRoot.CreateFile("serialization", "temp");
+            using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("serialization");
+            await using FileStream cacheStream = cacheFile.Open();
+            await using var writer = new SaveWriter(cacheStream);
+            writer.Write(Data);
+            writer.Write(SecureData);
+            SerializeObjects(writer);
 
-            try {
-                await using FileStream cacheStream = cacheFile.Open();
-                await using var writer = new SaveWriter(cacheStream);
-                writer.Write(Data);
-                writer.Write(SecureData);
-                SerializeObjects(writer);
+            if (settings.CompressFiles)
+                await settings.FileCompressor.Compress(cacheStream, token);
+            if (settings.Encrypt)
+                await settings.Cryptographer.Encrypt(cacheStream, token);
 
-                if (settings.CompressFiles)
-                    await settings.FileCompressor.Compress(cacheStream, token);
-                if (settings.Encrypt)
-                    await settings.Cryptographer.Encrypt(cacheStream, token);
-
-                FileMode fileMode = DataFile.Exists ? FileMode.Truncate : FileMode.Create;
-                await using (FileStream stream = DataFile.Open(fileMode))
-                    await cacheStream.CopyToAsync(stream, token);
-                Logger.Log(Name, "Data saved");
-            }
-            finally {
-                cacheFile.Delete();
-            }
+            FileMode fileMode = DataFile.Exists ? FileMode.Truncate : FileMode.Create;
+            await using (FileStream stream = DataFile.Open(fileMode))
+                await cacheStream.CopyToAsync(stream, token);
+            Logger.Log(Name, "Data saved");
         }
 
 
@@ -181,27 +176,21 @@ namespace SaveSystemPackage {
                 return;
             }
 
-            File cacheFile = Storage.CacheRoot.CreateFile("deserialization", "temp");
+            using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("deserialization");
+            await using FileStream cacheStream = cacheFile.Open();
+            await using (FileStream stream = DataFile.Open())
+                await stream.CopyToAsync(cacheStream, token);
 
-            try {
-                await using FileStream cacheStream = cacheFile.Open();
-                await using (FileStream stream = DataFile.Open())
-                    await stream.CopyToAsync(cacheStream, token);
+            if (settings.Encrypt)
+                await settings.Cryptographer.Decrypt(cacheStream, token);
+            if (settings.CompressFiles)
+                await settings.FileCompressor.Decompress(cacheStream, token);
 
-                if (settings.Encrypt)
-                    await settings.Cryptographer.Decrypt(cacheStream, token);
-                if (settings.CompressFiles)
-                    await settings.FileCompressor.Decompress(cacheStream, token);
-
-                await using var reader = new SaveReader(cacheStream);
-                Data = reader.ReadDataBuffer();
-                SecureData = reader.ReadSecureDataBuffer();
-                DeserializeObjects(reader);
-                Logger.Log(Name, "Data loaded");
-            }
-            finally {
-                cacheFile.Delete();
-            }
+            await using var reader = new SaveReader(cacheStream);
+            Data = reader.ReadDataBuffer();
+            SecureData = reader.ReadSecureDataBuffer();
+            DeserializeObjects(reader);
+            Logger.Log(Name, "Data loaded");
         }
 
 

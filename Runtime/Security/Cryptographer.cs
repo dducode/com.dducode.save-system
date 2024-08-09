@@ -5,10 +5,8 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Cryptography;
 using SaveSystemPackage.Internal.Extensions;
-using UnityEngine;
-using File = SaveSystemPackage.Internal.File;
+using SaveSystemPackage.Internal.Security;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
@@ -17,7 +15,7 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public class Cryptographer : ScriptableObject, ICloneable<Cryptographer> {
+    public class Cryptographer : ICloneable<Cryptographer> {
 
         private const string OperationWarning =
             "You {0} data that has length more than 85 000. You can use stream {1} instead";
@@ -53,26 +51,22 @@ namespace SaveSystemPackage.Security {
         protected KeyGenerationParams generationParams;
 
 
-        public static TCryptographer CreateInstance<TCryptographer> (
+        public Cryptographer (
             IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
-        ) where TCryptographer : Cryptographer {
-            var cryptographer = ScriptableObject.CreateInstance<TCryptographer>();
-            cryptographer.passwordProvider = passwordProvider;
-            cryptographer.saltProvider = saltProvider;
-            cryptographer.generationParams = generationParams;
-            return cryptographer;
+        ) {
+            this.passwordProvider = passwordProvider;
+            this.saltProvider = saltProvider;
+            this.generationParams = generationParams;
         }
 
 
-        internal static Cryptographer CreateInstance (EncryptionSettings settings) {
-            var cryptographer = ScriptableObject.CreateInstance<Cryptographer>();
-            cryptographer.SetSettings(settings);
-            return cryptographer;
+        internal Cryptographer (EncryptionSettings settings) {
+            SetSettings(settings);
         }
 
 
         public virtual Cryptographer Clone () {
-            return CreateInstance<Cryptographer>(passwordProvider.Clone(), saltProvider.Clone(), generationParams);
+            return new Cryptographer(passwordProvider.Clone(), saltProvider.Clone(), generationParams);
         }
 
 
@@ -147,9 +141,9 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(stream));
 
             stream.Position = 0;
-            File cacheFile = Storage.CacheRoot.CreateFile("encrypt", "temp");
 
             try {
+                using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("encrypt");
                 await using FileStream cacheStream = cacheFile.Open();
 
                 byte[] iv = GetIV();
@@ -174,7 +168,6 @@ namespace SaveSystemPackage.Security {
                 await cacheStream.CopyToAsync(stream, token);
             }
             finally {
-                cacheFile.Delete();
                 stream.Position = 0;
             }
         }
@@ -190,9 +183,9 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(stream));
 
             stream.Position = 0;
-            File cacheFile = Storage.CacheRoot.CreateFile("decrypt", "temp");
 
             try {
+                using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("decrypt");
                 await using FileStream cacheStream = cacheFile.Open();
 
                 await stream.CopyToAsync(cacheStream, token);
@@ -216,15 +209,17 @@ namespace SaveSystemPackage.Security {
                 key.Free();
             }
             finally {
-                cacheFile.Delete();
                 stream.Position = 0;
             }
         }
 
 
         internal void SetSettings (EncryptionSettings settings) {
-            passwordProvider = new DefaultKeyProvider(settings.password);
-            saltProvider = new DefaultKeyProvider(settings.saltKey);
+            if (!settings.useCustomProviders) {
+                passwordProvider = new DefaultKeyProvider(settings.password);
+                saltProvider = new DefaultKeyProvider(settings.saltKey);
+            }
+
             generationParams = settings.keyGenerationParams;
         }
 
