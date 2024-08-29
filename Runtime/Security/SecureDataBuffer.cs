@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using SaveSystemPackage.Extensions;
@@ -35,6 +36,9 @@ namespace SaveSystemPackage.Security {
                     iterations = 5
                 }
             );
+
+            foreach (string key in commonBuffer.Keys.ToArray())
+                commonBuffer[key] = m_cryptographer.Encrypt(commonBuffer[key]);
         }
 
 
