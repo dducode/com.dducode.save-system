@@ -46,7 +46,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal bool HasChanges => Data.HasChanges;
+        internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
         private SerializationScope GameScope { get; }
 
         private SaveProfile m_saveProfile;

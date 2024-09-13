@@ -58,7 +58,7 @@ namespace SaveSystemPackage {
             }
         }
 
-        internal bool HasChanges => Data.HasChanges;
+        internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
 
         internal File DataFile {
             get => ProfileScope.DataFile;

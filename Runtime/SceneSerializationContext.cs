@@ -42,7 +42,7 @@ namespace SaveSystemPackage {
         public DataBuffer Data => SceneScope.Data;
         public SecureDataBuffer SecureData => SceneScope.SecureData;
 
-        internal bool HasChanges => Data.HasChanges;
+        internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
         private SerializationScope SceneScope { get; set; }
         private SerializationSettings OverriddenSettings => SceneScope.OverriddenSettings;
 
