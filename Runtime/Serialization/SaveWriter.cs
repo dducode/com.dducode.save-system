@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using SaveSystemPackage.ComponentsRecording;
 using UnityEngine.Rendering;
 
 // ReSharper disable MemberCanBePrivate.Global

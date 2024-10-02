@@ -5,7 +5,6 @@
 using System;
 using System.Text;
 using SaveSystemPackage.Compressing;
-using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Security;
 using UnityEngine;
@@ -26,8 +25,7 @@ namespace SaveSystemPackage {
         [Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 5;
 
-        [Tooltip(Tooltips.DataPath)]
-        public string dataFileName;
+        public SerializerType serializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         public UsedInputSystem usedInputSystem;
@@ -63,12 +61,6 @@ namespace SaveSystemPackage {
         }
 
 
-        private void OnEnable () {
-            if (string.IsNullOrEmpty(dataFileName))
-                dataFileName = $"{Application.productName.ToPathFormat()}";
-        }
-
-
         public override string ToString () {
             var result = new StringBuilder();
 
@@ -89,7 +81,6 @@ namespace SaveSystemPackage {
             result.Append($"\nEnabled Logs: {enabledLogs}");
             if (enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave))
                 result.Append($"\nSave Period: {savePeriod} sec");
-            result.Append($"\nData Path: {dataFileName}");
             result.Append($"\nPlayer Tag: {playerTag}");
         }
 

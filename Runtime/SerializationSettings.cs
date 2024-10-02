@@ -2,20 +2,36 @@
 using System.Diagnostics.CodeAnalysis;
 using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Providers;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Serialization;
 
 namespace SaveSystemPackage {
 
     public sealed class SerializationSettings : ICloneable<SerializationSettings> {
 
+        public ISerializer Serializer {
+            get => m_serializer;
+            set => m_serializer = value ?? throw new ArgumentNullException(nameof(Serializer));
+        }
+
+        public IKeyProvider KeyProvider {
+            get => m_keyProvider;
+            set => m_keyProvider = value ?? throw new ArgumentNullException(nameof(KeyProvider));
+        }
+
         public bool Encrypt {
             get => m_encrypt;
             set {
+                if (value == m_encrypt)
+                    return;
+
                 m_encrypt = value;
 
                 if (m_encrypt) {
                     using SaveSystemSettings settings = SaveSystemSettings.Load();
                     SetupCryptographer(settings.encryptionSettings);
+                    m_serializer = new EncryptionSerializer(m_serializer, m_cryptographer);
                 }
             }
         }
@@ -29,6 +45,9 @@ namespace SaveSystemPackage {
         public bool CompressFiles {
             get => m_compressFiles;
             set {
+                if (value == m_compressFiles)
+                    return;
+
                 m_compressFiles = value;
 
                 if (m_compressFiles) {
@@ -44,6 +63,9 @@ namespace SaveSystemPackage {
             set => m_fileCompressor = value ?? throw new ArgumentNullException(nameof(FileCompressor));
         }
 
+        private ISerializer m_serializer;
+        private IKeyProvider m_keyProvider;
+
         private bool m_encrypt;
         private Cryptographer m_cryptographer;
         private bool m_compressFiles;
@@ -56,13 +78,18 @@ namespace SaveSystemPackage {
 
 
         private SerializationSettings (SaveSystemSettings settings) {
+            m_serializer = SelectSerializer(settings.serializerType);
+            m_keyProvider = new KeyStore();
             m_compressFiles = settings.compressFiles;
             if (m_compressFiles)
                 SetupFileCompressor(settings.compressionSettings);
 
             m_encrypt = settings.encrypt;
-            if (m_encrypt)
+
+            if (m_encrypt) {
                 SetupCryptographer(settings.encryptionSettings);
+                m_serializer = new EncryptionSerializer(m_serializer, m_cryptographer);
+            }
         }
 
 
@@ -105,6 +132,18 @@ namespace SaveSystemPackage {
                 FileCompressor = new FileCompressor(settings);
             else
                 FileCompressor.SetSettings(settings);
+        }
+
+
+        private ISerializer SelectSerializer (SerializerType serializerType) {
+            switch (serializerType) {
+                case SerializerType.BinarySerializer:
+                    return new BinarySerializer();
+                case SerializerType.JsonSerializer:
+                    return new JsonSerializer();
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
+            }
         }
 
     }

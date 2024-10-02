@@ -5,7 +5,9 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Providers;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Serialization;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -132,6 +134,16 @@ namespace SaveSystemPackage {
             public Cryptographer Cryptographer {
                 get => SerializationSettings.Cryptographer;
                 set => SerializationSettings.Cryptographer = value;
+            }
+
+            public ISerializer Serializer {
+                get => SerializationSettings.Serializer;
+                set => SerializationSettings.Serializer = value;
+            }
+
+            public IKeyProvider KeyProvider {
+                get => SerializationSettings.KeyProvider;
+                set => SerializationSettings.KeyProvider = value;
             }
 
         #if ENABLE_BOTH_SYSTEMS

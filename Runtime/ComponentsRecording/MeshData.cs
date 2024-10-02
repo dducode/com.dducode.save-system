@@ -2,12 +2,12 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace SaveSystemPackage {
+namespace SaveSystemPackage.ComponentsRecording {
 
     /// <summary>
     /// Contains the data of a mesh. Mesh can be casted to MeshData and vice-versa
     /// </summary>
-    public struct MeshData {
+    public struct MeshData : ISaveData {
 
         internal SubMeshDescriptor[] subMeshes;
         internal int[][] subMeshIndices;

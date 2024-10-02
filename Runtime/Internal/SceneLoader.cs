@@ -55,8 +55,8 @@ namespace SaveSystemPackage.Internal {
                 return null;
             }
 
-            if (sceneHandler.sceneContext != null)
-                await sceneHandler.sceneContext.Load();
+            // if (sceneHandler.sceneScope != null)
+                // await sceneHandler.sceneScope.Load();
             return sceneHandler;
         }
 
@@ -78,8 +78,8 @@ namespace SaveSystemPackage.Internal {
                 return null;
             }
 
-            if (sceneHandler.sceneContext != null)
-                await sceneHandler.sceneContext.Load();
+            // if (sceneHandler.sceneScope != null)
+                // await sceneHandler.sceneScope.Load();
             return sceneHandler;
         }
 

@@ -4,7 +4,7 @@ using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage.Internal.Security {
 
-    internal class DefaultKeyProvider : IKeyProvider {
+    internal class DefaultKeyProvider : ISecurityKeyProvider {
 
         private readonly byte[] m_key;
         private readonly Cryptographer m_cryptographer;
@@ -33,7 +33,7 @@ namespace SaveSystemPackage.Internal.Security {
         }
 
 
-        public IKeyProvider Clone () {
+        public ISecurityKeyProvider Clone () {
             return new DefaultKeyProvider(m_key, m_cryptographer);
         }
 

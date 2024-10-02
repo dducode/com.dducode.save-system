@@ -3,7 +3,6 @@
 #endif
 
 using System;
-using SaveSystemPackage.Internal.Extensions;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -25,7 +24,7 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_dataFileNameProperty;
+        private SerializedProperty m_serializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -128,7 +127,7 @@ namespace SaveSystemPackage.Editor {
             );
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
-            m_dataFileNameProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.dataFileName));
+            m_serializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.serializerType));
         }
 
 
@@ -183,10 +182,7 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_savePeriodProperty);
             GUI.enabled = true;
 
-            EditorGUILayout.PropertyField(m_dataFileNameProperty);
-            if (string.IsNullOrEmpty(m_dataFileNameProperty.stringValue))
-                m_dataFileNameProperty.stringValue = Application.productName.ToPathFormat();
-
+            EditorGUILayout.PropertyField(m_serializerType);
             EditorGUILayout.Space(15);
         }
 

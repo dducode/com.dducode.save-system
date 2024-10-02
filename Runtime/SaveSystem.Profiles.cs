@@ -83,7 +83,7 @@ namespace SaveSystemPackage {
 
             Storage.InternalDirectory.GetFile(oldName.ToPathFormat()).Rename(formattedName);
             profile.DataDirectory.Rename(formattedName);
-            profile.DataFile.Rename(formattedName);
+            // profile.DataFile.Rename(formattedName);
 
             UpdateProfile(profile);
         }
@@ -100,7 +100,7 @@ namespace SaveSystemPackage {
             string formattedName = name.ToPathFormat();
             profile.Initialize(name);
             profile.DataDirectory = Storage.ProfilesDirectory.GetOrCreateDirectory(formattedName);
-            profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
+            // profile.DataFile = profile.DataDirectory.GetOrCreateFile(formattedName, "profiledata");
         }
 
 

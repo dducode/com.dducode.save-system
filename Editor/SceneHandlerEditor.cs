@@ -16,7 +16,7 @@ namespace SaveSystemPackage.Editor {
                 Debug.LogError("More than one scene loaders. It's not supported");
 
             SerializedProperty sceneContext = serializedObject.FindProperty("sceneContext");
-            if (sceneContext.boxedValue == null && sceneLoader.TryGetComponent(out SceneSerializationContext component))
+            if (sceneContext.boxedValue == null && sceneLoader.TryGetComponent(out SceneSerializationScope component))
                 sceneContext.boxedValue = component;
 
             if (!sceneLoader.CompareTag(Tags.SceneHandlerTag)) {

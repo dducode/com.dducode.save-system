@@ -4,7 +4,7 @@ namespace SaveSystemPackage {
 
     public abstract class SceneHandler : MonoBehaviour {
 
-        public SceneSerializationContext sceneContext;
+        public SceneSerializationScope sceneScope;
         public abstract void StartScene ();
 
     }
@@ -13,7 +13,7 @@ namespace SaveSystemPackage {
 
     public abstract class SceneHandler<TData> : MonoBehaviour {
 
-        public SceneSerializationContext sceneContext;
+        public SceneSerializationScope sceneScope;
         public abstract void StartScene (TData data);
 
     }

@@ -17,8 +17,6 @@ namespace SaveSystemPackage {
 
         private static void ResetOnExit () {
             ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
-            OnSaveStart = null;
-            OnSaveEnd = null;
 
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;

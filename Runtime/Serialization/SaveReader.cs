@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Security;
 using UnityEngine;
 using UnityEngine.Rendering;

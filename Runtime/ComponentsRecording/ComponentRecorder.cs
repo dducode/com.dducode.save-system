@@ -1,20 +1,17 @@
-﻿using SaveSystemPackage.Attributes;
-using SaveSystemPackage.Serialization;
+﻿using System.Threading.Tasks;
+using SaveSystemPackage.Attributes;
 using UnityEngine;
 
 namespace SaveSystemPackage.ComponentsRecording {
 
-    public abstract class ComponentRecorder : MonoBehaviour, IRuntimeSerializable {
+    public abstract class ComponentRecorder : MonoBehaviour {
 
         [SerializeField, NonEditable]
         private string id;
 
         public string Id => id;
 
-        public abstract void Serialize (SaveWriter writer);
-        public abstract void Deserialize (SaveReader reader, int previousVersion);
-
-        public abstract void Initialize ();
+        public abstract Task Initialize (SerializationScope scope);
 
     }
 

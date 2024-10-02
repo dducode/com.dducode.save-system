@@ -178,10 +178,10 @@ namespace SaveSystemPackage {
             if (Game.SaveProfile != null) {
                 if (Game.SaveProfile.HasChanges)
                     ScheduleSave(SaveType.AutoSave);
-                else if (Game.SaveProfile.SceneContext != null && Game.SaveProfile.SceneContext.HasChanges)
+                else if (Game.SaveProfile.SceneScope != null && Game.SaveProfile.SceneScope.HasChanges)
                     ScheduleSave(SaveType.AutoSave);
             }
-            else if (Game.SceneContext != null && Game.SceneContext.HasChanges) {
+            else if (Game.SceneScope != null && Game.SceneScope.HasChanges) {
                 ScheduleSave(SaveType.AutoSave);
             }
         }
@@ -236,7 +236,7 @@ namespace SaveSystemPackage {
 
             try {
                 token.ThrowIfCancellationRequested();
-                await Game.Save(token);
+                await Game.Save(saveType, token);
                 result = HandlingResult.Success;
             }
             catch (OperationCanceledException) {
@@ -261,47 +261,47 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async Task UploadToCloudStorage (CancellationToken token = default) {
-            StorageData gameData = await Game.ExportGameData(token);
-            if (gameData != null)
-                await CloudStorage.Upload(gameData);
+        // private static async Task UploadToCloudStorage (CancellationToken token = default) {
+        //     StorageData gameData = await Game.ExportGameData(token);
+        //     if (gameData != null)
+        //         await CloudStorage.Upload(gameData);
+        //
+        //     await UploadProfiles(CloudStorage, token);
+        //
+        //     if (Storage.ScreenshotsDirectoryExists())
+        //         await UploadScreenshots(CloudStorage, token);
+        // }
 
-            await UploadProfiles(CloudStorage, token);
 
-            if (Storage.ScreenshotsDirectoryExists())
-                await UploadScreenshots(CloudStorage, token);
-        }
-
-
-        private static async Task UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
-            var memoryStream = new MemoryStream();
-            await using var writer = new SaveWriter(memoryStream);
-            File[] profiles = Storage.InternalDirectory.EnumerateFiles("profile").ToArray();
-            if (profiles.Length == 0)
-                return;
-
-            writer.Write(profiles.Length);
-
-            foreach (File file in profiles) {
-                writer.Write(file.Name);
-                await using var reader = new SaveReader(file.Open());
-                string typeName = reader.ReadString();
-                var type = Type.GetType(typeName);
-
-                if (type == null) {
-                    Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
-                    continue;
-                }
-
-                var profile = (SaveProfile)Activator.CreateInstance(type);
-                InitializeProfile(profile, reader.ReadString());
-                SerializationManager.DeserializeGraph(reader, profile);
-                SerializeProfile(writer, profile);
-                writer.Write(await profile.ExportProfileData(token));
-            }
-
-            await cloudStorage.Upload(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllProfilesFile));
-        }
+        // private static async Task UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
+        //     var memoryStream = new MemoryStream();
+        //     await using var writer = new SaveWriter(memoryStream);
+        //     File[] profiles = Storage.InternalDirectory.EnumerateFiles("profile").ToArray();
+        //     if (profiles.Length == 0)
+        //         return;
+        //
+        //     writer.Write(profiles.Length);
+        //
+        //     foreach (File file in profiles) {
+        //         writer.Write(file.Name);
+        //         await using var reader = new SaveReader(file.Open());
+        //         string typeName = reader.ReadString();
+        //         var type = Type.GetType(typeName);
+        //
+        //         if (type == null) {
+        //             Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
+        //             continue;
+        //         }
+        //
+        //         var profile = (SaveProfile)Activator.CreateInstance(type);
+        //         InitializeProfile(profile, reader.ReadString());
+        //         SerializationManager.DeserializeGraph(reader, profile);
+        //         SerializeProfile(writer, profile);
+        //         writer.Write(await profile.ExportProfileData(token));
+        //     }
+        //
+        //     await cloudStorage.Upload(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllProfilesFile));
+        // }
 
 
         private static async Task UploadScreenshots (ICloudStorage cloudStorage, CancellationToken token) {
@@ -322,43 +322,43 @@ namespace SaveSystemPackage {
         }
 
 
-        private static async Task DownloadFromCloudStorage (CancellationToken token = default) {
-            StorageData gameData = await CloudStorage.Download(Game.DataFile.Name);
-            if (gameData != null)
-                await Game.ImportGameData(gameData.rawData, token);
+        // private static async Task DownloadFromCloudStorage (CancellationToken token = default) {
+        //     StorageData gameData = await CloudStorage.Download(Game.DataFile.Name);
+        //     if (gameData != null)
+        //         await Game.ImportGameData(gameData.rawData, token);
+        //
+        //     StorageData profiles = await CloudStorage.Download(SaveSystemConstants.AllProfilesFile);
+        //     if (profiles != null)
+        //         await DownloadProfiles(profiles, token);
+        //
+        //     StorageData screenshots = await CloudStorage.Download(SaveSystemConstants.AllScreenshotsFile);
+        //     if (screenshots != null)
+        //         await DownloadScreenshots(screenshots, token);
+        // }
 
-            StorageData profiles = await CloudStorage.Download(SaveSystemConstants.AllProfilesFile);
-            if (profiles != null)
-                await DownloadProfiles(profiles, token);
 
-            StorageData screenshots = await CloudStorage.Download(SaveSystemConstants.AllScreenshotsFile);
-            if (screenshots != null)
-                await DownloadScreenshots(screenshots, token);
-        }
-
-
-        private static async Task DownloadProfiles (StorageData profiles, CancellationToken token) {
-            await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
-            var count = reader.Read<int>();
-
-            for (var i = 0; i < count; i++) {
-                File file = Storage.InternalDirectory.GetOrCreateFile(reader.ReadString(), "profile");
-                await using var writer = new SaveWriter(file.Open());
-                string typeName = reader.ReadString();
-                var type = Type.GetType(typeName);
-
-                if (type == null) {
-                    Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
-                    continue;
-                }
-
-                var profile = (SaveProfile)Activator.CreateInstance(type);
-                InitializeProfile(profile, reader.ReadString());
-                SerializationManager.DeserializeGraph(reader, profile);
-                SerializeProfile(writer, profile);
-                await profile.ImportProfileData(reader.ReadArray<byte>(), token);
-            }
-        }
+        // private static async Task DownloadProfiles (StorageData profiles, CancellationToken token) {
+        //     await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
+        //     var count = reader.Read<int>();
+        //
+        //     for (var i = 0; i < count; i++) {
+        //         File file = Storage.InternalDirectory.GetOrCreateFile(reader.ReadString(), "profile");
+        //         await using var writer = new SaveWriter(file.Open());
+        //         string typeName = reader.ReadString();
+        //         var type = Type.GetType(typeName);
+        //
+        //         if (type == null) {
+        //             Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
+        //             continue;
+        //         }
+        //
+        //         var profile = (SaveProfile)Activator.CreateInstance(type);
+        //         InitializeProfile(profile, reader.ReadString());
+        //         SerializationManager.DeserializeGraph(reader, profile);
+        //         SerializeProfile(writer, profile);
+        //         await profile.ImportProfileData(reader.ReadArray<byte>(), token);
+        //     }
+        // }
 
 
         private static async Task DownloadScreenshots (StorageData screenshots, CancellationToken token) {

@@ -1,4 +1,4 @@
-﻿using SaveSystemPackage.Serialization;
+﻿using System.Threading.Tasks;
 using UnityEngine;
 
 namespace SaveSystemPackage.ComponentsRecording {
@@ -6,23 +6,20 @@ namespace SaveSystemPackage.ComponentsRecording {
     [RequireComponent(typeof(MeshFilter))]
     [DisallowMultipleComponent]
     [AddComponentMenu("Save System/Mesh Filter Recorder")]
-    public class MeshFilterRecorder : ComponentRecorder, ISerializationAdapter<MeshFilter> {
+    public class MeshFilterRecorder : ComponentRecorder {
+
+        private SerializationScope m_scope;
 
         public MeshFilter Target { get; private set; }
 
 
-        public override void Initialize () {
+        public override async Task Initialize (SerializationScope scope) {
+            m_scope = scope;
             Target = GetComponent<MeshFilter>();
-        }
-
-
-        public override void Serialize (SaveWriter writer) {
-            writer.Write(Target.mesh);
-        }
-
-
-        public override void Deserialize (SaveReader reader, int previousVersion) {
-            Target.mesh = reader.ReadMeshData();
+            Target.mesh = await m_scope.LoadData<MeshData>(Id, SaveSystem.exitCancellation.Token);
+            m_scope.OnSave += async _ => {
+                await m_scope.SaveData(Id, (MeshData)Target.mesh, SaveSystem.exitCancellation.Token);
+            };
         }
 
 

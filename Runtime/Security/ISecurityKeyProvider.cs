@@ -2,7 +2,7 @@
 
 namespace SaveSystemPackage.Security {
 
-    public interface IKeyProvider : ICloneable<IKeyProvider> {
+    public interface ISecurityKeyProvider : ICloneable<ISecurityKeyProvider> {
 
         public Key GetKey ();
 

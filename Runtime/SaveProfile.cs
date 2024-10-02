@@ -1,25 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Security;
-using SaveSystemPackage.Serialization;
 using Directory = SaveSystemPackage.Internal.Directory;
-using File = SaveSystemPackage.Internal.File;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace SaveSystemPackage {
 
-    public abstract class SaveProfile {
+    public abstract class SaveProfile : SerializationScope {
 
         [NotNull]
-        public string Name {
+        public override string Name {
             get => m_name;
             set {
                 if (string.IsNullOrEmpty(value))
@@ -31,15 +25,10 @@ namespace SaveSystemPackage {
                 SaveSystem.ThrowIfProfileExistsWithName(value);
                 string oldName = m_name;
                 m_name = value;
-                ProfileScope.Name = $"{value} scope";
 
                 SaveSystem.UpdateProfile(this, oldName, m_name);
             }
         }
-
-        public SerializationSettings OverriddenSettings => ProfileScope.OverriddenSettings;
-        public DataBuffer Data => ProfileScope.Data;
-        public SecureDataBuffer SecureData => ProfileScope.SecureData;
 
         [NotNull]
         internal Directory DataDirectory {
@@ -48,30 +37,18 @@ namespace SaveSystemPackage {
         }
 
         [NotNull]
-        internal SceneSerializationContext SceneContext {
-            get => m_sceneContext;
-            set {
-                if (value == null)
-                    throw new ArgumentNullException(nameof(SceneContext));
-
-                m_sceneContext = value;
-            }
+        internal SceneSerializationScope SceneScope {
+            get => m_sceneScope;
+            set => m_sceneScope = value ?? throw new ArgumentNullException(nameof(SceneScope));
         }
 
         internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
-
-        internal File DataFile {
-            get => ProfileScope.DataFile;
-            set => ProfileScope.DataFile = value;
-        }
-
-        private SerializationScope ProfileScope { get; set; }
 
         private string m_name;
         private Directory m_dataDirectory;
         private string m_scenesFolder;
 
-        private SceneSerializationContext m_sceneContext;
+        private SceneSerializationScope m_sceneScope;
 
 
         internal void Initialize ([NotNull] string name) {
@@ -79,10 +56,6 @@ namespace SaveSystemPackage {
                 throw new ArgumentNullException(nameof(name));
 
             m_name = name;
-            ProfileScope = new SerializationScope {
-                Name = $"{name} profile scope"
-            };
-
             OnInitialized();
         }
 
@@ -92,103 +65,70 @@ namespace SaveSystemPackage {
         }
 
 
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,IRuntimeSerializable)"/>
-        public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] IRuntimeSerializable serializable) {
-            ProfileScope.RegisterSerializable(key, serializable);
-            return this;
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializable(string,object)"/>
-        public SaveProfile RegisterSerializable ([NotNull] string key, [NotNull] object obj) {
-            ProfileScope.RegisterSerializable(key, obj);
-            return this;
-        }
-
-
-        /// <inheritdoc cref="SerializationScope.RegisterSerializables"/>
-        public SaveProfile RegisterSerializables (
-            [NotNull] string key, [NotNull] IEnumerable<IRuntimeSerializable> serializables
-        ) {
-            ProfileScope.RegisterSerializables(key, serializables);
-            return this;
-        }
-
-
-        public async Task Save () {
-            await Save(SaveSystem.exitCancellation.Token);
-        }
-
-
-        public async Task Load () {
-            CancellationToken token = SaveSystem.exitCancellation.Token;
-
-            try {
-                token.ThrowIfCancellationRequested();
-                await ProfileScope.Deserialize(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(ProfileScope.Name, "Data loading canceled");
-            }
-        }
-
-
         public override string ToString () {
-            return $"name: {Name}, path: {DataFile.FullName}";
+            return $"name: {Name}";
         }
 
 
-        internal async Task Save (CancellationToken token) {
+        internal async Task Save (SaveType saveType, CancellationToken token) {
             try {
                 token.ThrowIfCancellationRequested();
-                await ProfileScope.Serialize(token);
-                if (SceneContext != null)
-                    await SceneContext.Save(token);
+                await OnSaveInvoke(saveType);
+                if (SceneScope != null)
+                    await SceneScope.Save(saveType, token);
             }
             catch (OperationCanceledException) {
-                Logger.Log(ProfileScope.Name, "Data saving canceled");
+                Logger.Log(Name, "Data saving canceled");
             }
         }
 
 
-        internal async Task<byte[]> ExportProfileData (CancellationToken token) {
-            File[] entries = DataDirectory.EnumerateFiles().ToArray();
-            if (entries.Length == 0)
-                return Array.Empty<byte>();
-
-            using var memoryStream = new MemoryStream();
-            await using var writer = new SaveWriter(memoryStream);
-
-            writer.Write(entries.Length);
-
-            foreach (File file in entries) {
-                writer.Write(file.Name);
-                writer.Write(file.Extension);
-                writer.Write(await file.ReadAllBytesAsync(token));
+        public async Task Reload (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await OnReloadInvoke();
+                if (SceneScope != null)
+                    await SceneScope.Reload(token);
             }
-
-            return memoryStream.ToArray();
-        }
-
-
-        internal async Task ImportProfileData (byte[] data, CancellationToken token) {
-            if (data.Length == 0)
-                return;
-
-            await using var reader = new SaveReader(new MemoryStream(data));
-            var entriesCount = reader.Read<int>();
-
-            for (var i = 0; i < entriesCount; i++) {
-                await DataDirectory
-                   .GetOrCreateFile(reader.ReadString(), reader.ReadString())
-                   .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
+            catch (OperationCanceledException) {
+                Logger.Log(Name, "Data reload canceled");
             }
         }
 
 
-        internal void Clear () {
-            ProfileScope.Clear();
-        }
+        // internal async Task<byte[]> ExportProfileData (CancellationToken token) {
+        //     File[] entries = DataDirectory.EnumerateFiles().ToArray();
+        //     if (entries.Length == 0)
+        //         return Array.Empty<byte>();
+        //
+        //     using var memoryStream = new MemoryStream();
+        //     await using var writer = new SaveWriter(memoryStream);
+        //
+        //     writer.Write(entries.Length);
+        //
+        //     foreach (File file in entries) {
+        //         writer.Write(file.Name);
+        //         writer.Write(file.Extension);
+        //         writer.Write(await file.ReadAllBytesAsync(token));
+        //     }
+        //
+        //     return memoryStream.ToArray();
+        // }
+
+
+        // internal async Task ImportProfileData (byte[] data, CancellationToken token) {
+        //     if (data.Length == 0)
+        //         return;
+        //
+        //     await using var reader = new SaveReader(new MemoryStream(data));
+        //     var entriesCount = reader.Read<int>();
+        //
+        //     for (var i = 0; i < entriesCount; i++) {
+        //         await DataDirectory
+        //            .GetOrCreateFile(reader.ReadString(), reader.ReadString())
+        //            .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
+        //     }
+        // }
 
 
         protected virtual void OnInitialized () { }

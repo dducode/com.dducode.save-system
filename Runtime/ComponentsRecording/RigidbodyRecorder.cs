@@ -1,5 +1,5 @@
 ﻿using System;
-using SaveSystemPackage.Serialization;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace SaveSystemPackage.ComponentsRecording {
@@ -7,53 +7,47 @@ namespace SaveSystemPackage.ComponentsRecording {
     [RequireComponent(typeof(Rigidbody))]
     [DisallowMultipleComponent]
     [AddComponentMenu("Save System/Rigidbody Recorder")]
-    public class RigidbodyRecorder : ComponentRecorder, ISerializationAdapter<Rigidbody> {
+    public class RigidbodyRecorder : ComponentRecorder {
 
         [SerializeField]
         private Properties includedProperties = Properties.All;
 
+        private SerializationScope m_scope;
+
         public Rigidbody Target { get; private set; }
 
 
-        public override void Initialize () {
+        public override async Task Initialize (SerializationScope scope) {
             Target = GetComponent<Rigidbody>();
-        }
-
-
-        public override void Serialize (SaveWriter writer) {
-            if (includedProperties.HasFlag(Properties.Position))
-                writer.Write(Target.position);
-            if (includedProperties.HasFlag(Properties.Rotation))
-                writer.Write(Target.rotation);
-
-            if (includedProperties.HasFlag(Properties.Velocity))
-                writer.Write(Target.velocity);
-            if (includedProperties.HasFlag(Properties.AngularVelocity))
-                writer.Write(Target.angularVelocity);
-
-            if (includedProperties.HasFlag(Properties.IsKinematic))
-                writer.Write(Target.isKinematic);
-        }
-
-
-        public override void Deserialize (SaveReader reader, int previousVersion) {
-            if (includedProperties.HasFlag(Properties.Position))
-                Target.position = reader.Read<Vector3>();
-            if (includedProperties.HasFlag(Properties.Rotation))
-                Target.rotation = reader.Read<Quaternion>();
-
-            if (includedProperties.HasFlag(Properties.Velocity))
-                Target.velocity = reader.Read<Vector3>();
-            if (includedProperties.HasFlag(Properties.AngularVelocity))
-                Target.angularVelocity = reader.Read<Vector3>();
-
-            if (includedProperties.HasFlag(Properties.IsKinematic))
-                Target.isKinematic = reader.Read<bool>();
+            m_scope = scope;
+            SetData(await m_scope.LoadData<RigidbodyData>(Id, SaveSystem.exitCancellation.Token));
+            m_scope.OnSave += async _ => await m_scope.SaveData(Id, GetData(), SaveSystem.exitCancellation.Token);
         }
 
 
         public override string ToString () {
             return $"{gameObject.name} Rigidbody Recorder: {{ included properties: {includedProperties} }}";
+        }
+
+
+        private RigidbodyData GetData () {
+            return Target;
+        }
+
+
+        private void SetData (RigidbodyData data) {
+            if (includedProperties.HasFlag(Properties.Position))
+                Target.position = data.position;
+            if (includedProperties.HasFlag(Properties.Rotation))
+                Target.rotation = data.rotation;
+
+            if (includedProperties.HasFlag(Properties.Velocity))
+                Target.velocity = data.velocity;
+            if (includedProperties.HasFlag(Properties.AngularVelocity))
+                Target.angularVelocity = data.angularVelocity;
+
+            if (includedProperties.HasFlag(Properties.IsKinematic))
+                Target.isKinematic = data.isKinematic;
         }
 
 
