@@ -26,6 +26,8 @@ namespace SaveSystemPackage {
             s_periodicSaveLastTime = 0;
             Settings = null;
             Game = null;
+            ProfilesManager = null;
+            Initialized = false;
             DiagnosticService.Clear();
 
             Application.quitting -= ResetOnExit;

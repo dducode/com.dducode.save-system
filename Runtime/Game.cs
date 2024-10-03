@@ -3,6 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Profiles;
+using SaveSystemPackage.Providers;
 using SaveSystemPackage.Storages;
 
 // ReSharper disable UnusedMember.Global
@@ -29,30 +31,14 @@ namespace SaveSystemPackage {
             set => m_sceneScope = value ?? throw new ArgumentNullException(nameof(SceneScope));
         }
 
-        internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
-
         private SaveProfile m_saveProfile;
         private SceneSerializationScope m_sceneScope;
 
 
         internal Game () {
             Name = "Game";
+            KeyProvider = new KeyStore(SaveSystem.Settings.KeyMap);
             DataStorage = new FileSystemStorage(Storage.Root, "data");
-        }
-
-
-        internal async Task Save (SaveType saveType, CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await OnSaveInvoke(saveType);
-                if (SaveProfile != null)
-                    await SaveProfile.Save(saveType, token);
-                else if (SceneScope != null)
-                    await SceneScope.Save(saveType, token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(Name, "Data saving canceled");
-            }
         }
 
 
@@ -67,6 +53,21 @@ namespace SaveSystemPackage {
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data reload canceled");
+            }
+        }
+
+
+        internal async Task Save (SaveType saveType, CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await OnSaveInvoke(saveType);
+                if (SaveProfile != null)
+                    await SaveProfile.Save(saveType, token);
+                else if (SceneScope != null)
+                    await SceneScope.Save(saveType, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(Name, "Data saving canceled");
             }
         }
 

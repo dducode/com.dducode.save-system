@@ -1,7 +1,7 @@
 ﻿using System.Collections;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using SaveSystemPackage.CheckPoints;
+using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Tests.TestObjects;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -15,7 +15,7 @@ namespace SaveSystemPackage.Tests {
 
     public class CoreTests {
 
-        private TestProfile m_profile;
+        private SaveProfile m_profile;
 
 
         [SetUp]
@@ -25,7 +25,7 @@ namespace SaveSystemPackage.Tests {
             camera.transform.position = new Vector3(0, 0, -10);
 
             SaveSystem.Settings.EnabledLogs = LogLevel.All;
-            m_profile = SaveSystem.CreateProfile<TestProfile>("test-profile");
+            m_profile = SaveSystem.ProfilesManager.CreateProfile("test-profile");
             SaveSystem.Game.SaveProfile = m_profile;
             Debug.Log("Start test");
         }
@@ -118,8 +118,6 @@ namespace SaveSystemPackage.Tests {
                     sphere.tag = sphereTag;
             }
 
-            m_profile.OverriddenSettings.Encrypt = false;
-            m_profile.OverriddenSettings.CompressFiles = false;
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave | SaveEvents.OnFocusLost;
             SaveSystem.Settings.SavePeriod = 3;
             SaveSystem.Settings.EnabledLogs = LogLevel.All;
@@ -145,30 +143,9 @@ namespace SaveSystemPackage.Tests {
         }
 
 
-        public class DataBufferTests {
-
-            [Test, Order(0)]
-            public async Task WriteToDataBuffer () {
-                var factory = new TestObjectFactory(PrimitiveType.Sphere);
-                TestObject testObject = factory.CreateObject();
-                SaveSystem.Game.Data.Write("position", testObject.transform.position);
-                Debug.Log(testObject.transform.position);
-                // await SaveSystem.Game.Save();
-            }
-
-
-            [Test, Order(1)]
-            public async Task ReadFromDataBuffer () {
-                // await SaveSystem.Game.Load();
-                Debug.Log(SaveSystem.Game.Data.Read<Vector3>("position"));
-            }
-
-        }
-
-
         [TearDown]
         public void EndTest () {
-            SaveSystem.DeleteProfile(m_profile);
+            SaveSystem.ProfilesManager.DeleteProfile(m_profile);
             Debug.Log("End test");
         }
 

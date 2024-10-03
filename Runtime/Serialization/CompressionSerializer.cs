@@ -1,32 +1,32 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using SaveSystemPackage.Security;
+using SaveSystemPackage.Compressing;
 
 namespace SaveSystemPackage.Serialization {
 
-    public class EncryptionSerializer : ISerializer {
+    public class CompressionSerializer : ISerializer {
 
         private readonly ISerializer m_baseSerializer;
-        private readonly Cryptographer m_cryptographer;
+        private readonly FileCompressor m_compressor;
 
 
-        public EncryptionSerializer (ISerializer baseSerializer, Cryptographer cryptographer) {
+        public CompressionSerializer (ISerializer baseSerializer, FileCompressor compressor) {
             m_baseSerializer = baseSerializer;
-            m_cryptographer = cryptographer;
+            m_compressor = compressor;
         }
 
 
         public async Task<byte[]> Serialize<TData> (TData data, CancellationToken token) where TData : ISaveData {
             token.ThrowIfCancellationRequested();
             byte[] serializedData = await m_baseSerializer.Serialize(data, token);
-            return m_cryptographer.Encrypt(serializedData);
+            return m_compressor.Compress(serializedData);
         }
 
 
         public async Task<TData> Deserialize<TData> (byte[] data, CancellationToken token) where TData : ISaveData {
             token.ThrowIfCancellationRequested();
-            byte[] decryptedData = m_cryptographer.Decrypt(data);
-            return await m_baseSerializer.Deserialize<TData>(decryptedData, token);
+            byte[] decompressedData = m_compressor.Decompress(data);
+            return await m_baseSerializer.Deserialize<TData>(decompressedData, token);
         }
 
     }

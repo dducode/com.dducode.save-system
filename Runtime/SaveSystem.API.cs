@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
+using SaveSystemPackage.Profiles;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -15,8 +17,11 @@ namespace SaveSystemPackage {
     public static partial class SaveSystem {
 
         public static Game Game { get; private set; }
+        public static ProfilesManager ProfilesManager { get; private set; }
+
         // public static ICloudStorage CloudStorage { get; set; }
         public static SystemSettings Settings { get; private set; }
+        public static bool Initialized { get; private set; }
 
         /// <summary>
         /// The event is called before saving. It can be useful when you use async saving
@@ -37,16 +42,19 @@ namespace SaveSystemPackage {
         public static event Action<SaveType> OnSaveEnd;
 
 
-        public static void Initialize () {
+        public static async Task Initialize () {
             try {
                 using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                     SetSettings(settings);
                     Game = new Game();
                 }
 
+                var data = await Game.LoadData<ProfilesManagerData>();
+                ProfilesManager = new ProfilesManager(data);
                 SetOnExitPlayModeCallback();
                 SetPlayerLoop();
                 exitCancellation = new CancellationTokenSource();
+                Initialized = true;
                 Logger.Log(nameof(SaveSystem), "Initialized");
             }
             catch (Exception ex) {

@@ -11,20 +11,6 @@ namespace SaveSystemPackage {
 
     public sealed class SceneSerializationScope : SerializationScope {
 
-        internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
-
-
-        public async Task Save (SaveType saveType, CancellationToken token) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await OnSaveInvoke(saveType);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(Name, "Data saving canceled");
-            }
-        }
-
-
         public async Task Reload (CancellationToken token = default) {
             try {
                 token.ThrowIfCancellationRequested();
@@ -32,6 +18,17 @@ namespace SaveSystemPackage {
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data reload canceled");
+            }
+        }
+
+
+        internal async Task Save (SaveType saveType, CancellationToken token) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await OnSaveInvoke(saveType);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(Name, "Data saving canceled");
             }
         }
 

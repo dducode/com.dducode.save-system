@@ -19,13 +19,14 @@ namespace SaveSystemPackage {
 
         public bool automaticInitialize = true;
         public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
-        public SaveEvents enabledSaveEvents = SaveEvents.AutoSave;
+        public SaveEvents enabledSaveEvents;
 
         [Min(0)]
         [Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 5;
 
         public SerializerType serializerType;
+        public BaseSerializerType baseSerializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         public UsedInputSystem usedInputSystem;
@@ -43,10 +44,7 @@ namespace SaveSystemPackage {
 
         public string playerTag = "Player";
 
-        public bool compressFiles;
         public CompressionSettings compressionSettings;
-
-        public bool encrypt = true;
         public EncryptionSettings encryptionSettings;
 
 
@@ -63,32 +61,17 @@ namespace SaveSystemPackage {
 
         public override string ToString () {
             var result = new StringBuilder();
-
-            AppendCommonSettings(result);
-            AppendEncryptionSettings(result);
-
+            result.Append($"\nEnabled Save Events: {enabledSaveEvents}");
+            result.Append($"\nEnabled Logs: {enabledLogs}");
+            if (enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave))
+                result.Append($"\nSave Period: {savePeriod} sec");
+            result.Append($"\nPlayer Tag: {playerTag}");
             return result.ToString();
         }
 
 
         public void Dispose () {
             Resources.UnloadAsset(this);
-        }
-
-
-        private void AppendCommonSettings (StringBuilder result) {
-            result.Append($"\nEnabled Save Events: {enabledSaveEvents}");
-            result.Append($"\nEnabled Logs: {enabledLogs}");
-            if (enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave))
-                result.Append($"\nSave Period: {savePeriod} sec");
-            result.Append($"\nPlayer Tag: {playerTag}");
-        }
-
-
-        private void AppendEncryptionSettings (StringBuilder result) {
-            result.Append($"\nEncryption: {(encrypt ? "Enable" : "Disable")}");
-            if (encrypt)
-                result.Append($"\nEncryption Settings: {{{encryptionSettings}}}");
         }
 
     }

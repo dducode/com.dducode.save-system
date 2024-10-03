@@ -8,6 +8,7 @@ namespace SaveSystemPackage.Serialization {
     public class BinarySerializer : ISerializer {
 
         public Task<byte[]> Serialize<TData> (TData data, CancellationToken token) where TData : ISaveData {
+            token.ThrowIfCancellationRequested();
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream();
             formatter.Serialize(stream, data);
@@ -16,6 +17,7 @@ namespace SaveSystemPackage.Serialization {
 
 
         public Task<TData> Deserialize<TData> (byte[] data, CancellationToken token) where TData : ISaveData {
+            token.ThrowIfCancellationRequested();
             var formatter = new BinaryFormatter();
             using var stream = new MemoryStream(data);
             return Task.FromResult((TData)formatter.Deserialize(stream));

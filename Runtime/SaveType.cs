@@ -16,11 +16,6 @@
         SaveAtCheckpoint,
 
         /// <summary>
-        /// This is sent when the system detects any changes in the data
-        /// </summary>
-        AutoSave,
-
-        /// <summary>
         /// This is sent when the system periodically starts saving in its inner loop
         /// </summary>
         PeriodicSave,

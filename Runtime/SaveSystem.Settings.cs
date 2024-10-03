@@ -3,8 +3,11 @@
 #endif
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
@@ -116,41 +119,23 @@ namespace SaveSystemPackage {
             public InputAction ScreenCaptureAction { get; set; }
         #endif
 
-            public bool CompressFiles {
-                get => SerializationSettings.CompressFiles;
-                set => SerializationSettings.CompressFiles = value;
-            }
-
-            public FileCompressor FileCompressor {
-                get => SerializationSettings.FileCompressor;
-                set => SerializationSettings.FileCompressor = value;
-            }
-
-            public bool Encrypt {
-                get => SerializationSettings.Encrypt;
-                set => SerializationSettings.Encrypt = value;
-            }
-
-            public Cryptographer Cryptographer {
-                get => SerializationSettings.Cryptographer;
-                set => SerializationSettings.Cryptographer = value;
-            }
-
             public ISerializer Serializer {
-                get => SerializationSettings.Serializer;
-                set => SerializationSettings.Serializer = value;
+                get => m_serializer;
+                set => m_serializer = value ?? throw new ArgumentNullException(nameof(Serializer));
             }
 
-            public IKeyProvider KeyProvider {
-                get => SerializationSettings.KeyProvider;
-                set => SerializationSettings.KeyProvider = value;
-            }
+            public Dictionary<Type, string> KeyMap { get; } = new() {
+                {typeof(TransformData), "transform-data"},
+                {typeof(RigidbodyData), "rigidbody-data"},
+                {typeof(MeshData), "mesh-data"},
+                {typeof(ProfileData), "profile-data"},
+                {typeof(ProfilesManagerData), "profiles-manager-data"}
+            };
+
 
         #if ENABLE_BOTH_SYSTEMS
             public UsedInputSystem UsedInputSystem { get; private set; }
         #endif
-
-            internal SerializationSettings SerializationSettings { get; }
 
             private SaveEvents m_enabledSaveEvents;
             private float m_savePeriod;
@@ -160,6 +145,9 @@ namespace SaveSystemPackage {
             private KeyCode m_screenCaptureKey;
             private KeyCode m_quickSaveKey;
         #endif
+
+            private ISerializer m_serializer;
+            private IKeyProvider m_keyProvider;
 
 
             public static implicit operator SystemSettings (SaveSystemSettings settings) {
@@ -174,7 +162,7 @@ namespace SaveSystemPackage {
                 PlayerTag = settings.playerTag;
 
                 SetupUserInputs(settings);
-                SerializationSettings = settings;
+                Serializer = SelectSerializer(settings);
             }
 
 
@@ -213,6 +201,49 @@ namespace SaveSystemPackage {
                 ScreenCaptureAction?.Enable();
             #endif
             #endif
+            }
+
+
+            private ISerializer SelectSerializer (SaveSystemSettings settings) {
+                SerializerType serializerType = settings.serializerType;
+
+                switch (serializerType) {
+                    case SerializerType.BinarySerializer:
+                        return new BinarySerializer();
+                    case SerializerType.JsonSerializer:
+                        return new JsonSerializer();
+                    case SerializerType.EncryptionSerializer:
+                        var cryptographer = new Cryptographer(settings.encryptionSettings);
+                        ISerializer baseSerializer = SelectBaseSerializer(settings.baseSerializerType);
+                        return new EncryptionSerializer(baseSerializer, cryptographer);
+                    case SerializerType.CompressionSerializer:
+                        var compressor = new FileCompressor(settings.compressionSettings);
+                        baseSerializer = SelectBaseSerializer(settings.baseSerializerType);
+                        return new CompressionSerializer(baseSerializer, compressor);
+                    case SerializerType.CompositeSerializer:
+                        cryptographer = new Cryptographer(settings.encryptionSettings);
+                        compressor = new FileCompressor(settings.compressionSettings);
+                        baseSerializer = SelectBaseSerializer(settings.baseSerializerType);
+                        return new CompositeSerializer(baseSerializer, cryptographer, compressor);
+                    case SerializerType.Custom:
+                        return null;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
+                }
+            }
+
+
+            private ISerializer SelectBaseSerializer (BaseSerializerType serializerType) {
+                switch (serializerType) {
+                    case BaseSerializerType.BinarySerializer:
+                        return new BinarySerializer();
+                    case BaseSerializerType.JsonSerializer:
+                        return new JsonSerializer();
+                    case BaseSerializerType.Custom:
+                        return null;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
+                }
             }
 
         }

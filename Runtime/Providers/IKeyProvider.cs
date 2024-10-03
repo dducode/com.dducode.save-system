@@ -1,15 +1,9 @@
-﻿using System;
-
-namespace SaveSystemPackage.Providers {
+﻿namespace SaveSystemPackage.Providers {
 
     public interface IKeyProvider {
 
-        public string GetKey<TData> () where TData : ISaveData;
-
-
-        public void AddKey<TData> (string key) where TData : ISaveData {
-            throw new NotImplementedException();
-        }
+        public string Provide<TData> () where TData : ISaveData;
+        public string Provide<TData> (string prefix) where TData : ISaveData;
 
     }
 

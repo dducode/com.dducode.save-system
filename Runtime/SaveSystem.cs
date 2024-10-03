@@ -37,16 +37,15 @@ namespace SaveSystemPackage {
 
         private static bool s_periodicSaveEnabled;
         private static float s_periodicSaveLastTime;
-        private static bool s_autoSaveEnabled;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void AutoInit () {
+        private static async void AutoInit () {
             SaveSystemSettings settings = SaveSystemSettings.Load();
 
             if (settings != null && settings.automaticInitialize) {
                 settings.Dispose();
-                Initialize();
+                await Initialize();
             }
         }
 
@@ -102,9 +101,6 @@ namespace SaveSystemPackage {
 
             if (s_periodicSaveEnabled)
                 PeriodicSave();
-
-            if (s_autoSaveEnabled)
-                AutoSave();
 
             OnUpdateSystem?.Invoke();
         }
@@ -169,27 +165,8 @@ namespace SaveSystemPackage {
         }
 
 
-        private static void AutoSave () {
-            if (Game.HasChanges) {
-                ScheduleSave(SaveType.AutoSave);
-                return;
-            }
-
-            if (Game.SaveProfile != null) {
-                if (Game.SaveProfile.HasChanges)
-                    ScheduleSave(SaveType.AutoSave);
-                else if (Game.SaveProfile.SceneScope != null && Game.SaveProfile.SceneScope.HasChanges)
-                    ScheduleSave(SaveType.AutoSave);
-            }
-            else if (Game.SceneScope != null && Game.SceneScope.HasChanges) {
-                ScheduleSave(SaveType.AutoSave);
-            }
-        }
-
-
         private static void SetupEvents (SaveEvents enabledSaveEvents) {
             s_periodicSaveEnabled = false;
-            s_autoSaveEnabled = false;
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
 
@@ -198,7 +175,6 @@ namespace SaveSystemPackage {
                     break;
                 case not SaveEvents.All:
                     s_periodicSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.PeriodicSave);
-                    s_autoSaveEnabled = enabledSaveEvents.HasFlag(SaveEvents.AutoSave);
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnFocusLost))
                         Application.focusChanged += OnFocusLost;
                     if (enabledSaveEvents.HasFlag(SaveEvents.OnLowMemory))
@@ -206,7 +182,6 @@ namespace SaveSystemPackage {
                     break;
                 case SaveEvents.All:
                     s_periodicSaveEnabled = true;
-                    s_autoSaveEnabled = true;
                     Application.focusChanged += OnFocusLost;
                     Application.lowMemory += OnLowMemory;
                     break;

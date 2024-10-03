@@ -16,7 +16,9 @@ namespace SaveSystemPackage.ComponentsRecording {
         public override async Task Initialize (SerializationScope scope) {
             m_scope = scope;
             Target = GetComponent<MeshFilter>();
-            Target.mesh = await m_scope.LoadData<MeshData>(Id, SaveSystem.exitCancellation.Token);
+            var meshData = await m_scope.LoadData<MeshData>(Id, SaveSystem.exitCancellation.Token);
+            if (meshData != default)
+                Target.mesh = meshData;
             m_scope.OnSave += async _ => {
                 await m_scope.SaveData(Id, (MeshData)Target.mesh, SaveSystem.exitCancellation.Token);
             };

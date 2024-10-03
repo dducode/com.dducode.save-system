@@ -25,6 +25,7 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_serializerType;
+        private SerializedProperty m_baseSerializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -42,10 +43,7 @@ namespace SaveSystemPackage.Editor {
 
         private SerializedProperty m_playerTagProperty;
 
-        private SerializedProperty m_compressFilesProperty;
         private SerializedProperty m_compressionSettingsProperty;
-
-        private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
 
 
@@ -84,8 +82,6 @@ namespace SaveSystemPackage.Editor {
             DrawCommonSettings();
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
-            DrawCompressionSettings();
-            DrawEncryptionSettings();
             EditorGUIUtility.labelWidth = width;
 
             m_serializedSettings.ApplyModifiedProperties();
@@ -111,8 +107,6 @@ namespace SaveSystemPackage.Editor {
             InitializeCommonSettings();
             InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
-            InitializeCompressionSettings();
-            InitializeEncryptionSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -128,6 +122,13 @@ namespace SaveSystemPackage.Editor {
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
             m_serializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.serializerType));
+            m_baseSerializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.baseSerializerType));
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.encryptionSettings)
+            );
+            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.compressionSettings)
+            );
         }
 
 
@@ -155,22 +156,6 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void InitializeCompressionSettings () {
-            m_compressFilesProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressFiles));
-            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.compressionSettings)
-            );
-        }
-
-
-        private void InitializeEncryptionSettings () {
-            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
-            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.encryptionSettings)
-            );
-        }
-
-
         private void DrawCommonSettings () {
             EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_automaticInitializeProperty);
@@ -183,6 +168,28 @@ namespace SaveSystemPackage.Editor {
             GUI.enabled = true;
 
             EditorGUILayout.PropertyField(m_serializerType);
+            var serializerType = (SerializerType)m_serializerType.enumValueIndex;
+
+            switch (serializerType) {
+                case SerializerType.EncryptionSerializer:
+                    DrawEncryptionSerializerProperties();
+                    break;
+                case SerializerType.CompressionSerializer:
+                    DrawCompressionSerializerProperties();
+                    break;
+                case SerializerType.CompositeSerializer:
+                    DrawCompositeSerializerProperties();
+                    break;
+                case SerializerType.BinarySerializer:
+                    break;
+                case SerializerType.JsonSerializer:
+                    break;
+                case SerializerType.Custom:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
             EditorGUILayout.Space(15);
         }
 
@@ -231,23 +238,40 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void DrawCompressionSettings () {
-            EditorGUILayout.PropertyField(m_compressFilesProperty);
+        private void DrawEncryptionSerializerProperties () {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(m_baseSerializerType);
+            DrawEncryptionSettings();
+            EditorGUI.indentLevel--;
+        }
 
-            if (m_compressFilesProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_compressionSettingsProperty);
-                EditorGUILayout.Space(15);
-            }
+
+        private void DrawCompressionSerializerProperties () {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(m_baseSerializerType);
+            DrawCompressionSettings();
+            EditorGUI.indentLevel--;
+        }
+
+
+        private void DrawCompositeSerializerProperties () {
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(m_baseSerializerType);
+            DrawCompressionSettings();
+            DrawEncryptionSettings();
+            EditorGUI.indentLevel--;
+        }
+
+
+        private void DrawCompressionSettings () {
+            EditorGUILayout.PropertyField(m_compressionSettingsProperty);
+            EditorGUILayout.Space(15);
         }
 
 
         private void DrawEncryptionSettings () {
-            EditorGUILayout.PropertyField(m_encryptProperty);
-
-            if (m_encryptProperty.boolValue) {
-                EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
-                EditorGUILayout.Space(15);
-            }
+            EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
+            EditorGUILayout.Space(15);
         }
 
     }

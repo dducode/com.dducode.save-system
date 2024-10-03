@@ -17,15 +17,34 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public async Task WriteData (string key, byte[] data, CancellationToken token) {
+        public async Task Write (string key, byte[] data, CancellationToken token) {
+            token.ThrowIfCancellationRequested();
             File file = m_folder.GetOrCreateFile(key, m_fileExtension);
             await file.WriteAllBytesAsync(data, token);
         }
 
 
-        public async Task<byte[]> ReadData (string key, CancellationToken token) {
+        public async Task<byte[]> Read (string key, CancellationToken token) {
+            token.ThrowIfCancellationRequested();
             File file = m_folder.GetOrCreateFile(key, m_fileExtension);
             return await file.ReadAllBytesAsync(token);
+        }
+
+
+        public Task Delete (string key) {
+            m_folder.DeleteFile(key);
+            return Task.CompletedTask;
+        }
+
+
+        public Task Clear () {
+            m_folder.Clear();
+            return Task.CompletedTask;
+        }
+
+
+        public Task<bool> Exists (string key) {
+            return Task.FromResult(m_folder.ContainsFile(key));
         }
 
     }

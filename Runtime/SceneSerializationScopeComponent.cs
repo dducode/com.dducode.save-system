@@ -1,9 +1,10 @@
 ﻿using System.Threading.Tasks;
 using SaveSystemPackage.ComponentsRecording;
-using SaveSystemPackage.Compressing;
-using SaveSystemPackage.Internal.Extensions;
-using SaveSystemPackage.Security;
+using SaveSystemPackage.Profiles;
+using SaveSystemPackage.Providers;
+using SaveSystemPackage.Storages;
 using UnityEngine;
+using Directory = SaveSystemPackage.Internal.Directory;
 
 namespace SaveSystemPackage {
 
@@ -12,22 +13,7 @@ namespace SaveSystemPackage {
     public class SceneSerializationScopeComponent : MonoBehaviour {
 
         [SerializeField]
-        private bool overrideProjectSettings;
-
-        [SerializeField]
-        private bool compressFiles;
-
-        [SerializeField]
-        private CompressionSettings compressionSettings;
-
-        [SerializeField]
-        private bool encrypt;
-
-        [SerializeField]
-        private EncryptionSettings encryptionSettings;
-
-        [SerializeField]
-        private string fileName;
+        private string id;
 
         public SceneSerializationScope SceneScope { get; private set; }
 
@@ -37,33 +23,19 @@ namespace SaveSystemPackage {
                 Name = $"{gameObject.scene.name} scene scope"
             };
 
-            if (overrideProjectSettings) {
-                SceneScope.OverriddenSettings.Encrypt = encrypt;
-
-                if (encrypt) {
-                    SceneScope.OverriddenSettings.Cryptographer = encryptionSettings.useCustomCryptographer
-                        ? encryptionSettings.reference
-                        : new Cryptographer(encryptionSettings);
-                }
-
-                SceneScope.OverriddenSettings.CompressFiles = compressFiles;
-
-                if (compressFiles) {
-                    SceneScope.OverriddenSettings.FileCompressor = compressionSettings.useCustomCompressor
-                        ? compressionSettings.reference
-                        : new FileCompressor(compressionSettings);
-                }
-            }
-
             SaveProfile profile = SaveSystem.Game.SaveProfile;
 
             if (profile == null) {
+                Directory directory = Storage.ScenesDirectory.GetOrCreateDirectory(id);
+                SceneScope.KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
+                SceneScope.DataStorage = new FileSystemStorage(directory, "scenedata");
                 SaveSystem.Game.SceneScope = SceneScope;
-                // SceneScope.DataFile = Storage.ScenesDirectory.GetOrCreateFile(fileName, "scenedata");
             }
             else {
+                Directory directory = profile.directory.GetOrCreateDirectory(id);
+                SceneScope.KeyProvider = new CompositeKeyStore(profile.KeyProvider, directory.Name);
+                SceneScope.DataStorage = new FileSystemStorage(directory, "scenedata");
                 profile.SceneScope = SceneScope;
-                // SceneScope.DataFile = profile.DataDirectory.GetOrCreateFile(fileName, "scenedata");
             }
 
             await RegisterRecorders();
@@ -71,8 +43,8 @@ namespace SaveSystemPackage {
 
 
         private void OnValidate () {
-            if (string.IsNullOrEmpty(fileName))
-                fileName = gameObject.scene.name.ToPathFormat();
+            if (string.IsNullOrEmpty(id))
+                id = gameObject.GetInstanceID().ToString();
         }
 
 

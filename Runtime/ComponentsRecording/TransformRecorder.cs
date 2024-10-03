@@ -36,6 +36,9 @@ namespace SaveSystemPackage.ComponentsRecording {
 
 
         private void SetData (TransformData data) {
+            if (data == null)
+                return;
+
             if (m_characterController != null)
                 m_characterController.enabled = false;
 

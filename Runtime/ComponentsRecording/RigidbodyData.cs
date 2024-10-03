@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SaveSystemPackage.ComponentsRecording {
 
     [Serializable]
-    public struct RigidbodyData : ISaveData {
+    public class RigidbodyData : ISaveData {
 
         public Vector3 position;
         public Quaternion rotation;

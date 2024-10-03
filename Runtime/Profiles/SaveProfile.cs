@@ -3,14 +3,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Providers;
+using SaveSystemPackage.Storages;
 using Directory = SaveSystemPackage.Internal.Directory;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace SaveSystemPackage {
+namespace SaveSystemPackage.Profiles {
 
-    public abstract class SaveProfile : SerializationScope {
+    public sealed class SaveProfile : SerializationScope {
 
         [NotNull]
         public override string Name {
@@ -18,23 +20,29 @@ namespace SaveSystemPackage {
             set {
                 if (string.IsNullOrEmpty(value))
                     throw new ArgumentNullException(nameof(Name));
-
                 if (string.Equals(m_name, value))
                     return;
 
-                SaveSystem.ThrowIfProfileExistsWithName(value);
-                string oldName = m_name;
+                SaveSystem.ProfilesManager.ThrowIfProfileExistsWithName(value);
                 m_name = value;
-
-                SaveSystem.UpdateProfile(this, oldName, m_name);
+                SaveSystem.ProfilesManager.UpdateProfile(this);
             }
         }
 
-        [NotNull]
-        internal Directory DataDirectory {
-            get => m_dataDirectory;
-            set => m_dataDirectory = value ?? throw new ArgumentNullException(nameof(DataDirectory));
+        public string IconId {
+            get => m_iconId;
+            set {
+                if (string.IsNullOrEmpty(value))
+                    throw new ArgumentNullException(nameof(IconId));
+                if (string.Equals(m_name, value))
+                    return;
+
+                m_iconId = value;
+                SaveSystem.ProfilesManager.UpdateProfile(this);
+            }
         }
+
+        public string Id { get; }
 
         [NotNull]
         internal SceneSerializationScope SceneScope {
@@ -42,26 +50,42 @@ namespace SaveSystemPackage {
             set => m_sceneScope = value ?? throw new ArgumentNullException(nameof(SceneScope));
         }
 
-        internal bool HasChanges => Data.HasChanges || SecureData.HasChanges;
+        internal readonly Directory directory;
 
         private string m_name;
-        private Directory m_dataDirectory;
-        private string m_scenesFolder;
-
+        private string m_iconId;
         private SceneSerializationScope m_sceneScope;
 
 
-        internal void Initialize ([NotNull] string name) {
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-
-            m_name = name;
-            OnInitialized();
+        internal SaveProfile (ProfileData data) {
+            Id = data.id;
+            m_name = data.name;
+            m_iconId = data.iconId;
+            directory = Storage.ProfilesDirectory.GetOrCreateDirectory(Id);
+            KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
+            DataStorage = new FileSystemStorage(directory, "profiledata");
         }
 
 
-        public void ApplyChanges () {
-            SaveSystem.UpdateProfile(this);
+        public async Task Reload (CancellationToken token = default) {
+            try {
+                token.ThrowIfCancellationRequested();
+                await OnReloadInvoke();
+                if (SceneScope != null)
+                    await SceneScope.Reload(token);
+            }
+            catch (OperationCanceledException) {
+                Logger.Log(Name, "Data reload canceled");
+            }
+        }
+
+
+        public ProfileData GetData () {
+            return new ProfileData {
+                id = Id,
+                name = Name,
+                iconId = IconId
+            };
         }
 
 
@@ -79,19 +103,6 @@ namespace SaveSystemPackage {
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data saving canceled");
-            }
-        }
-
-
-        public async Task Reload (CancellationToken token = default) {
-            try {
-                token.ThrowIfCancellationRequested();
-                await OnReloadInvoke();
-                if (SceneScope != null)
-                    await SceneScope.Reload(token);
-            }
-            catch (OperationCanceledException) {
-                Logger.Log(Name, "Data reload canceled");
             }
         }
 
@@ -129,9 +140,6 @@ namespace SaveSystemPackage {
         //            .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
         //     }
         // }
-
-
-        protected virtual void OnInitialized () { }
 
     }
 

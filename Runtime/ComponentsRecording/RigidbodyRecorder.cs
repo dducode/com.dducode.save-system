@@ -36,6 +36,9 @@ namespace SaveSystemPackage.ComponentsRecording {
 
 
         private void SetData (RigidbodyData data) {
+            if (data == null)
+                return;
+
             if (includedProperties.HasFlag(Properties.Position))
                 Target.position = data.position;
             if (includedProperties.HasFlag(Properties.Rotation))

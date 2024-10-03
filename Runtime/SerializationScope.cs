@@ -2,7 +2,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using SaveSystemPackage.Security;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Providers;
+using SaveSystemPackage.Serialization;
 using SaveSystemPackage.Storages;
 using Directory = SaveSystemPackage.Internal.Directory;
 using File = SaveSystemPackage.Internal.File;
@@ -25,53 +27,89 @@ namespace SaveSystemPackage {
             }
         }
 
+        public IKeyProvider KeyProvider { get; set; }
         public IDataStorage DataStorage { get; set; }
-
-        public SerializationSettings OverriddenSettings =>
-            m_overridenSettings ??= SaveSystem.Settings.SerializationSettings.Clone();
-
-        public DataBuffer Data { get; private set; } = new();
-        public SecureDataBuffer SecureData { get; private set; } = new();
         public event Func<SaveType, Task> OnSave;
         public event Func<Task> OnReload;
 
         private string m_name;
         private File m_dataFile;
         private Directory m_folder;
-        private SerializationSettings m_overridenSettings;
 
 
         public async Task SaveData<TData> (TData data, CancellationToken token = default) where TData : ISaveData {
-            SerializationSettings settings = m_overridenSettings ?? SaveSystem.Settings.SerializationSettings;
-            string key = settings.KeyProvider.GetKey<TData>();
-            byte[] serializedData = await settings.Serializer.Serialize(data, token);
-            await DataStorage.WriteData(key, serializedData, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                ISerializer serializer = SaveSystem.Settings.Serializer;
+                string key = KeyProvider.Provide<TData>();
+                byte[] serializedData = await serializer.Serialize(data, token);
+                await DataStorage.Write(key, serializedData, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(Name, "Data saving was canceled");
+            }
         }
 
 
         public async Task SaveData<TData> (string key, TData data, CancellationToken token = default)
             where TData : ISaveData {
-            SerializationSettings settings = m_overridenSettings ?? SaveSystem.Settings.SerializationSettings;
-            string typeKey = settings.KeyProvider.GetKey<TData>();
-            byte[] serializedData = await settings.Serializer.Serialize(data, token);
-            await DataStorage.WriteData($"{key}_{typeKey}", serializedData, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                ISerializer serializer = SaveSystem.Settings.Serializer;
+                string resultKey = KeyProvider.Provide<TData>(key);
+                byte[] serializedData = await serializer.Serialize(data, token);
+                await DataStorage.Write(resultKey, serializedData, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(Name, "Data saving was canceled");
+            }
         }
 
 
         public async Task<TData> LoadData<TData> (CancellationToken token = default) where TData : ISaveData {
-            SerializationSettings settings = m_overridenSettings ?? SaveSystem.Settings.SerializationSettings;
-            string key = settings.KeyProvider.GetKey<TData>();
-            byte[] data = await DataStorage.ReadData(key, token);
-            return await settings.Serializer.Deserialize<TData>(data, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                ISerializer serializer = SaveSystem.Settings.Serializer;
+                string key = KeyProvider.Provide<TData>();
+                if (!await DataStorage.Exists(key))
+                    return default;
+                byte[] data = await DataStorage.Read(key, token);
+                return await serializer.Deserialize<TData>(data, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(Name, "Data loading was canceled");
+                return default;
+            }
         }
 
 
         public async Task<TData> LoadData<TData> (string key, CancellationToken token = default)
             where TData : ISaveData {
-            SerializationSettings settings = m_overridenSettings ?? SaveSystem.Settings.SerializationSettings;
-            string typeKey = settings.KeyProvider.GetKey<TData>();
-            byte[] data = await DataStorage.ReadData($"{key}_{typeKey}", token);
-            return await settings.Serializer.Deserialize<TData>(data, token);
+            try {
+                token.ThrowIfCancellationRequested();
+                ISerializer serializer = SaveSystem.Settings.Serializer;
+                string resultKey = KeyProvider.Provide<TData>(key);
+                if (!await DataStorage.Exists(resultKey))
+                    return default;
+                byte[] data = await DataStorage.Read(resultKey, token);
+                return await serializer.Deserialize<TData>(data, token);
+            }
+            catch (OperationCanceledException) {
+                Logger.LogWarning(Name, "Data loading was canceled");
+                return default;
+            }
+        }
+
+
+        public async Task DeleteData<TData> () where TData : ISaveData {
+            string key = KeyProvider.Provide<TData>();
+            await DataStorage.Delete(key);
+        }
+
+
+        public async Task DeleteData<TData> (string key) where TData : ISaveData {
+            string resultKey = KeyProvider.Provide<TData>(key);
+            await DataStorage.Delete(resultKey);
         }
 
 
@@ -84,12 +122,6 @@ namespace SaveSystemPackage {
         internal async Task OnReloadInvoke () {
             if (OnReload != null)
                 await OnReload.Invoke();
-        }
-
-
-        internal void Clear () {
-            Data.Clear();
-            SecureData.Clear();
         }
 
     }
