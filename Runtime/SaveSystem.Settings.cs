@@ -5,13 +5,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using SaveSystemPackage.ComponentsRecording;
 using SaveSystemPackage.Compressing;
-using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Serialization;
+using SaveSystemPackage.Settings;
 using UnityEngine;
+using JsonSerializer = SaveSystemPackage.Serialization.JsonSerializer;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 #if ENABLE_INPUT_SYSTEM
@@ -94,17 +95,6 @@ namespace SaveSystemPackage {
                     PlayerPrefs.SetInt(SaveSystemConstants.QuickSaveKeyCode, (int)m_quickSaveKey);
                 }
             }
-
-            /// <summary>
-            /// Binds any key to screen capture
-            /// </summary>
-            public KeyCode ScreenCaptureKey {
-                get => m_screenCaptureKey;
-                set {
-                    m_screenCaptureKey = value;
-                    PlayerPrefs.SetInt(SaveSystemConstants.ScreenCaptureKeyCode, (int)m_screenCaptureKey);
-                }
-            }
         #endif
 
         #if ENABLE_INPUT_SYSTEM
@@ -125,11 +115,12 @@ namespace SaveSystemPackage {
             }
 
             public Dictionary<Type, string> KeyMap { get; } = new() {
-                {typeof(TransformData), "transform-data"},
-                {typeof(RigidbodyData), "rigidbody-data"},
-                {typeof(MeshData), "mesh-data"},
                 {typeof(ProfileData), "profile-data"},
-                {typeof(ProfilesManagerData), "profiles-manager-data"}
+                {typeof(ProfilesManagerData), "profiles-manager-data"},
+                {typeof(QuaternionData), "quaternion-data"},
+                {typeof(RigidbodyData), "rigidbody-data"},
+                {typeof(TransformData), "transform-data"},
+                {typeof(Vector3Data), "vector-3-data"}
             };
 
 
@@ -175,9 +166,6 @@ namespace SaveSystemPackage {
                         QuickSaveKey = (KeyCode)PlayerPrefs.GetInt(
                             SaveSystemConstants.QuickSaveKeyCode, (int)settings.quickSaveKey
                         );
-                        ScreenCaptureKey = (KeyCode)PlayerPrefs.GetInt(
-                            SaveSystemConstants.ScreenCaptureKeyCode, (int)settings.screenCaptureKey
-                        );
                         break;
                     case UsedInputSystem.InputSystem:
                         QuickSaveAction = settings.quickSaveAction;
@@ -211,19 +199,19 @@ namespace SaveSystemPackage {
                     case SerializerType.BinarySerializer:
                         return new BinarySerializer();
                     case SerializerType.JsonSerializer:
-                        return new JsonSerializer();
+                        return new JsonSerializer(settings.jsonSerializerSettings);
                     case SerializerType.EncryptionSerializer:
                         var cryptographer = new Cryptographer(settings.encryptionSettings);
-                        ISerializer baseSerializer = SelectBaseSerializer(settings.baseSerializerType);
+                        ISerializer baseSerializer = SelectBaseSerializer(settings);
                         return new EncryptionSerializer(baseSerializer, cryptographer);
                     case SerializerType.CompressionSerializer:
                         var compressor = new FileCompressor(settings.compressionSettings);
-                        baseSerializer = SelectBaseSerializer(settings.baseSerializerType);
+                        baseSerializer = SelectBaseSerializer(settings);
                         return new CompressionSerializer(baseSerializer, compressor);
                     case SerializerType.CompositeSerializer:
                         cryptographer = new Cryptographer(settings.encryptionSettings);
                         compressor = new FileCompressor(settings.compressionSettings);
-                        baseSerializer = SelectBaseSerializer(settings.baseSerializerType);
+                        baseSerializer = SelectBaseSerializer(settings);
                         return new CompositeSerializer(baseSerializer, cryptographer, compressor);
                     case SerializerType.Custom:
                         return null;
@@ -233,12 +221,14 @@ namespace SaveSystemPackage {
             }
 
 
-            private ISerializer SelectBaseSerializer (BaseSerializerType serializerType) {
+            private ISerializer SelectBaseSerializer (SaveSystemSettings settings) {
+                BaseSerializerType serializerType = settings.baseSerializerType;
+
                 switch (serializerType) {
                     case BaseSerializerType.BinarySerializer:
                         return new BinarySerializer();
                     case BaseSerializerType.JsonSerializer:
-                        return new JsonSerializer();
+                        return new JsonSerializer(settings.jsonSerializerSettings);
                     case BaseSerializerType.Custom:
                         return null;
                     default:

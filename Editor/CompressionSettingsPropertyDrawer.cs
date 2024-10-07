@@ -1,4 +1,5 @@
 ﻿using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Settings;
 using UnityEditor;
 using UnityEngine;
 using CompressionLevel = System.IO.Compression.CompressionLevel;

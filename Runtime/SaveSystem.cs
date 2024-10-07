@@ -3,19 +3,15 @@
 #endif
 
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using SaveSystemPackage.CloudSave;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Templates;
-using SaveSystemPackage.Serialization;
+using SaveSystemPackage.Settings;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using File = SaveSystemPackage.Internal.File;
 using Logger = SaveSystemPackage.Internal.Logger;
-using MemoryStream = System.IO.MemoryStream;
 
 // ReSharper disable SuspiciousTypeConversion.Global
 
@@ -134,8 +130,6 @@ namespace SaveSystemPackage {
         private static void CheckPressedKeys () {
             if (Input.GetKeyDown(Settings.QuickSaveKey))
                 QuickSave();
-            if (Input.GetKeyDown(Settings.ScreenCaptureKey))
-                CaptureScreenshot();
         }
     #endif
 
@@ -145,9 +139,6 @@ namespace SaveSystemPackage {
             if (Settings.QuickSaveAction != null &&
                 Settings.QuickSaveAction.WasPerformedThisFrame())
                 QuickSave();
-            if (Settings.ScreenCaptureAction != null &&
-                Settings.ScreenCaptureAction.WasPerformedThisFrame())
-                CaptureScreenshot();
         }
     #endif
 
@@ -208,143 +199,36 @@ namespace SaveSystemPackage {
         private static async Task CommonSavingTask (SaveType saveType, CancellationToken token) {
             OnSaveStart?.Invoke(saveType);
             HandlingResult result;
+            string errorMessage;
 
             try {
                 token.ThrowIfCancellationRequested();
                 await Game.Save(saveType, token);
                 result = HandlingResult.Success;
+                errorMessage = null;
             }
             catch (OperationCanceledException) {
                 result = HandlingResult.Canceled;
+                errorMessage = null;
             }
-            catch {
+            catch (Exception exception) {
                 result = HandlingResult.Error;
+                errorMessage = exception.Message;
             }
 
             OnSaveEnd?.Invoke(saveType);
-            LogResult(saveType, result);
+            LogMessage(saveType, (result, errorMessage));
         }
 
 
-        private static void LogResult (SaveType saveType, HandlingResult result) {
+        private static void LogMessage (SaveType saveType, (HandlingResult, string) logData) {
+            (HandlingResult result, string errorMessage) = logData;
             if (result is HandlingResult.Success)
                 Logger.Log(nameof(SaveSystem), $"{saveType}: success");
             else if (result is HandlingResult.Canceled)
                 Logger.LogWarning(nameof(SaveSystem), $"{saveType}: canceled");
             else if (result is HandlingResult.Error)
-                Logger.LogError(nameof(SaveSystem), $"{saveType}: error");
-        }
-
-
-        // private static async Task UploadToCloudStorage (CancellationToken token = default) {
-        //     StorageData gameData = await Game.ExportGameData(token);
-        //     if (gameData != null)
-        //         await CloudStorage.Upload(gameData);
-        //
-        //     await UploadProfiles(CloudStorage, token);
-        //
-        //     if (Storage.ScreenshotsDirectoryExists())
-        //         await UploadScreenshots(CloudStorage, token);
-        // }
-
-
-        // private static async Task UploadProfiles (ICloudStorage cloudStorage, CancellationToken token) {
-        //     var memoryStream = new MemoryStream();
-        //     await using var writer = new SaveWriter(memoryStream);
-        //     File[] profiles = Storage.InternalDirectory.EnumerateFiles("profile").ToArray();
-        //     if (profiles.Length == 0)
-        //         return;
-        //
-        //     writer.Write(profiles.Length);
-        //
-        //     foreach (File file in profiles) {
-        //         writer.Write(file.Name);
-        //         await using var reader = new SaveReader(file.Open());
-        //         string typeName = reader.ReadString();
-        //         var type = Type.GetType(typeName);
-        //
-        //         if (type == null) {
-        //             Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
-        //             continue;
-        //         }
-        //
-        //         var profile = (SaveProfile)Activator.CreateInstance(type);
-        //         InitializeProfile(profile, reader.ReadString());
-        //         SerializationManager.DeserializeGraph(reader, profile);
-        //         SerializeProfile(writer, profile);
-        //         writer.Write(await profile.ExportProfileData(token));
-        //     }
-        //
-        //     await cloudStorage.Upload(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllProfilesFile));
-        // }
-
-
-        private static async Task UploadScreenshots (ICloudStorage cloudStorage, CancellationToken token) {
-            var memoryStream = new MemoryStream();
-            await using var writer = new SaveWriter(memoryStream);
-            File[] screenshots = Storage.ScreenshotsDirectory.EnumerateFiles("png").ToArray();
-            if (screenshots.Length == 0)
-                return;
-
-            writer.Write(screenshots.Length);
-
-            foreach (File screenshot in screenshots) {
-                writer.Write(screenshot.Name);
-                writer.Write(await screenshot.ReadAllBytesAsync(token));
-            }
-
-            await cloudStorage.Upload(new StorageData(memoryStream.ToArray(), SaveSystemConstants.AllScreenshotsFile));
-        }
-
-
-        // private static async Task DownloadFromCloudStorage (CancellationToken token = default) {
-        //     StorageData gameData = await CloudStorage.Download(Game.DataFile.Name);
-        //     if (gameData != null)
-        //         await Game.ImportGameData(gameData.rawData, token);
-        //
-        //     StorageData profiles = await CloudStorage.Download(SaveSystemConstants.AllProfilesFile);
-        //     if (profiles != null)
-        //         await DownloadProfiles(profiles, token);
-        //
-        //     StorageData screenshots = await CloudStorage.Download(SaveSystemConstants.AllScreenshotsFile);
-        //     if (screenshots != null)
-        //         await DownloadScreenshots(screenshots, token);
-        // }
-
-
-        // private static async Task DownloadProfiles (StorageData profiles, CancellationToken token) {
-        //     await using var reader = new SaveReader(new MemoryStream(profiles.rawData));
-        //     var count = reader.Read<int>();
-        //
-        //     for (var i = 0; i < count; i++) {
-        //         File file = Storage.InternalDirectory.GetOrCreateFile(reader.ReadString(), "profile");
-        //         await using var writer = new SaveWriter(file.Open());
-        //         string typeName = reader.ReadString();
-        //         var type = Type.GetType(typeName);
-        //
-        //         if (type == null) {
-        //             Logger.LogWarning(nameof(SaveSystem), $"Type {typeName} is not found");
-        //             continue;
-        //         }
-        //
-        //         var profile = (SaveProfile)Activator.CreateInstance(type);
-        //         InitializeProfile(profile, reader.ReadString());
-        //         SerializationManager.DeserializeGraph(reader, profile);
-        //         SerializeProfile(writer, profile);
-        //         await profile.ImportProfileData(reader.ReadArray<byte>(), token);
-        //     }
-        // }
-
-
-        private static async Task DownloadScreenshots (StorageData screenshots, CancellationToken token) {
-            await using var reader = new SaveReader(new MemoryStream(screenshots.rawData));
-            var count = reader.Read<int>();
-
-            for (var i = 0; i < count; i++) {
-                await Storage.ScreenshotsDirectory
-                   .GetOrCreateFile(reader.ReadString(), "png")
-                   .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
-            }
+                Logger.LogError(nameof(SaveSystem), $"{saveType}: error ({errorMessage})");
         }
 
     }

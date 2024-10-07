@@ -1,9 +1,8 @@
-﻿using System.Threading.Tasks;
-using SaveSystemPackage.ComponentsRecording;
-using SaveSystemPackage.Profiles;
+﻿using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.Storages;
 using UnityEngine;
+using UnityEngine.Events;
 using Directory = SaveSystemPackage.Internal.Directory;
 
 namespace SaveSystemPackage {
@@ -15,10 +14,13 @@ namespace SaveSystemPackage {
         [SerializeField]
         private string id;
 
+        [SerializeField]
+        private UnityEvent onInitialized;
+
         public SceneSerializationScope SceneScope { get; private set; }
 
 
-        private async void Awake () {
+        private void Awake () {
             SceneScope = new SceneSerializationScope {
                 Name = $"{gameObject.scene.name} scene scope"
             };
@@ -38,19 +40,13 @@ namespace SaveSystemPackage {
                 profile.SceneScope = SceneScope;
             }
 
-            await RegisterRecorders();
+            onInitialized?.Invoke();
         }
 
 
         private void OnValidate () {
             if (string.IsNullOrEmpty(id))
                 id = gameObject.GetInstanceID().ToString();
-        }
-
-
-        private async Task RegisterRecorders () {
-            foreach (ComponentRecorder recorder in FindObjectsByType<ComponentRecorder>(FindObjectsSortMode.None))
-                await recorder.Initialize(SceneScope);
         }
 
     }

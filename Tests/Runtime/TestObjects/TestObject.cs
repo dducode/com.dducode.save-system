@@ -1,9 +1,7 @@
-﻿using SaveSystemPackage.Attributes;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace SaveSystemPackage.Tests.TestObjects {
 
-    [DynamicObject]
     public class TestObject : MonoBehaviour {
 
         public MeshFilter MeshFilter { get; private set; }

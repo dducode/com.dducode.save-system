@@ -1,4 +1,5 @@
 ﻿using SaveSystemPackage.Security;
+using SaveSystemPackage.Settings;
 using UnityEditor;
 using UnityEngine;
 

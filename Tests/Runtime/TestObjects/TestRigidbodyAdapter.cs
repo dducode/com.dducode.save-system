@@ -1,4 +1,4 @@
-﻿using SaveSystemPackage.ComponentsRecording;
+﻿using SaveSystemPackage.SerializableData;
 
 namespace SaveSystemPackage.Tests.TestObjects {
 

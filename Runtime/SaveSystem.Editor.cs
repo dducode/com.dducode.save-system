@@ -1,6 +1,5 @@
 ﻿#if UNITY_EDITOR
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Diagnostic;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -28,7 +27,6 @@ namespace SaveSystemPackage {
             Game = null;
             ProfilesManager = null;
             Initialized = false;
-            DiagnosticService.Clear();
 
             Application.quitting -= ResetOnExit;
         }

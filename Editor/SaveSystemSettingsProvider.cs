@@ -3,6 +3,7 @@
 #endif
 
 using System;
+using SaveSystemPackage.Settings;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -45,6 +46,7 @@ namespace SaveSystemPackage.Editor {
 
         private SerializedProperty m_compressionSettingsProperty;
         private SerializedProperty m_encryptionSettingsProperty;
+        private SerializedProperty m_jsonSerializerSettings;
 
 
         [SettingsProvider]
@@ -123,11 +125,14 @@ namespace SaveSystemPackage.Editor {
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
             m_serializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.serializerType));
             m_baseSerializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.baseSerializerType));
+            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.compressionSettings)
+            );
             m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
                 nameof(SaveSystemSettings.encryptionSettings)
             );
-            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.compressionSettings)
+            m_jsonSerializerSettings = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.jsonSerializerSettings)
             );
         }
 
@@ -167,6 +172,13 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_savePeriodProperty);
             GUI.enabled = true;
 
+            DrawSerializerTypeProperty();
+
+            EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawSerializerTypeProperty () {
             EditorGUILayout.PropertyField(m_serializerType);
             var serializerType = (SerializerType)m_serializerType.enumValueIndex;
 
@@ -183,14 +195,13 @@ namespace SaveSystemPackage.Editor {
                 case SerializerType.BinarySerializer:
                     break;
                 case SerializerType.JsonSerializer:
+                    EditorGUILayout.PropertyField(m_jsonSerializerSettings);
                     break;
                 case SerializerType.Custom:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-
-            EditorGUILayout.Space(15);
         }
 
 
@@ -240,7 +251,7 @@ namespace SaveSystemPackage.Editor {
 
         private void DrawEncryptionSerializerProperties () {
             EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(m_baseSerializerType);
+            DrawBaseSerializerTypeProperty();
             DrawEncryptionSettings();
             EditorGUI.indentLevel--;
         }
@@ -248,7 +259,7 @@ namespace SaveSystemPackage.Editor {
 
         private void DrawCompressionSerializerProperties () {
             EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(m_baseSerializerType);
+            DrawBaseSerializerTypeProperty();
             DrawCompressionSettings();
             EditorGUI.indentLevel--;
         }
@@ -256,7 +267,7 @@ namespace SaveSystemPackage.Editor {
 
         private void DrawCompositeSerializerProperties () {
             EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(m_baseSerializerType);
+            DrawBaseSerializerTypeProperty();
             DrawCompressionSettings();
             DrawEncryptionSettings();
             EditorGUI.indentLevel--;
@@ -272,6 +283,24 @@ namespace SaveSystemPackage.Editor {
         private void DrawEncryptionSettings () {
             EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
             EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawBaseSerializerTypeProperty () {
+            EditorGUILayout.PropertyField(m_baseSerializerType);
+            var baseSerializerType = (BaseSerializerType)m_baseSerializerType.enumValueIndex;
+
+            switch (baseSerializerType) {
+                case BaseSerializerType.BinarySerializer:
+                    break;
+                case BaseSerializerType.JsonSerializer:
+                    EditorGUILayout.PropertyField(m_jsonSerializerSettings);
+                    break;
+                case BaseSerializerType.Custom:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
     }

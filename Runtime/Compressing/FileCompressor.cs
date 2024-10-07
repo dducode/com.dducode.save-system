@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Settings;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 using Logger = SaveSystemPackage.Internal.Logger;
 

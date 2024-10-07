@@ -32,19 +32,6 @@ namespace SaveSystemPackage {
             }
         }
 
-
-        // internal async Task<StorageData> ExportSceneData (CancellationToken token) {
-        //     return DataFile.Exists
-        //         ? new StorageData(await DataFile.ReadAllBytesAsync(token), DataFile.Name)
-        //         : null;
-        // }
-        //
-        //
-        // internal async Task ImportSceneData (byte[] data, CancellationToken token) {
-        //     if (data.Length > 0)
-        //         await DataFile.WriteAllBytesAsync(data, token);
-        // }
-
     }
 
 }

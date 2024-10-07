@@ -12,15 +12,12 @@ namespace SaveSystemPackage {
     /// </summary>
     public static class Storage {
 
-        private const string ScreenshotsName = "screenshots";
-
         internal static Directory Root =>
             s_root ??= Directory.CreateRoot("save-system", Application.persistentDataPath);
 
         internal static Directory InternalDirectory => Root.GetOrCreateDirectory(".internal", FileAttributes.Hidden);
         internal static Directory ScenesDirectory => Root.GetOrCreateDirectory("scenes");
         internal static Directory ProfilesDirectory => Root.GetOrCreateDirectory("profiles");
-        internal static Directory ScreenshotsDirectory => Root.GetOrCreateDirectory(ScreenshotsName);
 
         internal static Directory CacheRoot =>
             s_cacheRoot ??= Directory.CreateRoot("save-system", Application.temporaryCachePath);
@@ -31,7 +28,6 @@ namespace SaveSystemPackage {
         private static Directory s_internalDirectory;
         private static Directory s_scenesDirectory;
         private static Directory s_profilesDirectory;
-        private static Directory s_screenshotsDirectory;
         private static Directory s_cacheRoot;
         private static Directory s_testsDirectory;
 
@@ -54,11 +50,6 @@ namespace SaveSystemPackage {
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
             return Root.DataSize > 0;
-        }
-
-
-        internal static bool ScreenshotsDirectoryExists () {
-            return Root.ContainsDirectory(ScreenshotsName);
         }
 
 

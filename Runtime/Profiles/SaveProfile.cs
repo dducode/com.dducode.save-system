@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Providers;
+using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Storages;
 using Directory = SaveSystemPackage.Internal.Directory;
 
@@ -105,41 +106,6 @@ namespace SaveSystemPackage.Profiles {
                 Logger.Log(Name, "Data saving canceled");
             }
         }
-
-
-        // internal async Task<byte[]> ExportProfileData (CancellationToken token) {
-        //     File[] entries = DataDirectory.EnumerateFiles().ToArray();
-        //     if (entries.Length == 0)
-        //         return Array.Empty<byte>();
-        //
-        //     using var memoryStream = new MemoryStream();
-        //     await using var writer = new SaveWriter(memoryStream);
-        //
-        //     writer.Write(entries.Length);
-        //
-        //     foreach (File file in entries) {
-        //         writer.Write(file.Name);
-        //         writer.Write(file.Extension);
-        //         writer.Write(await file.ReadAllBytesAsync(token));
-        //     }
-        //
-        //     return memoryStream.ToArray();
-        // }
-
-
-        // internal async Task ImportProfileData (byte[] data, CancellationToken token) {
-        //     if (data.Length == 0)
-        //         return;
-        //
-        //     await using var reader = new SaveReader(new MemoryStream(data));
-        //     var entriesCount = reader.Read<int>();
-        //
-        //     for (var i = 0; i < entriesCount; i++) {
-        //         await DataDirectory
-        //            .GetOrCreateFile(reader.ReadString(), reader.ReadString())
-        //            .WriteAllBytesAsync(reader.ReadArray<byte>(), token);
-        //     }
-        // }
 
     }
 

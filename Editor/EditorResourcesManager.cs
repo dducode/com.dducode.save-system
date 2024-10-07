@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Settings;
 using UnityEditor;
 using UnityEngine;
 using File = UnityEngine.Windows.File;

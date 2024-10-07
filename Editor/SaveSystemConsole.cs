@@ -27,7 +27,6 @@ namespace SaveSystemPackage.Editor {
         };
 
         private FileExplorer m_fileExplorer;
-        private ObjectsTracker m_objectsTracker;
 
 
         [MenuItem("Window/" + WindowName)]
@@ -80,8 +79,6 @@ namespace SaveSystemPackage.Editor {
             switch (selectedTab) {
                 case ConsoleTabsNames.FileExplorer:
                     return m_fileExplorer ??= new FileExplorer();
-                case ConsoleTabsNames.ObjectsTracker:
-                    return m_objectsTracker ??= new ObjectsTracker();
                 default:
                     throw new ArgumentOutOfRangeException();
             }
