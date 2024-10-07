@@ -4,6 +4,7 @@
 
         BinarySerializer,
         JsonSerializer,
+        XmlSerializer,
         Custom
 
     }

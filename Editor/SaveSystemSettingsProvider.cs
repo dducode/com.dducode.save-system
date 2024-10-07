@@ -197,6 +197,8 @@ namespace SaveSystemPackage.Editor {
                 case SerializerType.JsonSerializer:
                     EditorGUILayout.PropertyField(m_jsonSerializerSettings);
                     break;
+                case SerializerType.XmlSerializer:
+                    break;
                 case SerializerType.Custom:
                     break;
                 default:
@@ -295,6 +297,8 @@ namespace SaveSystemPackage.Editor {
                     break;
                 case BaseSerializerType.JsonSerializer:
                     EditorGUILayout.PropertyField(m_jsonSerializerSettings);
+                    break;
+                case BaseSerializerType.XmlSerializer:
                     break;
                 case BaseSerializerType.Custom:
                     break;

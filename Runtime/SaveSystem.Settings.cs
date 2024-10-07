@@ -200,6 +200,8 @@ namespace SaveSystemPackage {
                         return new BinarySerializer();
                     case SerializerType.JsonSerializer:
                         return new JsonSerializer(settings.jsonSerializerSettings);
+                    case SerializerType.XmlSerializer:
+                        return new XmlSerializer();
                     case SerializerType.EncryptionSerializer:
                         var cryptographer = new Cryptographer(settings.encryptionSettings);
                         ISerializer baseSerializer = SelectBaseSerializer(settings);
@@ -229,6 +231,8 @@ namespace SaveSystemPackage {
                         return new BinarySerializer();
                     case BaseSerializerType.JsonSerializer:
                         return new JsonSerializer(settings.jsonSerializerSettings);
+                    case BaseSerializerType.XmlSerializer:
+                        return new XmlSerializer();
                     case BaseSerializerType.Custom:
                         return null;
                     default:

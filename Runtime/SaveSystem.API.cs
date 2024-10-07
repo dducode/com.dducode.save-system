@@ -67,32 +67,6 @@ namespace SaveSystemPackage {
             }
         }
 
-
-        // public static async Task UploadToCloud () {
-        //     CancellationToken token = exitCancellation.Token;
-        //
-        //     try {
-        //         token.ThrowIfCancellationRequested();
-        //         await s_synchronizationPoint.ExecuteTask(async () => await UploadToCloudStorage(token));
-        //     }
-        //     catch (OperationCanceledException) {
-        //         Logger.LogWarning(nameof(SaveSystem), "Push to cloud canceled");
-        //     }
-        // }
-
-
-        // public static async Task DownloadFromCloud () {
-        //     CancellationToken token = exitCancellation.Token;
-        //
-        //     try {
-        //         token.ThrowIfCancellationRequested();
-        //         await s_synchronizationPoint.ExecuteTask(async () => await DownloadFromCloudStorage(token));
-        //     }
-        //     catch (OperationCanceledException) {
-        //         Logger.LogWarning(nameof(SaveSystem), "Pull from cloud canceled");
-        //     }
-        // }
-
     }
 
 }
