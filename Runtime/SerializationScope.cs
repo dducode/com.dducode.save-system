@@ -27,6 +27,7 @@ namespace SaveSystemPackage {
             }
         }
 
+        public ISerializer Serializer { get; set; }
         public IKeyProvider KeyProvider { get; set; }
         public IDataStorage DataStorage { get; set; }
         public event Func<SaveType, Task> OnSave;
@@ -41,9 +42,8 @@ namespace SaveSystemPackage {
         public async Task SaveData<TData> (TData data, CancellationToken token = default) where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
-                ISerializer serializer = SaveSystem.Settings.Serializer;
                 string key = KeyProvider.Provide<TData>();
-                byte[] serializedData = serializer.Serialize(data);
+                byte[] serializedData = Serializer.Serialize(data);
                 await DataStorage.Write(key, serializedData, token);
             }
             catch (OperationCanceledException) {
@@ -56,9 +56,8 @@ namespace SaveSystemPackage {
             where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
-                ISerializer serializer = SaveSystem.Settings.Serializer;
                 string resultKey = KeyProvider.Provide<TData>(key);
-                byte[] serializedData = serializer.Serialize(data);
+                byte[] serializedData = Serializer.Serialize(data);
                 await DataStorage.Write(resultKey, serializedData, token);
             }
             catch (OperationCanceledException) {
@@ -70,12 +69,11 @@ namespace SaveSystemPackage {
         public async Task<TData> LoadData<TData> (CancellationToken token = default) where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
-                ISerializer serializer = SaveSystem.Settings.Serializer;
                 string key = KeyProvider.Provide<TData>();
                 if (!await DataStorage.Exists(key))
                     return default;
                 byte[] data = await DataStorage.Read(key, token);
-                return serializer.Deserialize<TData>(data);
+                return Serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Data loading was canceled");
@@ -88,12 +86,11 @@ namespace SaveSystemPackage {
             where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
-                ISerializer serializer = SaveSystem.Settings.Serializer;
                 string resultKey = KeyProvider.Provide<TData>(key);
                 if (!await DataStorage.Exists(resultKey))
                     return default;
                 byte[] data = await DataStorage.Read(resultKey, token);
-                return serializer.Deserialize<TData>(data);
+                return Serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Data loading was canceled");

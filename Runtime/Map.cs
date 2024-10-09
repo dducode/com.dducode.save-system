@@ -23,37 +23,43 @@ namespace SaveSystemPackage {
             if (reader.IsEmptyElement)
                 return;
 
+            var keySerializer = new XmlSerializer(typeof(Tkey));
+            var valueSerializer = new XmlSerializer(typeof(TValue));
+
             reader.Read();
 
             while (reader.NodeType != XmlNodeType.EndElement) {
-                reader.ReadStartElement("keyValuePair");
+                reader.ReadStartElement("item");
 
                 reader.ReadStartElement("key");
-                object key = reader.ReadContentAs(typeof(Tkey), null);
+                object key = keySerializer.Deserialize(reader);
                 reader.ReadEndElement();
 
                 reader.ReadStartElement("value");
-                object value = reader.ReadContentAs(typeof(TValue), null);
+                object value = valueSerializer.Deserialize(reader);
                 reader.ReadEndElement();
 
                 reader.ReadEndElement();
 
-                Add((Tkey)key ?? throw new InvalidOperationException(), (TValue)value);
+                Add((Tkey)key, (TValue)value);
                 reader.Read();
             }
         }
 
 
         public void WriteXml (XmlWriter writer) {
+            var keySerializer = new XmlSerializer(typeof(Tkey));
+            var valueSerializer = new XmlSerializer(typeof(TValue));
+
             foreach ((Tkey key, TValue value) in this) {
-                writer.WriteStartElement("keyValuePair");
+                writer.WriteStartElement("item");
 
                 writer.WriteStartElement("key");
-                writer.WriteValue(key);
+                keySerializer.Serialize(writer, key);
                 writer.WriteEndElement();
 
                 writer.WriteStartElement("value");
-                writer.WriteValue(value);
+                valueSerializer.Serialize(writer, value);
                 writer.WriteEndElement();
 
                 writer.WriteEndElement();

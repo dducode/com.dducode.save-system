@@ -109,9 +109,9 @@ namespace SaveSystemPackage {
             public InputAction ScreenCaptureAction { get; set; }
         #endif
 
-            public ISerializer Serializer {
+            public ISerializer SharedSerializer {
                 get => m_serializer;
-                set => m_serializer = value ?? throw new ArgumentNullException(nameof(Serializer));
+                set => m_serializer = value ?? throw new ArgumentNullException(nameof(SharedSerializer));
             }
 
             public Dictionary<Type, string> KeyMap { get; } = new() {
@@ -153,7 +153,7 @@ namespace SaveSystemPackage {
                 PlayerTag = settings.playerTag;
 
                 SetupUserInputs(settings);
-                Serializer = SelectSerializer(settings);
+                SharedSerializer = SelectSerializer(settings);
             }
 
 

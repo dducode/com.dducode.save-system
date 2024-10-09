@@ -22,11 +22,12 @@ namespace SaveSystemPackage {
 
         private void Awake () {
             SceneScope = new SceneSerializationScope {
-                Name = $"{gameObject.scene.name} scene scope"
+                Name = $"{gameObject.scene.name} scene scope",
+                Serializer = SaveSystem.Settings.SharedSerializer
             };
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
-            string fileExtension = SaveSystem.Settings.Serializer.GetFormatCode();
+            string fileExtension = SaveSystem.Settings.SharedSerializer.GetFormatCode();
 
             if (profile == null) {
                 Directory directory = Storage.ScenesDirectory.GetOrCreateDirectory(id);

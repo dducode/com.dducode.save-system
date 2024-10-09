@@ -63,8 +63,9 @@ namespace SaveSystemPackage.Profiles {
             m_name = data.name;
             m_iconId = data.iconId;
             directory = Storage.ProfilesDirectory.GetOrCreateDirectory(Id);
+            Serializer = SaveSystem.Settings.SharedSerializer;
             KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
-            DataStorage = new FileSystemStorage(directory, SaveSystem.Settings.Serializer.GetFormatCode());
+            DataStorage = new FileSystemStorage(directory, SaveSystem.Settings.SharedSerializer.GetFormatCode());
         }
 
 
