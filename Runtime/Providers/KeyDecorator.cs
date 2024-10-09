@@ -1,12 +1,12 @@
 ﻿namespace SaveSystemPackage.Providers {
 
-    public class CompositeKeyStore : IKeyProvider {
+    public class KeyDecorator : IKeyProvider {
 
         private readonly IKeyProvider m_baseProvider;
         private readonly string m_persistentPrefix;
 
 
-        public CompositeKeyStore (IKeyProvider baseProvider, string persistentPrefix) {
+        public KeyDecorator (IKeyProvider baseProvider, string persistentPrefix) {
             m_baseProvider = baseProvider;
             m_persistentPrefix = persistentPrefix;
         }

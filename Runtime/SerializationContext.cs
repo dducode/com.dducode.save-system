@@ -14,7 +14,7 @@ using File = SaveSystemPackage.Internal.File;
 
 namespace SaveSystemPackage {
 
-    public class SerializationScope {
+    public class SerializationContext : ISerializationContext {
 
         [NotNull]
         public virtual string Name {
@@ -39,7 +39,18 @@ namespace SaveSystemPackage {
         private Directory m_folder;
 
 
-        public async Task SaveData<TData> (TData data, CancellationToken token = default) where TData : ISaveData {
+        public SerializationContext () { }
+
+
+        public SerializationContext (ISerializer serializer, IKeyProvider keyProvider, IDataStorage dataStorage) {
+            Serializer = serializer;
+            KeyProvider = keyProvider;
+            DataStorage = dataStorage;
+        }
+
+
+        public virtual async Task SaveData<TData> (TData data, CancellationToken token = default)
+            where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
                 string key = KeyProvider.Provide<TData>();
@@ -52,7 +63,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task SaveData<TData> (string key, TData data, CancellationToken token = default)
+        public virtual async Task SaveData<TData> (string key, TData data, CancellationToken token = default)
             where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
@@ -66,7 +77,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task<TData> LoadData<TData> (CancellationToken token = default) where TData : ISaveData {
+        public virtual async Task<TData> LoadData<TData> (CancellationToken token = default) where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
                 string key = KeyProvider.Provide<TData>();
@@ -82,7 +93,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task<TData> LoadData<TData> (string key, CancellationToken token = default)
+        public virtual async Task<TData> LoadData<TData> (string key, CancellationToken token = default)
             where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
@@ -99,13 +110,13 @@ namespace SaveSystemPackage {
         }
 
 
-        public async Task DeleteData<TData> () where TData : ISaveData {
+        public virtual async Task DeleteData<TData> () where TData : ISaveData {
             string key = KeyProvider.Provide<TData>();
             await DataStorage.Delete(key);
         }
 
 
-        public async Task DeleteData<TData> (string key) where TData : ISaveData {
+        public virtual async Task DeleteData<TData> (string key) where TData : ISaveData {
             string resultKey = KeyProvider.Provide<TData>(key);
             await DataStorage.Delete(resultKey);
         }

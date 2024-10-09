@@ -4,7 +4,7 @@ using SaveSystemPackage.Serialization;
 namespace SaveSystemPackage.SerializableData {
 
     [Serializable]
-    public class DataBatch<TData> : ISaveData, IBinarySerializable where TData : unmanaged, ISaveData {
+    public class DataBatch<TData> : ISaveData, IBinarySerializable where TData : ISaveData {
 
         public Map<string, TData> batch = new();
 
@@ -23,10 +23,11 @@ namespace SaveSystemPackage.SerializableData {
 
         public void WriteBinary (SaveWriter writer) {
             writer.Write(batch.Count);
+            var binarySerializer = new BinarySerializer();
 
             foreach ((string key, TData value) in batch) {
                 writer.Write(key);
-                writer.Write(value);
+                writer.Write(binarySerializer.Serialize(value));
             }
         }
 
@@ -34,8 +35,9 @@ namespace SaveSystemPackage.SerializableData {
         public void ReadBinary (SaveReader reader) {
             var count = reader.Read<int>();
             batch = new Map<string, TData>();
+            var binarySerializer = new BinarySerializer();
             for (var i = 0; i < count; i++)
-                batch.Add(reader.ReadString(), reader.Read<TData>());
+                batch.Add(reader.ReadString(), binarySerializer.Deserialize<TData>(reader.ReadArray<byte>()));
         }
 
     }

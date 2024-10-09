@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using NUnit.Framework;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
@@ -20,9 +18,9 @@ namespace SaveSystemPackage.Tests {
                 position = Random.insideUnitSphere,
                 rotation = Random.rotation
             };
-            var testScope = new SerializationScope {
+            var testScope = new SerializationContext {
                 Serializer = new XmlSerializer(),
-                KeyProvider = new KeyStore(new Dictionary<Type, string> {
+                KeyProvider = new KeyStore(new KeyMap {
                     {typeof(RigidbodyData), "test-rigidbody-data"}
                 }),
                 DataStorage = new FileSystemStorage(Storage.TestsDirectory, "xml")

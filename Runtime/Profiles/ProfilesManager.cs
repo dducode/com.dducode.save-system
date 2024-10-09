@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using SaveSystemPackage.Exceptions;
+using SaveSystemPackage.Internal;
+using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
+using SaveSystemPackage.Storages;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 using Random = System.Random;
@@ -38,18 +41,17 @@ namespace SaveSystemPackage.Profiles {
                 name = name,
                 iconId = iconId
             };
-            var profile = new SaveProfile(profileData);
-            m_profilesMap.Add(id, profile.Name);
+            m_profilesMap.Add(id, name);
             var managerData = new ProfilesManagerData {profilesMap = new Map<string, string>(m_profilesMap)};
             Task.Run(async () => await SaveData(profileData, managerData));
-            return profile;
+            return CreateProfileInstance(profileData);
         }
 
 
         public async IAsyncEnumerable<SaveProfile> LoadProfiles () {
             foreach (string profileId in m_profilesMap.Keys) {
                 var data = await SaveSystem.Game.LoadData<ProfileData>(profileId);
-                yield return new SaveProfile(data);
+                yield return CreateProfileInstance(data);
             }
         }
 
@@ -75,6 +77,16 @@ namespace SaveSystemPackage.Profiles {
         internal void ThrowIfProfileExistsWithName (string name) {
             if (m_profilesMap.ContainsValue(name))
                 throw new ProfileExistsException($"Profile with name \"{name}\" already exists");
+        }
+
+
+        private SaveProfile CreateProfileInstance (ProfileData profileData) {
+            Directory directory = Storage.ProfilesDirectory.GetOrCreateDirectory(profileData.id);
+            return new SaveProfile(profileData, directory) {
+                Serializer = SaveSystem.Settings.SharedSerializer,
+                KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name),
+                DataStorage = new FileSystemStorage(directory, SaveSystem.Settings.SharedSerializer.GetFormatCode())
+            };
         }
 
 

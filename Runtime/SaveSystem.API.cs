@@ -3,8 +3,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Profiles;
+using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Settings;
+using SaveSystemPackage.Storages;
 using UnityEngine;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -20,10 +22,11 @@ namespace SaveSystemPackage {
 
         public static Game Game { get; private set; }
         public static ProfilesManager ProfilesManager { get; private set; }
-
-        // public static ICloudStorage CloudStorage { get; set; }
         public static SystemSettings Settings { get; private set; }
+        public static KeyMap KeyMap { get; private set; }
+
         public static bool Initialized { get; private set; }
+
 
         /// <summary>
         /// The event is called before saving. It can be useful when you use async saving
@@ -48,7 +51,11 @@ namespace SaveSystemPackage {
             try {
                 using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                     SetSettings(settings);
-                    Game = new Game();
+                    Game = new Game {
+                        Serializer = Settings.SharedSerializer,
+                        KeyProvider = new KeyStore(KeyMap = KeyMap.PredefinedMap),
+                        DataStorage = new FileSystemStorage(Storage.Root, Settings.SharedSerializer.GetFormatCode())
+                    };
                 }
 
                 var data = await Game.LoadData<ProfilesManagerData>();

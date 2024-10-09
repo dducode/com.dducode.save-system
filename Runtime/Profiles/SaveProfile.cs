@@ -4,16 +4,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
-using SaveSystemPackage.Storages;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace SaveSystemPackage.Profiles {
 
-    public sealed class SaveProfile : SerializationScope {
+    public sealed class SaveProfile : SerializationContext {
 
         public XmlDictionary dictionary;
 
@@ -48,24 +46,21 @@ namespace SaveSystemPackage.Profiles {
         public string Id { get; }
 
         [NotNull]
-        internal SceneSerializationScope SceneScope {
-            get => m_sceneScope;
-            set => m_sceneScope = value ?? throw new ArgumentNullException(nameof(SceneScope));
+        internal SceneSerializationContext SceneContext {
+            get => m_sceneContext;
+            set => m_sceneContext = value ?? throw new ArgumentNullException(nameof(SceneContext));
         }
 
         private string m_name;
         private string m_iconId;
-        private SceneSerializationScope m_sceneScope;
+        private SceneSerializationContext m_sceneContext;
 
 
-        internal SaveProfile (ProfileData data) {
+        internal SaveProfile (ProfileData data, Directory directory) {
             Id = data.id;
             m_name = data.name;
             m_iconId = data.iconId;
-            directory = Storage.ProfilesDirectory.GetOrCreateDirectory(Id);
-            Serializer = SaveSystem.Settings.SharedSerializer;
-            KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
-            DataStorage = new FileSystemStorage(directory, SaveSystem.Settings.SharedSerializer.GetFormatCode());
+            this.directory = directory;
         }
 
 
@@ -73,8 +68,8 @@ namespace SaveSystemPackage.Profiles {
             try {
                 token.ThrowIfCancellationRequested();
                 await OnReloadInvoke();
-                if (SceneScope != null)
-                    await SceneScope.Reload(token);
+                if (SceneContext != null)
+                    await SceneContext.Reload(token);
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data reload canceled");
@@ -100,8 +95,8 @@ namespace SaveSystemPackage.Profiles {
             try {
                 token.ThrowIfCancellationRequested();
                 await OnSaveInvoke(saveType);
-                if (SceneScope != null)
-                    await SceneScope.Save(saveType, token);
+                if (SceneContext != null)
+                    await SceneContext.Save(saveType, token);
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data saving canceled");

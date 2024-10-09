@@ -9,7 +9,7 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage {
 
-    public sealed class SceneSerializationScope : SerializationScope {
+    public sealed class SceneSerializationContext : SerializationContext {
 
         public async Task Reload (CancellationToken token = default) {
             try {

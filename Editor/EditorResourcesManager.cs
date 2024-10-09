@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Settings;
 using UnityEditor;
 using UnityEngine;
@@ -9,8 +8,8 @@ namespace SaveSystemPackage.Editor {
 
     internal static class EditorResourcesManager {
 
-        private static readonly string ResourcesFolder = Path.Combine("Assets", "Resources");
-        private static readonly string SaveSystemFolder = Path.Combine(ResourcesFolder, "Save System");
+        public static readonly string ResourcesFolder = Path.Combine("Assets", "Resources");
+        public static readonly string SaveSystemFolder = Path.Combine(ResourcesFolder, "Save System");
 
 
         internal static SaveSystemSettings CreateSettings () {

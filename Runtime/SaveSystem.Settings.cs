@@ -3,12 +3,10 @@
 #endif
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.Security;
-using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Serialization;
 using SaveSystemPackage.Settings;
 using UnityEngine;
@@ -113,16 +111,6 @@ namespace SaveSystemPackage {
                 get => m_serializer;
                 set => m_serializer = value ?? throw new ArgumentNullException(nameof(SharedSerializer));
             }
-
-            public Dictionary<Type, string> KeyMap { get; } = new() {
-                {typeof(ProfileData), "profile-data"},
-                {typeof(ProfilesManagerData), "profiles-manager-data"},
-                {typeof(QuaternionData), "quaternion-data"},
-                {typeof(RigidbodyData), "rigidbody-data"},
-                {typeof(TransformData), "transform-data"},
-                {typeof(Vector3Data), "vector-3-data"}
-            };
-
 
         #if ENABLE_BOTH_SYSTEMS
             public UsedInputSystem UsedInputSystem { get; private set; }

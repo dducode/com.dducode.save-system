@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SaveSystemPackage.Editor {
 
-    [CustomEditor(typeof(SceneSerializationScope))]
+    [CustomEditor(typeof(SceneSerializationContext))]
     public class SceneSerializationContextEditor : UnityEditor.Editor {
 
         private SerializedProperty m_overrideSettingsProperty;

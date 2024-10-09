@@ -6,12 +6,12 @@ namespace SaveSystemPackage {
 
     public static class SceneExtensions {
 
-        public static SceneSerializationScope GetSerializationScope (this Scene scene) {
+        public static SceneSerializationContext GetSerializationScope (this Scene scene) {
             return scene
                .GetRootGameObjects()
                .FirstOrDefault(g => g.CompareTag(Tags.SceneScopeTag))
               ?.GetComponent<SceneSerializationScopeComponent>()
-               .SceneScope;
+               .SceneContext;
         }
 
     }

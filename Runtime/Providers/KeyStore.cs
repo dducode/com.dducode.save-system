@@ -1,14 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace SaveSystemPackage.Providers {
 
     public class KeyStore : IKeyProvider {
 
-        private readonly Dictionary<Type, string> m_keyMap;
+        private readonly KeyMap m_keyMap;
 
 
-        public KeyStore (Dictionary<Type, string> keyMap) {
+        public KeyStore (KeyMap keyMap) {
             m_keyMap = keyMap;
         }
 

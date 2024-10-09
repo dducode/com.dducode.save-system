@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SaveSystemPackage.SerializableData {
 
     [Serializable]
-    public struct QuaternionData {
+    public struct QuaternionData : ISaveData {
 
         public float x;
         public float y;

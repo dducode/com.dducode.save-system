@@ -19,11 +19,7 @@ namespace SaveSystemPackage.Editor {
             new() {
                 text = "File Explorer",
                 tooltip = "Check your saved files in save system directory"
-            },
-            new() {
-                text = "Objects Tracker",
-                tooltip = "Track registered objects at runtime"
-            },
+            }
         };
 
         private FileExplorer m_fileExplorer;

@@ -17,11 +17,11 @@ namespace SaveSystemPackage {
         [SerializeField]
         private UnityEvent onInitialized;
 
-        public SceneSerializationScope SceneScope { get; private set; }
+        public SceneSerializationContext SceneContext { get; private set; }
 
 
         private void Awake () {
-            SceneScope = new SceneSerializationScope {
+            SceneContext = new SceneSerializationContext {
                 Name = $"{gameObject.scene.name} scene scope",
                 Serializer = SaveSystem.Settings.SharedSerializer
             };
@@ -31,15 +31,15 @@ namespace SaveSystemPackage {
 
             if (profile == null) {
                 Directory directory = Storage.ScenesDirectory.GetOrCreateDirectory(id);
-                SceneScope.KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
-                SceneScope.DataStorage = new FileSystemStorage(directory, fileExtension);
-                SaveSystem.Game.SceneScope = SceneScope;
+                SceneContext.KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name);
+                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension);
+                SaveSystem.Game.SceneContext = SceneContext;
             }
             else {
                 Directory directory = profile.directory.GetOrCreateDirectory(id);
-                SceneScope.KeyProvider = new CompositeKeyStore(profile.KeyProvider, directory.Name);
-                SceneScope.DataStorage = new FileSystemStorage(directory, fileExtension);
-                profile.SceneScope = SceneScope;
+                SceneContext.KeyProvider = new KeyDecorator(profile.KeyProvider, directory.Name);
+                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension);
+                profile.SceneContext = SceneContext;
             }
 
             onInitialized?.Invoke();

@@ -4,14 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Profiles;
-using SaveSystemPackage.Providers;
-using SaveSystemPackage.Storages;
 
 // ReSharper disable UnusedMember.Global
 
 namespace SaveSystemPackage {
 
-    public sealed class Game : SerializationScope {
+    public sealed class Game : SerializationContext {
 
         /// <summary>
         /// Uses for serializing data into a separately file
@@ -21,25 +19,22 @@ namespace SaveSystemPackage {
             get => m_saveProfile;
             set {
                 m_saveProfile = value ?? throw new ArgumentNullException(nameof(SaveProfile));
-                if (m_sceneScope != null)
-                    m_saveProfile.SceneScope = m_sceneScope;
+                if (m_sceneContext != null)
+                    m_saveProfile.SceneContext = m_sceneContext;
             }
         }
 
-        internal SceneSerializationScope SceneScope {
-            get => m_sceneScope;
-            set => m_sceneScope = value ?? throw new ArgumentNullException(nameof(SceneScope));
+        internal SceneSerializationContext SceneContext {
+            get => m_sceneContext;
+            set => m_sceneContext = value ?? throw new ArgumentNullException(nameof(SceneContext));
         }
 
         private SaveProfile m_saveProfile;
-        private SceneSerializationScope m_sceneScope;
+        private SceneSerializationContext m_sceneContext;
 
 
         internal Game () {
             Name = "Game";
-            Serializer = SaveSystem.Settings.SharedSerializer;
-            KeyProvider = new KeyStore(SaveSystem.Settings.KeyMap);
-            DataStorage = new FileSystemStorage(Storage.Root, SaveSystem.Settings.SharedSerializer.GetFormatCode());
         }
 
 
@@ -49,8 +44,8 @@ namespace SaveSystemPackage {
                 await OnReloadInvoke();
                 if (SaveProfile != null)
                     await SaveProfile.Reload(token);
-                else if (SceneScope != null)
-                    await SceneScope.Reload(token);
+                else if (SceneContext != null)
+                    await SceneContext.Reload(token);
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data reload canceled");
@@ -64,8 +59,8 @@ namespace SaveSystemPackage {
                 await OnSaveInvoke(saveType);
                 if (SaveProfile != null)
                     await SaveProfile.Save(saveType, token);
-                else if (SceneScope != null)
-                    await SceneScope.Save(saveType, token);
+                else if (SceneContext != null)
+                    await SceneContext.Save(saveType, token);
             }
             catch (OperationCanceledException) {
                 Logger.Log(Name, "Data saving canceled");

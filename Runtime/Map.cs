@@ -14,12 +14,12 @@ namespace SaveSystemPackage {
         public Map (Dictionary<string, string> dictionary) : base((IDictionary<Tkey, TValue>)dictionary) { }
 
 
-        public XmlSchema GetSchema () {
+        public virtual XmlSchema GetSchema () {
             return null;
         }
 
 
-        public void ReadXml (XmlReader reader) {
+        public virtual void ReadXml (XmlReader reader) {
             if (reader.IsEmptyElement)
                 return;
 
@@ -47,7 +47,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public void WriteXml (XmlWriter writer) {
+        public virtual void WriteXml (XmlWriter writer) {
             var keySerializer = new XmlSerializer(typeof(Tkey));
             var valueSerializer = new XmlSerializer(typeof(TValue));
 
