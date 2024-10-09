@@ -31,6 +31,7 @@ namespace SaveSystemPackage {
         public IDataStorage DataStorage { get; set; }
         public event Func<SaveType, Task> OnSave;
         public event Func<Task> OnReload;
+        internal Directory directory { get; private protected set; }
 
         private string m_name;
         private File m_dataFile;
@@ -42,7 +43,7 @@ namespace SaveSystemPackage {
                 token.ThrowIfCancellationRequested();
                 ISerializer serializer = SaveSystem.Settings.Serializer;
                 string key = KeyProvider.Provide<TData>();
-                byte[] serializedData = await serializer.Serialize(data, token);
+                byte[] serializedData = serializer.Serialize(data);
                 await DataStorage.Write(key, serializedData, token);
             }
             catch (OperationCanceledException) {
@@ -57,7 +58,7 @@ namespace SaveSystemPackage {
                 token.ThrowIfCancellationRequested();
                 ISerializer serializer = SaveSystem.Settings.Serializer;
                 string resultKey = KeyProvider.Provide<TData>(key);
-                byte[] serializedData = await serializer.Serialize(data, token);
+                byte[] serializedData = serializer.Serialize(data);
                 await DataStorage.Write(resultKey, serializedData, token);
             }
             catch (OperationCanceledException) {
@@ -74,7 +75,7 @@ namespace SaveSystemPackage {
                 if (!await DataStorage.Exists(key))
                     return default;
                 byte[] data = await DataStorage.Read(key, token);
-                return await serializer.Deserialize<TData>(data, token);
+                return serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Data loading was canceled");
@@ -92,7 +93,7 @@ namespace SaveSystemPackage {
                 if (!await DataStorage.Exists(resultKey))
                     return default;
                 byte[] data = await DataStorage.Read(resultKey, token);
-                return await serializer.Deserialize<TData>(data, token);
+                return serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Data loading was canceled");

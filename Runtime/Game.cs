@@ -38,7 +38,7 @@ namespace SaveSystemPackage {
         internal Game () {
             Name = "Game";
             KeyProvider = new KeyStore(SaveSystem.Settings.KeyMap);
-            DataStorage = new FileSystemStorage(Storage.Root, "data");
+            DataStorage = new FileSystemStorage(Storage.Root, SaveSystem.Settings.Serializer.GetFormatCode());
         }
 
 

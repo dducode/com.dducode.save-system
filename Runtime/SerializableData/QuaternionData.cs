@@ -12,7 +12,7 @@ namespace SaveSystemPackage.SerializableData {
         public float w;
 
 
-        private QuaternionData (float x, float y, float z, float w) {
+        public QuaternionData (float x, float y, float z, float w) {
             this.x = x;
             this.y = y;
             this.z = z;

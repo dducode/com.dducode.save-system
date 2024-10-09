@@ -40,7 +40,7 @@ namespace SaveSystemPackage.Profiles {
             };
             var profile = new SaveProfile(profileData);
             m_profilesMap.Add(id, profile.Name);
-            var managerData = new ProfilesManagerData {profilesMap = new Dictionary<string, string>(m_profilesMap)};
+            var managerData = new ProfilesManagerData {profilesMap = new Map<string, string>(m_profilesMap)};
             Task.Run(async () => await SaveData(profileData, managerData));
             return profile;
         }
@@ -59,7 +59,7 @@ namespace SaveSystemPackage.Profiles {
                 throw new ArgumentNullException(nameof(profile));
 
             m_profilesMap.Remove(profile.Id);
-            var managerData = new ProfilesManagerData {profilesMap = new Dictionary<string, string>(m_profilesMap)};
+            var managerData = new ProfilesManagerData {profilesMap = new Map<string, string>(m_profilesMap)};
             Task.Run(async () => await DeleteProfileData(profile, managerData));
         }
 
@@ -67,7 +67,7 @@ namespace SaveSystemPackage.Profiles {
         internal void UpdateProfile (SaveProfile profile) {
             m_profilesMap[profile.Id] = profile.Name;
             ProfileData profileData = profile.GetData();
-            var managerData = new ProfilesManagerData {profilesMap = new Dictionary<string, string>(m_profilesMap)};
+            var managerData = new ProfilesManagerData {profilesMap = new Map<string, string>(m_profilesMap)};
             Task.Run(async () => await SaveData(profileData, managerData));
         }
 

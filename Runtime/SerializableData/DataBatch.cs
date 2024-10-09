@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
+using SaveSystemPackage.Serialization;
 
 namespace SaveSystemPackage.SerializableData {
 
     [Serializable]
-    public class DataBatch<TData> : ISaveData where TData : ISaveData {
+    public class DataBatch<TData> : ISaveData, IBinarySerializable where TData : unmanaged, ISaveData {
 
-        public Dictionary<string, TData> batch = new();
+        public Map<string, TData> batch = new();
 
         public TData this [string key] => batch[key];
 
@@ -18,6 +18,24 @@ namespace SaveSystemPackage.SerializableData {
 
         public bool ContainsKey (string key) {
             return batch.ContainsKey(key);
+        }
+
+
+        public void WriteBinary (SaveWriter writer) {
+            writer.Write(batch.Count);
+
+            foreach ((string key, TData value) in batch) {
+                writer.Write(key);
+                writer.Write(value);
+            }
+        }
+
+
+        public void ReadBinary (SaveReader reader) {
+            var count = reader.Read<int>();
+            batch = new Map<string, TData>();
+            for (var i = 0; i < count; i++)
+                batch.Add(reader.ReadString(), reader.Read<TData>());
         }
 
     }

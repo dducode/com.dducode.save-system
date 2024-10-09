@@ -1,4 +1,4 @@
-﻿namespace SaveSystemPackage.Extensions {
+﻿namespace SaveSystemPackage.Internal.Extensions {
 
     internal static class ArrayExtensions {
 

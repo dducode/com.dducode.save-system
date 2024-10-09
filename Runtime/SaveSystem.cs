@@ -199,36 +199,32 @@ namespace SaveSystemPackage {
         private static async Task CommonSavingTask (SaveType saveType, CancellationToken token) {
             OnSaveStart?.Invoke(saveType);
             HandlingResult result;
-            string errorMessage;
 
             try {
                 token.ThrowIfCancellationRequested();
                 await Game.Save(saveType, token);
                 result = HandlingResult.Success;
-                errorMessage = null;
             }
             catch (OperationCanceledException) {
                 result = HandlingResult.Canceled;
-                errorMessage = null;
             }
             catch (Exception exception) {
+                Debug.LogException(exception);
                 result = HandlingResult.Error;
-                errorMessage = exception.Message;
             }
 
             OnSaveEnd?.Invoke(saveType);
-            LogMessage(saveType, (result, errorMessage));
+            LogMessage(saveType, result);
         }
 
 
-        private static void LogMessage (SaveType saveType, (HandlingResult, string) logData) {
-            (HandlingResult result, string errorMessage) = logData;
+        private static void LogMessage (SaveType saveType, HandlingResult result) {
             if (result is HandlingResult.Success)
                 Logger.Log(nameof(SaveSystem), $"{saveType}: success");
             else if (result is HandlingResult.Canceled)
                 Logger.LogWarning(nameof(SaveSystem), $"{saveType}: canceled");
             else if (result is HandlingResult.Error)
-                Logger.LogError(nameof(SaveSystem), $"{saveType}: error ({errorMessage})");
+                Logger.LogError(nameof(SaveSystem), $"{saveType}: error");
         }
 
     }

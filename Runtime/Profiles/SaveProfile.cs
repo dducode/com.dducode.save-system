@@ -2,11 +2,11 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Storages;
-using Directory = SaveSystemPackage.Internal.Directory;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -14,6 +14,8 @@ using Directory = SaveSystemPackage.Internal.Directory;
 namespace SaveSystemPackage.Profiles {
 
     public sealed class SaveProfile : SerializationScope {
+
+        public XmlDictionary dictionary;
 
         [NotNull]
         public override string Name {
@@ -51,8 +53,6 @@ namespace SaveSystemPackage.Profiles {
             set => m_sceneScope = value ?? throw new ArgumentNullException(nameof(SceneScope));
         }
 
-        internal readonly Directory directory;
-
         private string m_name;
         private string m_iconId;
         private SceneSerializationScope m_sceneScope;
@@ -64,7 +64,7 @@ namespace SaveSystemPackage.Profiles {
             m_iconId = data.iconId;
             directory = Storage.ProfilesDirectory.GetOrCreateDirectory(Id);
             KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
-            DataStorage = new FileSystemStorage(directory, "profiledata");
+            DataStorage = new FileSystemStorage(directory, SaveSystem.Settings.Serializer.GetFormatCode());
         }
 
 

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SaveSystemPackage.SerializableData {
 
     [Serializable]
-    public class TransformData : ISaveData {
+    public struct TransformData : ISaveData {
 
         public Vector3Data position;
         public Vector3Data localPosition;

@@ -1,6 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using SaveSystemPackage.Security;
+﻿using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage.Serialization {
 
@@ -16,17 +14,20 @@ namespace SaveSystemPackage.Serialization {
         }
 
 
-        public async Task<byte[]> Serialize<TData> (TData data, CancellationToken token) where TData : ISaveData {
-            token.ThrowIfCancellationRequested();
-            byte[] serializedData = await m_baseSerializer.Serialize(data, token);
+        public byte[] Serialize<TData> (TData data) where TData : ISaveData {
+            byte[] serializedData = m_baseSerializer.Serialize(data);
             return m_cryptographer.Encrypt(serializedData);
         }
 
 
-        public async Task<TData> Deserialize<TData> (byte[] data, CancellationToken token) where TData : ISaveData {
-            token.ThrowIfCancellationRequested();
+        public TData Deserialize<TData> (byte[] data) where TData : ISaveData {
             byte[] decryptedData = m_cryptographer.Decrypt(data);
-            return await m_baseSerializer.Deserialize<TData>(decryptedData, token);
+            return m_baseSerializer.Deserialize<TData>(decryptedData);
+        }
+
+
+        public string GetFormatCode () {
+            return m_baseSerializer.GetFormatCode();
         }
 
     }

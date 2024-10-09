@@ -1,7 +1,5 @@
 ﻿using System.IO;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Unity.Plastic.Newtonsoft.Json;
 using JsonSerializerSettings = SaveSystemPackage.Settings.JsonSerializerSettings;
 
@@ -40,18 +38,21 @@ namespace SaveSystemPackage.Serialization {
         }
 
 
-        public Task<byte[]> Serialize<TData> (TData data, CancellationToken token) where TData : ISaveData {
-            token.ThrowIfCancellationRequested();
+        public byte[] Serialize<TData> (TData data) where TData : ISaveData {
             using var writer = new StringWriter();
             m_baseSerializer.Serialize(writer, data);
-            return Task.FromResult(Encoding.UTF8.GetBytes(writer.ToString()));
+            return Encoding.UTF8.GetBytes(writer.ToString());
         }
 
 
-        public Task<TData> Deserialize<TData> (byte[] data, CancellationToken token) where TData : ISaveData {
-            token.ThrowIfCancellationRequested();
+        public TData Deserialize<TData> (byte[] data) where TData : ISaveData {
             using var reader = new StringReader(Encoding.UTF8.GetString(data));
-            return Task.FromResult(m_baseSerializer.Deserialize<TData>(new JsonTextReader(reader)));
+            return m_baseSerializer.Deserialize<TData>(new JsonTextReader(reader));
+        }
+
+
+        public string GetFormatCode () {
+            return "json";
         }
 
     }

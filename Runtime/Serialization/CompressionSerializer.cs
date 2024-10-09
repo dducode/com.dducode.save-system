@@ -1,6 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using SaveSystemPackage.Compressing;
+﻿using SaveSystemPackage.Compressing;
 
 namespace SaveSystemPackage.Serialization {
 
@@ -16,17 +14,20 @@ namespace SaveSystemPackage.Serialization {
         }
 
 
-        public async Task<byte[]> Serialize<TData> (TData data, CancellationToken token) where TData : ISaveData {
-            token.ThrowIfCancellationRequested();
-            byte[] serializedData = await m_baseSerializer.Serialize(data, token);
+        public byte[] Serialize<TData> (TData data) where TData : ISaveData {
+            byte[] serializedData = m_baseSerializer.Serialize(data);
             return m_compressor.Compress(serializedData);
         }
 
 
-        public async Task<TData> Deserialize<TData> (byte[] data, CancellationToken token) where TData : ISaveData {
-            token.ThrowIfCancellationRequested();
+        public TData Deserialize<TData> (byte[] data) where TData : ISaveData {
             byte[] decompressedData = m_compressor.Decompress(data);
-            return await m_baseSerializer.Deserialize<TData>(decompressedData, token);
+            return m_baseSerializer.Deserialize<TData>(decompressedData);
+        }
+
+
+        public string GetFormatCode () {
+            return m_baseSerializer.GetFormatCode();
         }
 
     }

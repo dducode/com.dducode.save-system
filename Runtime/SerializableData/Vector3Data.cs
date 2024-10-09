@@ -11,7 +11,7 @@ namespace SaveSystemPackage.SerializableData {
         public float z;
 
 
-        private Vector3Data (float x, float y, float z) {
+        public Vector3Data (float x, float y, float z) {
             this.x = x;
             this.y = y;
             this.z = z;

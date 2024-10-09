@@ -26,17 +26,18 @@ namespace SaveSystemPackage {
             };
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
+            string fileExtension = SaveSystem.Settings.Serializer.GetFormatCode();
 
             if (profile == null) {
                 Directory directory = Storage.ScenesDirectory.GetOrCreateDirectory(id);
                 SceneScope.KeyProvider = new CompositeKeyStore(SaveSystem.Game.KeyProvider, directory.Name);
-                SceneScope.DataStorage = new FileSystemStorage(directory, "scenedata");
+                SceneScope.DataStorage = new FileSystemStorage(directory, fileExtension);
                 SaveSystem.Game.SceneScope = SceneScope;
             }
             else {
                 Directory directory = profile.directory.GetOrCreateDirectory(id);
                 SceneScope.KeyProvider = new CompositeKeyStore(profile.KeyProvider, directory.Name);
-                SceneScope.DataStorage = new FileSystemStorage(directory, "scenedata");
+                SceneScope.DataStorage = new FileSystemStorage(directory, fileExtension);
                 profile.SceneScope = SceneScope;
             }
 
@@ -46,7 +47,7 @@ namespace SaveSystemPackage {
 
         private void OnValidate () {
             if (string.IsNullOrEmpty(id))
-                id = gameObject.GetInstanceID().ToString();
+                id = $"scene_{gameObject.GetInstanceID()}";
         }
 
     }
