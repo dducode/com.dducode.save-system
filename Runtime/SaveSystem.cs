@@ -17,11 +17,6 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage {
 
-    /// <summary>
-    /// The Core of the Save System. It accepts <see cref="DynamicObjectGroup{TDynamic}">object group</see>
-    /// and starts saving in three main modes - autosave, quick-save and save at checkpoint.
-    /// Also it starts the saving when the player exit the game
-    /// </summary>
     public static partial class SaveSystem {
 
         internal static event Action OnUpdateSystem;
