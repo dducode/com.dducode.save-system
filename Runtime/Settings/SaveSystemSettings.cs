@@ -21,7 +21,6 @@ namespace SaveSystemPackage.Settings {
         public float savePeriod = 5;
 
         public SerializerType serializerType;
-        public BaseSerializerType baseSerializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         public UsedInputSystem usedInputSystem;
@@ -39,8 +38,12 @@ namespace SaveSystemPackage.Settings {
 
         public string playerTag = "Player";
 
+        public bool compress;
         public CompressionSettings compressionSettings;
+
+        public bool encrypt;
         public EncryptionSettings encryptionSettings;
+
         public JsonSerializerSettings jsonSerializerSettings;
 
 

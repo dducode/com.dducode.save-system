@@ -59,8 +59,8 @@ namespace SaveSystemPackage.Compressing {
                 throw new ArgumentNullException(nameof(data));
 
             using var memoryStream = new MemoryStream();
-            using (var compressor = new DeflateStream(memoryStream, CompressionMode.Decompress))
-                compressor.Write(data);
+            using (var compressor = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress))
+                compressor.CopyTo(memoryStream);
             return memoryStream.ToArray();
         }
 

@@ -5,9 +5,6 @@
         BinarySerializer,
         JsonSerializer,
         XmlSerializer,
-        EncryptionSerializer,
-        CompressionSerializer,
-        CompositeSerializer,
         Custom
 
     }

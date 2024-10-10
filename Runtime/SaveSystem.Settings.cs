@@ -182,49 +182,42 @@ namespace SaveSystemPackage {
 
             private ISerializer SelectSerializer (SaveSystemSettings settings) {
                 SerializerType serializerType = settings.serializerType;
+                ISerializer serializer;
 
                 switch (serializerType) {
                     case SerializerType.BinarySerializer:
-                        return new BinarySerializer();
+                        serializer = new BinarySerializer();
+                        break;
                     case SerializerType.JsonSerializer:
-                        return new JsonSerializer(settings.jsonSerializerSettings);
+                        serializer = new JsonSerializer(settings.jsonSerializerSettings);
+                        break;
                     case SerializerType.XmlSerializer:
-                        return new XmlSerializer();
-                    case SerializerType.EncryptionSerializer:
-                        var cryptographer = new Cryptographer(settings.encryptionSettings);
-                        ISerializer baseSerializer = SelectBaseSerializer(settings);
-                        return new EncryptionSerializer(baseSerializer, cryptographer);
-                    case SerializerType.CompressionSerializer:
-                        var compressor = new FileCompressor(settings.compressionSettings);
-                        baseSerializer = SelectBaseSerializer(settings);
-                        return new CompressionSerializer(baseSerializer, compressor);
-                    case SerializerType.CompositeSerializer:
-                        cryptographer = new Cryptographer(settings.encryptionSettings);
-                        compressor = new FileCompressor(settings.compressionSettings);
-                        baseSerializer = SelectBaseSerializer(settings);
-                        return new CompositeSerializer(baseSerializer, cryptographer, compressor);
+                        serializer = new XmlSerializer();
+                        break;
                     case SerializerType.Custom:
-                        return null;
+                        serializer = null;
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
                 }
-            }
 
+                if (serializer == null)
+                    return null;
 
-            private ISerializer SelectBaseSerializer (SaveSystemSettings settings) {
-                BaseSerializerType serializerType = settings.baseSerializerType;
-
-                switch (serializerType) {
-                    case BaseSerializerType.BinarySerializer:
-                        return new BinarySerializer();
-                    case BaseSerializerType.JsonSerializer:
-                        return new JsonSerializer(settings.jsonSerializerSettings);
-                    case BaseSerializerType.XmlSerializer:
-                        return new XmlSerializer();
-                    case BaseSerializerType.Custom:
-                        return null;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
+                if (settings.encrypt && settings.compress) {
+                    return new CompositeSerializer(
+                        serializer,
+                        new Cryptographer(settings.encryptionSettings),
+                        new FileCompressor(settings.compressionSettings)
+                    );
+                }
+                else {
+                    if (settings.compress)
+                        return new CompressionSerializer(serializer, new FileCompressor(settings.compressionSettings));
+                    else if (settings.encrypt)
+                        return new EncryptionSerializer(serializer, new Cryptographer(settings.encryptionSettings));
+                    else
+                        return serializer;
                 }
             }
 

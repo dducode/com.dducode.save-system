@@ -26,7 +26,6 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_serializerType;
-        private SerializedProperty m_baseSerializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -44,7 +43,9 @@ namespace SaveSystemPackage.Editor {
 
         private SerializedProperty m_playerTagProperty;
 
+        private SerializedProperty m_compressProperty;
         private SerializedProperty m_compressionSettingsProperty;
+        private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
         private SerializedProperty m_jsonSerializerSettings;
 
@@ -124,10 +125,11 @@ namespace SaveSystemPackage.Editor {
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
             m_serializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.serializerType));
-            m_baseSerializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.baseSerializerType));
+            m_compressProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compress));
             m_compressionSettingsProperty = m_serializedSettings.FindProperty(
                 nameof(SaveSystemSettings.compressionSettings)
             );
+            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
             m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
                 nameof(SaveSystemSettings.encryptionSettings)
             );
@@ -173,6 +175,8 @@ namespace SaveSystemPackage.Editor {
             GUI.enabled = true;
 
             DrawSerializerTypeProperty();
+            DrawCompressionSettings();
+            DrawEncryptionSettings();
 
             EditorGUILayout.Space(15);
         }
@@ -181,29 +185,8 @@ namespace SaveSystemPackage.Editor {
         private void DrawSerializerTypeProperty () {
             EditorGUILayout.PropertyField(m_serializerType);
             var serializerType = (SerializerType)m_serializerType.enumValueIndex;
-
-            switch (serializerType) {
-                case SerializerType.EncryptionSerializer:
-                    DrawEncryptionSerializerProperties();
-                    break;
-                case SerializerType.CompressionSerializer:
-                    DrawCompressionSerializerProperties();
-                    break;
-                case SerializerType.CompositeSerializer:
-                    DrawCompositeSerializerProperties();
-                    break;
-                case SerializerType.BinarySerializer:
-                    break;
-                case SerializerType.JsonSerializer:
-                    EditorGUILayout.PropertyField(m_jsonSerializerSettings);
-                    break;
-                case SerializerType.XmlSerializer:
-                    break;
-                case SerializerType.Custom:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            if (serializerType == SerializerType.JsonSerializer)
+                EditorGUILayout.PropertyField(m_jsonSerializerSettings);
         }
 
 
@@ -251,59 +234,22 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void DrawEncryptionSerializerProperties () {
-            EditorGUI.indentLevel++;
-            DrawBaseSerializerTypeProperty();
-            DrawEncryptionSettings();
-            EditorGUI.indentLevel--;
-        }
-
-
-        private void DrawCompressionSerializerProperties () {
-            EditorGUI.indentLevel++;
-            DrawBaseSerializerTypeProperty();
-            DrawCompressionSettings();
-            EditorGUI.indentLevel--;
-        }
-
-
-        private void DrawCompositeSerializerProperties () {
-            EditorGUI.indentLevel++;
-            DrawBaseSerializerTypeProperty();
-            DrawCompressionSettings();
-            DrawEncryptionSettings();
-            EditorGUI.indentLevel--;
-        }
-
-
         private void DrawCompressionSettings () {
-            EditorGUILayout.PropertyField(m_compressionSettingsProperty);
-            EditorGUILayout.Space(15);
+            EditorGUILayout.PropertyField(m_compressProperty);
+
+            if (m_compressProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_compressionSettingsProperty);
+                EditorGUILayout.Space(15);
+            }
         }
 
 
         private void DrawEncryptionSettings () {
-            EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
-            EditorGUILayout.Space(15);
-        }
+            EditorGUILayout.PropertyField(m_encryptProperty);
 
-
-        private void DrawBaseSerializerTypeProperty () {
-            EditorGUILayout.PropertyField(m_baseSerializerType);
-            var baseSerializerType = (BaseSerializerType)m_baseSerializerType.enumValueIndex;
-
-            switch (baseSerializerType) {
-                case BaseSerializerType.BinarySerializer:
-                    break;
-                case BaseSerializerType.JsonSerializer:
-                    EditorGUILayout.PropertyField(m_jsonSerializerSettings);
-                    break;
-                case BaseSerializerType.XmlSerializer:
-                    break;
-                case BaseSerializerType.Custom:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+            if (m_encryptProperty.boolValue) {
+                EditorGUILayout.PropertyField(m_encryptionSettingsProperty, GUILayout.MaxWidth(500));
+                EditorGUILayout.Space(15);
             }
         }
 
