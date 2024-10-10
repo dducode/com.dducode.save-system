@@ -1,8 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Settings;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 using Logger = SaveSystemPackage.Internal.Logger;
 
@@ -37,6 +40,28 @@ namespace SaveSystemPackage.Compressing {
 
         public virtual FileCompressor Clone () {
             return new FileCompressor(compressionLevel);
+        }
+
+
+        public virtual byte[] Compress ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            using var memoryStream = new MemoryStream();
+            using (var compressor = new DeflateStream(memoryStream, compressionLevel))
+                compressor.Write(data);
+            return memoryStream.ToArray();
+        }
+
+
+        public virtual byte[] Decompress ([NotNull] byte[] data) {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            using var memoryStream = new MemoryStream();
+            using (var compressor = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress))
+                compressor.CopyTo(memoryStream);
+            return memoryStream.ToArray();
         }
 
 

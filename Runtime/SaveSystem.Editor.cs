@@ -1,6 +1,5 @@
 ﻿#if UNITY_EDITOR
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Diagnostic;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -17,8 +16,6 @@ namespace SaveSystemPackage {
 
         private static void ResetOnExit () {
             ResetPlayerLoop(PlayerLoop.GetCurrentPlayerLoop());
-            OnSaveStart = null;
-            OnSaveEnd = null;
 
             Application.focusChanged -= OnFocusLost;
             Application.lowMemory -= OnLowMemory;
@@ -28,7 +25,8 @@ namespace SaveSystemPackage {
             s_periodicSaveLastTime = 0;
             Settings = null;
             Game = null;
-            DiagnosticService.Clear();
+            ProfilesManager = null;
+            Initialized = false;
 
             Application.quitting -= ResetOnExit;
         }

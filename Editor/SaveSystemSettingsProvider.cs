@@ -3,7 +3,7 @@
 #endif
 
 using System;
-using SaveSystemPackage.Internal.Extensions;
+using SaveSystemPackage.Settings;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -25,7 +25,7 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_enabledSaveEventsProperty;
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
-        private SerializedProperty m_dataFileNameProperty;
+        private SerializedProperty m_serializerType;
 
     #if ENABLE_BOTH_SYSTEMS
         private SerializedProperty m_usedInputSystemProperty;
@@ -43,11 +43,11 @@ namespace SaveSystemPackage.Editor {
 
         private SerializedProperty m_playerTagProperty;
 
-        private SerializedProperty m_compressFilesProperty;
+        private SerializedProperty m_compressProperty;
         private SerializedProperty m_compressionSettingsProperty;
-
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
+        private SerializedProperty m_jsonSerializerSettings;
 
 
         [SettingsProvider]
@@ -85,8 +85,6 @@ namespace SaveSystemPackage.Editor {
             DrawCommonSettings();
             DrawUserActionsProperties();
             DrawCheckpointsSettings();
-            DrawCompressionSettings();
-            DrawEncryptionSettings();
             EditorGUIUtility.labelWidth = width;
 
             m_serializedSettings.ApplyModifiedProperties();
@@ -112,8 +110,6 @@ namespace SaveSystemPackage.Editor {
             InitializeCommonSettings();
             InitializeUserActionsProperties();
             InitializeCheckpointsSettings();
-            InitializeCompressionSettings();
-            InitializeEncryptionSettings();
 
             m_serializedSettings.FindProperty("registerImmediately");
         }
@@ -128,7 +124,18 @@ namespace SaveSystemPackage.Editor {
             );
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
-            m_dataFileNameProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.dataFileName));
+            m_serializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.serializerType));
+            m_compressProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compress));
+            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.compressionSettings)
+            );
+            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
+            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.encryptionSettings)
+            );
+            m_jsonSerializerSettings = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.jsonSerializerSettings)
+            );
         }
 
 
@@ -156,22 +163,6 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void InitializeCompressionSettings () {
-            m_compressFilesProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compressFiles));
-            m_compressionSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.compressionSettings)
-            );
-        }
-
-
-        private void InitializeEncryptionSettings () {
-            m_encryptProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.encrypt));
-            m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.encryptionSettings)
-            );
-        }
-
-
         private void DrawCommonSettings () {
             EditorGUILayout.LabelField("Common Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_automaticInitializeProperty);
@@ -183,11 +174,19 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_savePeriodProperty);
             GUI.enabled = true;
 
-            EditorGUILayout.PropertyField(m_dataFileNameProperty);
-            if (string.IsNullOrEmpty(m_dataFileNameProperty.stringValue))
-                m_dataFileNameProperty.stringValue = Application.productName.ToPathFormat();
+            DrawSerializerTypeProperty();
+            DrawCompressionSettings();
+            DrawEncryptionSettings();
 
             EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawSerializerTypeProperty () {
+            EditorGUILayout.PropertyField(m_serializerType);
+            var serializerType = (SerializerType)m_serializerType.enumValueIndex;
+            if (serializerType == SerializerType.JsonSerializer)
+                EditorGUILayout.PropertyField(m_jsonSerializerSettings);
         }
 
 
@@ -236,9 +235,9 @@ namespace SaveSystemPackage.Editor {
 
 
         private void DrawCompressionSettings () {
-            EditorGUILayout.PropertyField(m_compressFilesProperty);
+            EditorGUILayout.PropertyField(m_compressProperty);
 
-            if (m_compressFilesProperty.boolValue) {
+            if (m_compressProperty.boolValue) {
                 EditorGUILayout.PropertyField(m_compressionSettingsProperty);
                 EditorGUILayout.Space(15);
             }

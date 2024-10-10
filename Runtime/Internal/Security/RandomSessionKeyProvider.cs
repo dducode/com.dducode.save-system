@@ -3,7 +3,7 @@ using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage.Internal.Security {
 
-    internal class RandomSessionKeyProvider : IKeyProvider {
+    internal class RandomSessionKeyProvider : ISecurityKeyProvider {
 
         private readonly byte[] m_randomKey;
 
@@ -25,7 +25,7 @@ namespace SaveSystemPackage.Internal.Security {
         }
 
 
-        public IKeyProvider Clone () {
+        public ISecurityKeyProvider Clone () {
             return new RandomSessionKeyProvider(m_randomKey);
         }
 

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Security;
+using SaveSystemPackage.Settings;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
@@ -21,7 +22,7 @@ namespace SaveSystemPackage.Security {
             "You {0} data that has length more than 85 000. You can use stream {1} instead";
 
         [NotNull]
-        public IKeyProvider PasswordProvider {
+        public ISecurityKeyProvider PasswordProvider {
             get => passwordProvider;
             set {
                 passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
@@ -30,7 +31,7 @@ namespace SaveSystemPackage.Security {
         }
 
         [NotNull]
-        public IKeyProvider SaltProvider {
+        public ISecurityKeyProvider SaltProvider {
             get => saltProvider;
             set {
                 saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
@@ -46,13 +47,13 @@ namespace SaveSystemPackage.Security {
             }
         }
 
-        protected IKeyProvider passwordProvider;
-        protected IKeyProvider saltProvider;
+        protected ISecurityKeyProvider passwordProvider;
+        protected ISecurityKeyProvider saltProvider;
         protected KeyGenerationParams generationParams;
 
 
         public Cryptographer (
-            IKeyProvider passwordProvider, IKeyProvider saltProvider, KeyGenerationParams generationParams
+            ISecurityKeyProvider passwordProvider, ISecurityKeyProvider saltProvider, KeyGenerationParams generationParams
         ) {
             this.passwordProvider = passwordProvider;
             this.saltProvider = saltProvider;

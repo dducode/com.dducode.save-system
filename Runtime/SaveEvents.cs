@@ -15,24 +15,19 @@ namespace SaveSystemPackage {
         None = 0,
 
         /// <summary>
-        /// Autosave will be executed for any changes in the data
-        /// </summary>
-        AutoSave = 1,
-
-        /// <summary>
         /// If the application lose focus, this event will be invoked
         /// </summary>
-        OnFocusLost = 2,
+        OnFocusLost = 1,
 
         /// <summary>
         /// This event will be invoked when the application receives a low-memory notification
         /// </summary>
-        OnLowMemory = 4,
+        OnLowMemory = 2,
 
         /// <summary>
         /// Periodic save will be executed once during each save period
         /// </summary>
-        PeriodicSave = 8,
+        PeriodicSave = 4,
 
         /// <summary>
         /// All events will be executed

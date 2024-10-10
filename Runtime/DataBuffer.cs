@@ -5,7 +5,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using SaveSystemPackage.Extensions;
+using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Serialization;
 
 // ReSharper disable UnusedMember.Global

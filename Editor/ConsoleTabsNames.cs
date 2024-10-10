@@ -2,8 +2,7 @@
 
     internal enum ConsoleTabsNames {
 
-        FileExplorer,
-        ObjectsTracker
+        FileExplorer
 
     }
 

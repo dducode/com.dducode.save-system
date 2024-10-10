@@ -77,18 +77,28 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal void WriteAllBytes (byte[] bytes) {
-            System.IO.File.WriteAllBytes(Path, bytes);
+        internal async Task<string> ReadAllTextAsync (CancellationToken token) {
+            return await System.IO.File.ReadAllTextAsync(Path, token);
         }
 
 
-        internal void WriteAllText (string text) {
-            System.IO.File.WriteAllText(Path, text);
+        internal void WriteAllBytes (byte[] data) {
+            System.IO.File.WriteAllBytes(Path, data);
         }
 
 
-        internal async Task WriteAllBytesAsync (byte[] bytes, CancellationToken token) {
-            await System.IO.File.WriteAllBytesAsync(Path, bytes, token);
+        internal void WriteAllText (string data) {
+            System.IO.File.WriteAllText(Path, data);
+        }
+
+
+        internal async Task WriteAllBytesAsync (byte[] data, CancellationToken token) {
+            await System.IO.File.WriteAllBytesAsync(Path, data, token);
+        }
+
+
+        public async Task WriteAllTextAsync (string data, CancellationToken token) {
+            await System.IO.File.WriteAllTextAsync(Path, data, token);
         }
 
 

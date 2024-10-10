@@ -5,8 +5,12 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Providers;
 using SaveSystemPackage.Security;
+using SaveSystemPackage.Serialization;
+using SaveSystemPackage.Settings;
 using UnityEngine;
+using JsonSerializer = SaveSystemPackage.Serialization.JsonSerializer;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 #if ENABLE_INPUT_SYSTEM
@@ -89,17 +93,6 @@ namespace SaveSystemPackage {
                     PlayerPrefs.SetInt(SaveSystemConstants.QuickSaveKeyCode, (int)m_quickSaveKey);
                 }
             }
-
-            /// <summary>
-            /// Binds any key to screen capture
-            /// </summary>
-            public KeyCode ScreenCaptureKey {
-                get => m_screenCaptureKey;
-                set {
-                    m_screenCaptureKey = value;
-                    PlayerPrefs.SetInt(SaveSystemConstants.ScreenCaptureKeyCode, (int)m_screenCaptureKey);
-                }
-            }
         #endif
 
         #if ENABLE_INPUT_SYSTEM
@@ -114,31 +107,14 @@ namespace SaveSystemPackage {
             public InputAction ScreenCaptureAction { get; set; }
         #endif
 
-            public bool CompressFiles {
-                get => SerializationSettings.CompressFiles;
-                set => SerializationSettings.CompressFiles = value;
-            }
-
-            public FileCompressor FileCompressor {
-                get => SerializationSettings.FileCompressor;
-                set => SerializationSettings.FileCompressor = value;
-            }
-
-            public bool Encrypt {
-                get => SerializationSettings.Encrypt;
-                set => SerializationSettings.Encrypt = value;
-            }
-
-            public Cryptographer Cryptographer {
-                get => SerializationSettings.Cryptographer;
-                set => SerializationSettings.Cryptographer = value;
+            public ISerializer SharedSerializer {
+                get => m_serializer;
+                set => m_serializer = value ?? throw new ArgumentNullException(nameof(SharedSerializer));
             }
 
         #if ENABLE_BOTH_SYSTEMS
             public UsedInputSystem UsedInputSystem { get; private set; }
         #endif
-
-            internal SerializationSettings SerializationSettings { get; }
 
             private SaveEvents m_enabledSaveEvents;
             private float m_savePeriod;
@@ -148,6 +124,9 @@ namespace SaveSystemPackage {
             private KeyCode m_screenCaptureKey;
             private KeyCode m_quickSaveKey;
         #endif
+
+            private ISerializer m_serializer;
+            private IKeyProvider m_keyProvider;
 
 
             public static implicit operator SystemSettings (SaveSystemSettings settings) {
@@ -162,7 +141,7 @@ namespace SaveSystemPackage {
                 PlayerTag = settings.playerTag;
 
                 SetupUserInputs(settings);
-                SerializationSettings = settings;
+                SharedSerializer = SelectSerializer(settings);
             }
 
 
@@ -174,9 +153,6 @@ namespace SaveSystemPackage {
                     case UsedInputSystem.LegacyInputManager:
                         QuickSaveKey = (KeyCode)PlayerPrefs.GetInt(
                             SaveSystemConstants.QuickSaveKeyCode, (int)settings.quickSaveKey
-                        );
-                        ScreenCaptureKey = (KeyCode)PlayerPrefs.GetInt(
-                            SaveSystemConstants.ScreenCaptureKeyCode, (int)settings.screenCaptureKey
                         );
                         break;
                     case UsedInputSystem.InputSystem:
@@ -201,6 +177,48 @@ namespace SaveSystemPackage {
                 ScreenCaptureAction?.Enable();
             #endif
             #endif
+            }
+
+
+            private ISerializer SelectSerializer (SaveSystemSettings settings) {
+                SerializerType serializerType = settings.serializerType;
+                ISerializer serializer;
+
+                switch (serializerType) {
+                    case SerializerType.BinarySerializer:
+                        serializer = new BinarySerializer();
+                        break;
+                    case SerializerType.JsonSerializer:
+                        serializer = new JsonSerializer(settings.jsonSerializerSettings);
+                        break;
+                    case SerializerType.XmlSerializer:
+                        serializer = new XmlSerializer();
+                        break;
+                    case SerializerType.Custom:
+                        serializer = null;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
+                }
+
+                if (serializer == null)
+                    return null;
+
+                if (settings.encrypt && settings.compress) {
+                    return new CompositeSerializer(
+                        serializer,
+                        new Cryptographer(settings.encryptionSettings),
+                        new FileCompressor(settings.compressionSettings)
+                    );
+                }
+                else {
+                    if (settings.compress)
+                        return new CompressionSerializer(serializer, new FileCompressor(settings.compressionSettings));
+                    else if (settings.encrypt)
+                        return new EncryptionSerializer(serializer, new Cryptographer(settings.encryptionSettings));
+                    else
+                        return serializer;
+                }
             }
 
         }

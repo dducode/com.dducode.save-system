@@ -1,9 +1,8 @@
-﻿using SaveSystemPackage.Serialization;
-using UnityEngine;
+﻿using SaveSystemPackage.SerializableData;
 
 namespace SaveSystemPackage.Tests.TestObjects {
 
-    public class TestRigidbodyAdapter : ISerializationAdapter<TestRigidbody> {
+    public class TestRigidbodyAdapter {
 
         public TestRigidbody Target { get; }
 
@@ -13,13 +12,13 @@ namespace SaveSystemPackage.Tests.TestObjects {
         }
 
 
-        public void Serialize (SaveWriter writer) {
-            writer.Write(Target.position);
+        public TransformData GetData () {
+            return Target.transform;
         }
 
 
-        public void Deserialize (SaveReader reader, int previousVersion) {
-            Target.position = reader.Read<Vector3>();
+        public void SetData (TransformData data) {
+            Target.position = data.position;
         }
 
     }
