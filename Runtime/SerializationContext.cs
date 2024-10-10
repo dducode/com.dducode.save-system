@@ -77,35 +77,38 @@ namespace SaveSystemPackage {
         }
 
 
-        public virtual async Task<TData> LoadData<TData> (CancellationToken token = default) where TData : ISaveData {
+        public virtual async Task<TData> LoadData<TData> (
+            TData @default = default, CancellationToken token = default
+        ) where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
                 string key = KeyProvider.Provide<TData>();
                 if (!await DataStorage.Exists(key))
-                    return default;
+                    return @default;
                 byte[] data = await DataStorage.Read(key, token);
                 return Serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Data loading was canceled");
-                return default;
+                return @default;
             }
         }
 
 
-        public virtual async Task<TData> LoadData<TData> (string key, CancellationToken token = default)
-            where TData : ISaveData {
+        public virtual async Task<TData> LoadData<TData> (
+            string key, TData @default = default, CancellationToken token = default
+        ) where TData : ISaveData {
             try {
                 token.ThrowIfCancellationRequested();
                 string resultKey = KeyProvider.Provide<TData>(key);
                 if (!await DataStorage.Exists(resultKey))
-                    return default;
+                    return @default;
                 byte[] data = await DataStorage.Read(resultKey, token);
                 return Serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
                 Logger.LogWarning(Name, "Data loading was canceled");
-                return default;
+                return @default;
             }
         }
 

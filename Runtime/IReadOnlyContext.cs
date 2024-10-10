@@ -12,10 +12,12 @@ namespace SaveSystemPackage {
         public IKeyProvider KeyProvider { get; set; }
         public IDataStorage DataStorage { get; set; }
 
-        public Task<TData> LoadData<TData> (CancellationToken token = default) where TData : ISaveData;
+
+        public Task<TData> LoadData<TData> (TData @default = default, CancellationToken token = default)
+            where TData : ISaveData;
 
 
-        public Task<TData> LoadData<TData> (string key, CancellationToken token = default)
+        public Task<TData> LoadData<TData> (string key, TData @default = default, CancellationToken token = default)
             where TData : ISaveData;
 
     }
