@@ -24,12 +24,12 @@ namespace SaveSystemPackage {
 
         internal static Directory TestsDirectory => CacheRoot.GetOrCreateDirectory("tests");
 
+        internal static Directory ScreenshotsDirectory =>
+            s_screenshotsDirectory ??= Root.GetOrCreateDirectory("screenshots");
+
         private static Directory s_root;
-        private static Directory s_internalDirectory;
-        private static Directory s_scenesDirectory;
-        private static Directory s_profilesDirectory;
         private static Directory s_cacheRoot;
-        private static Directory s_testsDirectory;
+        private static Directory s_screenshotsDirectory;
 
 
         /// <returns> Returns the size of the data in bytes </returns>
@@ -50,6 +50,11 @@ namespace SaveSystemPackage {
         /// <returns> True if local storage has any data, otherwise false </returns>
         public static bool HasAnyData () {
             return Root.DataSize > 0;
+        }
+
+
+        public static bool ScreenshotsDirectoryExists () {
+            return s_screenshotsDirectory != null;
         }
 
 
