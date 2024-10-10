@@ -93,18 +93,13 @@ namespace SaveSystemPackage {
                     PlayerPrefs.SetInt(SaveSystemConstants.QuickSaveKeyCode, (int)m_quickSaveKey);
                 }
             }
-        #endif
+            #endif
 
         #if ENABLE_INPUT_SYSTEM
             /// <summary>
             /// Binds any input action to quick save
             /// </summary>
             public InputAction QuickSaveAction { get; set; }
-
-            /// <summary>
-            /// Binds any input action to screen capture
-            /// </summary>
-            public InputAction ScreenCaptureAction { get; set; }
         #endif
 
             public ISerializer SharedSerializer {
@@ -158,8 +153,6 @@ namespace SaveSystemPackage {
                     case UsedInputSystem.InputSystem:
                         QuickSaveAction = settings.quickSaveAction;
                         QuickSaveAction?.Enable();
-                        ScreenCaptureAction = settings.screenCaptureAction;
-                        ScreenCaptureAction?.Enable();
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -167,14 +160,11 @@ namespace SaveSystemPackage {
             #else
             #if ENABLE_LEGACY_INPUT_MANAGER
                 QuickSaveKey = settings.quickSaveKey;
-                ScreenCaptureKey = settings.screenCaptureKey;
             #endif
 
             #if ENABLE_INPUT_SYSTEM
                 QuickSaveAction = settings.quickSaveAction;
                 QuickSaveAction?.Enable();
-                ScreenCaptureAction = settings.screenCaptureAction;
-                ScreenCaptureAction?.Enable();
             #endif
             #endif
             }

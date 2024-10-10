@@ -6,7 +6,10 @@ using System;
 using System.Text;
 using SaveSystemPackage.Internal.Templates;
 using UnityEngine;
+
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
+#endif
 
 namespace SaveSystemPackage.Settings {
 
@@ -28,12 +31,10 @@ namespace SaveSystemPackage.Settings {
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         public KeyCode quickSaveKey = KeyCode.S;
-        public KeyCode screenCaptureKey = KeyCode.Print;
     #endif
 
     #if ENABLE_INPUT_SYSTEM
         public InputActionReference quickSaveAction;
-        public InputActionReference screenCaptureAction;
     #endif
 
         public string playerTag = "Player";

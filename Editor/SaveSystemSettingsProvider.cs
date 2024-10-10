@@ -33,12 +33,10 @@ namespace SaveSystemPackage.Editor {
 
     #if ENABLE_LEGACY_INPUT_MANAGER
         private SerializedProperty m_quickSaveKeyProperty;
-        private SerializedProperty m_screenCaptureKeyProperty;
     #endif
 
     #if ENABLE_INPUT_SYSTEM
         private SerializedProperty m_quickSaveActionProperty;
-        private SerializedProperty m_screenCaptureActionProperty;
     #endif
 
         private SerializedProperty m_playerTagProperty;
@@ -146,14 +144,10 @@ namespace SaveSystemPackage.Editor {
 
         #if ENABLE_LEGACY_INPUT_MANAGER
             m_quickSaveKeyProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.quickSaveKey));
-            m_screenCaptureKeyProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.screenCaptureKey));
         #endif
 
         #if ENABLE_INPUT_SYSTEM
             m_quickSaveActionProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.quickSaveAction));
-            m_screenCaptureActionProperty = m_serializedSettings.FindProperty(
-                nameof(SaveSystemSettings.screenCaptureAction)
-            );
         #endif
         }
 
@@ -199,11 +193,9 @@ namespace SaveSystemPackage.Editor {
             switch ((UsedInputSystem)m_usedInputSystemProperty.enumValueIndex) {
                 case UsedInputSystem.LegacyInputManager:
                     EditorGUILayout.PropertyField(m_quickSaveKeyProperty);
-                    EditorGUILayout.PropertyField(m_screenCaptureKeyProperty);
                     break;
                 case UsedInputSystem.InputSystem:
                     EditorGUILayout.PropertyField(m_quickSaveActionProperty);
-                    EditorGUILayout.PropertyField(m_screenCaptureActionProperty);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -211,12 +203,10 @@ namespace SaveSystemPackage.Editor {
         #else
         #if ENABLE_LEGACY_INPUT_MANAGER
             EditorGUILayout.PropertyField(m_quickSaveKeyProperty);
-            EditorGUILayout.PropertyField(m_screenCaptureKeyProperty);
         #endif
 
         #if ENABLE_INPUT_SYSTEM
             EditorGUILayout.PropertyField(m_quickSaveActionNameProperty);
-            EditorGUILayout.PropertyField(m_screenCaptureActionNameProperty);
         #endif
         #endif
 
