@@ -27,7 +27,7 @@ namespace SaveSystemPackage {
         internal static Directory ScreenshotsDirectory =>
             s_screenshotsDirectory ??= Root.GetOrCreateDirectory("screenshots");
 
-        internal static Directory LogDirectory => s_logDirectory ??= Root.GetOrCreateDirectory("logs");
+        internal static Directory LogDirectory => s_logDirectory ??= CacheRoot.GetOrCreateDirectory("logs");
 
         private static Directory s_root;
         private static Directory s_cacheRoot;
