@@ -20,8 +20,7 @@ namespace SaveSystemPackage.Settings {
         public SaveEvents enabledSaveEvents;
         public float logsFlushingTime = 5;
 
-        [Min(0)]
-        [Tooltip(Tooltips.SavePeriod)]
+        [Min(0), Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 5;
 
         public SerializerType serializerType;
@@ -47,6 +46,9 @@ namespace SaveSystemPackage.Settings {
         public EncryptionSettings encryptionSettings;
 
         public JsonSerializerSettings jsonSerializerSettings;
+
+        [Min(0), Tooltip(Tooltips.CacheSize)]
+        public int cacheSize = 4096;
 
 
         internal static SaveSystemSettings Load () {

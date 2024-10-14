@@ -37,6 +37,7 @@ namespace SaveSystemPackage {
             }
 
             public float LogsFlushingTime { get; set; }
+            public int CacheSize { get; set; }
 
             /// <summary>
             /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
@@ -140,6 +141,7 @@ namespace SaveSystemPackage {
 
                 SetupUserInputs(settings);
                 SharedSerializer = SelectSerializer(settings);
+                CacheSize = settings.cacheSize;
             }
 
 

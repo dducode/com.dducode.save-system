@@ -54,7 +54,9 @@ namespace SaveSystemPackage {
                     Game = new Game {
                         Serializer = Settings.SharedSerializer,
                         KeyProvider = new KeyStore(KeyMap = KeyMap.PredefinedMap),
-                        DataStorage = new FileSystemStorage(Storage.Root, Settings.SharedSerializer.GetFormatCode())
+                        DataStorage = new FileSystemStorage(
+                            Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.cacheSize
+                        )
                     };
                 }
 

@@ -12,9 +12,9 @@ namespace SaveSystemPackage.Storages {
         private readonly string m_fileExtension;
 
 
-        internal FileSystemStorage (Directory directory, string fileExtension) {
+        internal FileSystemStorage (Directory directory, string fileExtension, int cacheCapacity = 4096) {
             m_folder = directory;
-            m_cacheStorage = new MemoryStorage();
+            m_cacheStorage = new MemoryStorage(cacheCapacity);
             m_fileExtension = fileExtension;
         }
 

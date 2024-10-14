@@ -28,17 +28,18 @@ namespace SaveSystemPackage {
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
             string fileExtension = SaveSystem.Settings.SharedSerializer.GetFormatCode();
+            int cacheSize = SaveSystem.Settings.CacheSize;
 
             if (profile == null) {
                 Directory directory = Storage.ScenesDirectory.GetOrCreateDirectory(id);
                 SceneContext.KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name);
-                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension);
+                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
                 SaveSystem.Game.SceneContext = SceneContext;
             }
             else {
                 Directory directory = profile.directory.GetOrCreateDirectory(id);
                 SceneContext.KeyProvider = new KeyDecorator(profile.KeyProvider, directory.Name);
-                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension);
+                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
                 profile.SceneContext = SceneContext;
             }
 
