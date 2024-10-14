@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
@@ -11,7 +12,8 @@ namespace SaveSystemPackage {
     public class Map<Tkey, TValue> : Dictionary<Tkey, TValue>, IXmlSerializable {
 
         public Map () { }
-        public Map (Dictionary<string, string> dictionary) : base((IDictionary<Tkey, TValue>)dictionary) { }
+        public Map (Dictionary<Tkey, TValue> dictionary) : base(dictionary) { }
+        protected Map (SerializationInfo info, StreamingContext context) : base(info, context) { }
 
 
         public virtual XmlSchema GetSchema () {
