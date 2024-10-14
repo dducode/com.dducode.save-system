@@ -48,7 +48,7 @@ namespace SaveSystemPackage.Settings {
         public JsonSerializerSettings jsonSerializerSettings;
 
         [Min(0), Tooltip(Tooltips.CacheSize)]
-        public int cacheSize = 4096;
+        public int cacheSize = 64;
 
 
         internal static SaveSystemSettings Load () {

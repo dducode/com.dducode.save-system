@@ -11,14 +11,14 @@ namespace SaveSystemPackage.Storages {
         private readonly Dictionary<string, byte[]> m_cache = new();
         private readonly Dictionary<string, DateTime> m_accessTimes = new();
         private readonly SortedDictionary<DateTime, string> m_sortedAccessTimes = new();
-        private readonly int m_cacheCapacity;
+        private readonly long m_cacheCapacity;
 
-        private int FreeSpace => m_cacheCapacity - m_cacheSize;
-        private int m_cacheSize;
+        private long FreeSpace => m_cacheCapacity - m_cacheSize;
+        private long m_cacheSize;
 
 
-        public MemoryStorage (int cacheCapacity = 4096) {
-            m_cacheCapacity = cacheCapacity;
+        public MemoryStorage (int cacheCapacity = 64) {
+            m_cacheCapacity = (long)cacheCapacity * 1024;
         }
 
 
