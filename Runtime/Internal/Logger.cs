@@ -78,6 +78,7 @@ namespace SaveSystemPackage.Internal {
 
             lock (m_logCache) {
                 if (fullMessage.Length > m_logCache.Capacity) {
+                    FlushLogs();
                     WriteToFile(fullMessage);
                     return;
                 }
