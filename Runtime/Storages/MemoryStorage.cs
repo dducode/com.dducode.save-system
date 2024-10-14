@@ -23,6 +23,7 @@ namespace SaveSystemPackage.Storages {
 
 
         public Task Write (string key, byte[] data, CancellationToken token = default) {
+            token.ThrowIfCancellationRequested();
             if (m_cache.TryGetValue(key, out byte[] value))
                 m_cacheSize -= value.Length;
             if (FreeSpace <= 0)
@@ -36,6 +37,7 @@ namespace SaveSystemPackage.Storages {
 
 
         public Task<byte[]> Read (string key, CancellationToken token = default) {
+            token.ThrowIfCancellationRequested();
             if (!m_cache.ContainsKey(key))
                 throw new KeyNotFoundException("Requested key doesn't exist in memory storage");
             UpdateAccessTime(key);
