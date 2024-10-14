@@ -11,7 +11,7 @@ using File = System.IO.File;
 
 namespace SaveSystemPackage.Tests {
 
-    public class CryptographerTests {
+    public class AesEncryptorTests {
 
         private readonly string m_sourcePath =
             Path.Combine(Application.dataPath, @"com.dducode.save-system\Tests\Runtime\TestResources\LoremIpsum.txt");
@@ -25,9 +25,9 @@ namespace SaveSystemPackage.Tests {
 
         [Test, Order(0)]
         public async Task EncryptLoremIpsum () {
-            var cryptographer = new Cryptographer(
-                new DefaultKeyProvider("password"),
-                new DefaultKeyProvider("salt"),
+            var cryptographer = new AesEncryptor(
+                new SecurityKeyProvider("password"),
+                new SecurityKeyProvider("salt"),
                 KeyGenerationParams.Default
             );
 
@@ -47,9 +47,9 @@ namespace SaveSystemPackage.Tests {
 
         [Test, Order(1)]
         public async Task DecryptLoremIpsum () {
-            var cryptographer = new Cryptographer(
-                new DefaultKeyProvider("password"),
-                new DefaultKeyProvider("salt"),
+            var cryptographer = new AesEncryptor(
+                new SecurityKeyProvider("password"),
+                new SecurityKeyProvider("salt"),
                 KeyGenerationParams.Default
             );
 

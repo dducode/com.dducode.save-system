@@ -8,7 +8,7 @@ namespace SaveSystemPackage.Settings {
     public class EncryptionSettings {
 
         public bool useCustomCryptographer;
-        public CryptographerReference reference;
+        public EncryptorReference reference;
         public bool useCustomProviders;
         public string password = CryptoUtilities.GenerateKey();
         public string saltKey = CryptoUtilities.GenerateKey();

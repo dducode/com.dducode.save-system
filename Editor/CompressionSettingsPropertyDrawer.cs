@@ -25,7 +25,7 @@ namespace SaveSystemPackage.Editor {
 
             if (settings.useCustomCompressor) {
                 EditorGUILayout.ObjectField(
-                    "File Compressor", settings.reference, typeof(FileCompressorReference), false
+                    "Compressor", settings.reference, typeof(CompressorReference), false
                 );
             }
             else {

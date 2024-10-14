@@ -197,15 +197,15 @@ namespace SaveSystemPackage {
                 if (settings.encrypt && settings.compress) {
                     return new CompositeSerializer(
                         serializer,
-                        new Cryptographer(settings.encryptionSettings),
-                        new FileCompressor(settings.compressionSettings)
+                        new AesEncryptor(settings.encryptionSettings),
+                        new DeflateCompressor(settings.compressionSettings)
                     );
                 }
                 else {
                     if (settings.compress)
-                        return new CompressionSerializer(serializer, new FileCompressor(settings.compressionSettings));
+                        return new CompressionSerializer(serializer, new DeflateCompressor(settings.compressionSettings));
                     else if (settings.encrypt)
-                        return new EncryptionSerializer(serializer, new Cryptographer(settings.encryptionSettings));
+                        return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
                     else
                         return serializer;
                 }

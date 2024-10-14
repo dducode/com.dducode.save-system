@@ -8,7 +8,7 @@ namespace SaveSystemPackage.Settings {
     public class CompressionSettings {
 
         public bool useCustomCompressor;
-        public FileCompressorReference reference;
+        public CompressorReference reference;
         public CompressionLevel compressionLevel = CompressionLevel.NoCompression;
 
 

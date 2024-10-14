@@ -1,8 +1,6 @@
-﻿using SaveSystemPackage.Internal;
+﻿namespace SaveSystemPackage.Security {
 
-namespace SaveSystemPackage.Security {
-
-    public interface ISecurityKeyProvider : ICloneable<ISecurityKeyProvider> {
+    public interface ISecurityKeyProvider {
 
         public Key GetKey ();
 

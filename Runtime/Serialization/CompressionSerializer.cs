@@ -5,10 +5,10 @@ namespace SaveSystemPackage.Serialization {
     public class CompressionSerializer : ISerializer {
 
         private readonly ISerializer m_baseSerializer;
-        private readonly FileCompressor m_compressor;
+        private readonly ICompressor m_compressor;
 
 
-        public CompressionSerializer (ISerializer baseSerializer, FileCompressor compressor) {
+        public CompressionSerializer (ISerializer baseSerializer, ICompressor compressor) {
             m_baseSerializer = baseSerializer;
             m_compressor = compressor;
         }

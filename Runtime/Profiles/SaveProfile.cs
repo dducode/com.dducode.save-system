@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.SerializableData;
 
@@ -12,8 +11,6 @@ using SaveSystemPackage.SerializableData;
 namespace SaveSystemPackage.Profiles {
 
     public sealed class SaveProfile : SerializationContext {
-
-        public XmlDictionary dictionary;
 
         [NotNull]
         public override string Name {

@@ -15,46 +15,41 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Compressing {
 
-    public class FileCompressor : ICloneable<FileCompressor> {
+    public sealed class DeflateCompressor : ICompressor {
 
         public CompressionLevel CompressionLevel {
-            get => compressionLevel;
+            get => m_compressionLevel;
             set {
-                compressionLevel = value;
-                Logger.Log(nameof(FileCompressor), $"Set compression level: {compressionLevel}");
+                m_compressionLevel = value;
+                Logger.Log(nameof(DeflateCompressor), $"Set compression level: {m_compressionLevel}");
             }
         }
 
-        protected CompressionLevel compressionLevel;
+        private CompressionLevel m_compressionLevel;
 
 
-        public FileCompressor (CompressionLevel compressionLevel) {
-            this.compressionLevel = compressionLevel;
+        public DeflateCompressor (CompressionLevel compressionLevel) {
+            m_compressionLevel = compressionLevel;
         }
 
 
-        internal FileCompressor (CompressionSettings settings) {
+        internal DeflateCompressor (CompressionSettings settings) {
             SetSettings(settings);
         }
 
 
-        public virtual FileCompressor Clone () {
-            return new FileCompressor(compressionLevel);
-        }
-
-
-        public virtual byte[] Compress ([NotNull] byte[] data) {
+        public byte[] Compress ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
             using var memoryStream = new MemoryStream();
-            using (var compressor = new DeflateStream(memoryStream, compressionLevel))
+            using (var compressor = new DeflateStream(memoryStream, m_compressionLevel))
                 compressor.Write(data);
             return memoryStream.ToArray();
         }
 
 
-        public virtual byte[] Decompress ([NotNull] byte[] data) {
+        public byte[] Decompress ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
@@ -65,13 +60,13 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        public virtual async Task Compress (Stream stream, CancellationToken token = default) {
+        public async Task Compress (Stream stream, CancellationToken token = default) {
             stream.Position = 0;
 
             try {
                 using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("compress");
                 await using FileStream cacheStream = cacheFile.Open();
-                await using (var compressor = new DeflateStream(cacheStream, compressionLevel, true))
+                await using (var compressor = new DeflateStream(cacheStream, m_compressionLevel, true))
                     await stream.CopyToAsync(compressor, token);
                 stream.SetLength(0);
                 cacheStream.Position = 0;
@@ -83,7 +78,7 @@ namespace SaveSystemPackage.Compressing {
         }
 
 
-        public virtual async Task Decompress (Stream stream, CancellationToken token = default) {
+        public async Task Decompress (Stream stream, CancellationToken token = default) {
             stream.Position = 0;
 
             try {
@@ -102,7 +97,7 @@ namespace SaveSystemPackage.Compressing {
 
 
         internal void SetSettings (CompressionSettings settings) {
-            compressionLevel = settings.compressionLevel;
+            m_compressionLevel = settings.compressionLevel;
         }
 
     }

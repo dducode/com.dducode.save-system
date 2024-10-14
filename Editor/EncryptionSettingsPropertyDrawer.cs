@@ -41,7 +41,7 @@ namespace SaveSystemPackage.Editor {
 
             if (settings.useCustomCryptographer) {
                 EditorGUILayout.ObjectField(
-                    "Cryptographer", settings.reference, typeof(CryptographerReference), false
+                    "Encryptor", settings.reference, typeof(EncryptorReference), false
                 );
             }
             else {

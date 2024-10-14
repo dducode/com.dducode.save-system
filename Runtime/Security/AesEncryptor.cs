@@ -16,58 +16,54 @@ using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage.Security {
 
-    public class Cryptographer : ICloneable<Cryptographer> {
+    public sealed class AesEncryptor : IEncryptor {
 
         private const string OperationWarning =
             "You {0} data that has length more than 85 000. You can use stream {1} instead";
 
         [NotNull]
         public ISecurityKeyProvider PasswordProvider {
-            get => passwordProvider;
+            get => m_passwordProvider;
             set {
-                passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
-                Logger.Log(nameof(Cryptographer), $"Set password provider: {value}");
+                m_passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
+                Logger.Log(nameof(AesEncryptor), $"Set password provider: {value}");
             }
         }
 
         [NotNull]
         public ISecurityKeyProvider SaltProvider {
-            get => saltProvider;
+            get => m_saltProvider;
             set {
-                saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
-                Logger.Log(nameof(Cryptographer), $"Set salt provider: {value}");
+                m_saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
+                Logger.Log(nameof(AesEncryptor), $"Set salt provider: {value}");
             }
         }
 
         public KeyGenerationParams GenerationParams {
-            get => generationParams;
+            get => m_generationParams;
             set {
-                generationParams = value;
-                Logger.Log(nameof(Cryptographer), $"Set key generation params: {value}");
+                m_generationParams = value;
+                Logger.Log(nameof(AesEncryptor), $"Set key generation params: {value}");
             }
         }
 
-        protected ISecurityKeyProvider passwordProvider;
-        protected ISecurityKeyProvider saltProvider;
-        protected KeyGenerationParams generationParams;
+        private ISecurityKeyProvider m_passwordProvider;
+        private ISecurityKeyProvider m_saltProvider;
+        private KeyGenerationParams m_generationParams;
 
 
-        public Cryptographer (
-            ISecurityKeyProvider passwordProvider, ISecurityKeyProvider saltProvider, KeyGenerationParams generationParams
+        public AesEncryptor (
+            ISecurityKeyProvider passwordProvider, ISecurityKeyProvider saltProvider,
+            KeyGenerationParams generationParams
         ) {
-            this.passwordProvider = passwordProvider;
-            this.saltProvider = saltProvider;
-            this.generationParams = generationParams;
+            m_passwordProvider = passwordProvider;
+            m_saltProvider = saltProvider;
+            m_generationParams = generationParams;
         }
 
 
-        internal Cryptographer (EncryptionSettings settings) {
+        internal AesEncryptor (EncryptionSettings settings) {
             SetSettings(settings);
-        }
-
-
-        public virtual Cryptographer Clone () {
-            return new Cryptographer(passwordProvider.Clone(), saltProvider.Clone(), generationParams);
         }
 
 
@@ -76,11 +72,11 @@ namespace SaveSystemPackage.Security {
         /// </summary>
         /// <param name="data"> Data to be encrypted </param>
         /// <returns> Encrypted data </returns>
-        public virtual byte[] Encrypt ([NotNull] byte[] data) {
+        public byte[] Encrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length > 85_000)
-                Logger.LogWarning(nameof(Cryptographer), string.Format(OperationWarning, "encrypt", "encryption"));
+                Logger.LogWarning(nameof(AesEncryptor), string.Format(OperationWarning, "encrypt", "encryption"));
 
             byte[] iv = GetIV();
 
@@ -108,11 +104,11 @@ namespace SaveSystemPackage.Security {
         /// </summary>
         /// <param name="data"> Data containing encrypted data </param>
         /// <returns> Decrypted data </returns>
-        public virtual byte[] Decrypt ([NotNull] byte[] data) {
+        public byte[] Decrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (data.Length > 85_000)
-                Logger.LogWarning(nameof(Cryptographer), string.Format(OperationWarning, "decrypt", "decryption"));
+                Logger.LogWarning(nameof(AesEncryptor), string.Format(OperationWarning, "decrypt", "decryption"));
 
             using var aes = Aes.Create();
             Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();
@@ -133,11 +129,11 @@ namespace SaveSystemPackage.Security {
 
 
         /// <summary>
-        /// Encrypts any data from a byte array
+        /// Encrypts any data from a stream
         /// </summary>
         /// <param name="stream"> Stream to be encrypted </param>
         /// <param name="token"></param>
-        public virtual async Task Encrypt ([NotNull] Stream stream, CancellationToken token = default) {
+        public async Task Encrypt ([NotNull] Stream stream, CancellationToken token = default) {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
@@ -175,11 +171,11 @@ namespace SaveSystemPackage.Security {
 
 
         /// <summary>
-        /// Decrypts any data from a byte array
+        /// Decrypts any data from a stream
         /// </summary>
         /// <param name="stream"> Stream containing encrypted data </param>
         /// <param name="token"></param>
-        public virtual async Task Decrypt ([NotNull] Stream stream, CancellationToken token = default) {
+        public async Task Decrypt ([NotNull] Stream stream, CancellationToken token = default) {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
@@ -217,11 +213,11 @@ namespace SaveSystemPackage.Security {
 
         internal void SetSettings (EncryptionSettings settings) {
             if (!settings.useCustomProviders) {
-                passwordProvider = new DefaultKeyProvider(settings.password);
-                saltProvider = new DefaultKeyProvider(settings.saltKey);
+                m_passwordProvider = new SecurityKeyProvider(settings.password);
+                m_saltProvider = new SecurityKeyProvider(settings.saltKey);
             }
 
-            generationParams = settings.keyGenerationParams;
+            m_generationParams = settings.keyGenerationParams;
         }
 
 
