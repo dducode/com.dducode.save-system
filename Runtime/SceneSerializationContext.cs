@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable UnusedMember.Global
@@ -17,7 +16,7 @@ namespace SaveSystemPackage {
                 await OnReloadInvoke();
             }
             catch (OperationCanceledException) {
-                Logger.Log(Name, "Data reload canceled");
+                SaveSystem.Logger.Log(Name, "Data reload canceled");
             }
         }
 
@@ -28,7 +27,7 @@ namespace SaveSystemPackage {
                 await OnSaveInvoke(saveType);
             }
             catch (OperationCanceledException) {
-                Logger.Log(Name, "Data saving canceled");
+                SaveSystem.Logger.Log(Name, "Data saving canceled");
             }
         }
 

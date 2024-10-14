@@ -8,7 +8,6 @@ using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Storages;
 using UnityEngine;
-using Logger = SaveSystemPackage.Internal.Logger;
 using Random = System.Random;
 
 namespace SaveSystemPackage.Profiles {
@@ -117,7 +116,7 @@ namespace SaveSystemPackage.Profiles {
             try {
                 await SaveSystem.Game.DeleteData<ProfileData>(profile.Id);
                 await SaveSystem.Game.SaveData(managerData);
-                Logger.Log(nameof(ProfilesManager), $"Profile \"{profile}\" deleted");
+                SaveSystem.Logger.Log(nameof(ProfilesManager), $"Profile \"{profile}\" deleted");
             }
             catch (Exception exception) {
                 Debug.LogException(exception);

@@ -29,7 +29,7 @@ namespace SaveSystemPackage.Internal {
                 await ExecuteTask(async () => await m_queue.Dequeue().Invoke(token));
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(nameof(SynchronizationPoint), "Scheduled task was canceled");
+                SaveSystem.Logger.LogWarning(nameof(SynchronizationPoint), "Scheduled task was canceled");
             }
             catch (Exception exception) {
                 Debug.LogException(exception);

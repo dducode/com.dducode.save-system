@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.Serialization;
 using SaveSystemPackage.Storages;
@@ -58,7 +57,7 @@ namespace SaveSystemPackage {
                 await DataStorage.Write(key, serializedData, token);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Data saving was canceled");
+                SaveSystem.Logger.LogWarning(Name, "Data saving was canceled");
             }
         }
 
@@ -72,7 +71,7 @@ namespace SaveSystemPackage {
                 await DataStorage.Write(resultKey, serializedData, token);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Data saving was canceled");
+                SaveSystem.Logger.LogWarning(Name, "Data saving was canceled");
             }
         }
 
@@ -89,7 +88,7 @@ namespace SaveSystemPackage {
                 return Serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Data loading was canceled");
+                SaveSystem.Logger.LogWarning(Name, "Data loading was canceled");
                 return @default;
             }
         }
@@ -107,7 +106,7 @@ namespace SaveSystemPackage {
                 return Serializer.Deserialize<TData>(data);
             }
             catch (OperationCanceledException) {
-                Logger.LogWarning(Name, "Data loading was canceled");
+                SaveSystem.Logger.LogWarning(Name, "Data loading was canceled");
                 return @default;
             }
         }

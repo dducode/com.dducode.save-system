@@ -24,6 +24,8 @@ namespace SaveSystemPackage {
         /// It will be canceled before exit game
         internal static CancellationTokenSource exitCancellation;
 
+        internal static Logger Logger { get; private set; }
+
         private static readonly SynchronizationPoint s_synchronizationPoint = new();
 
         private static bool s_periodicSaveEnabled;

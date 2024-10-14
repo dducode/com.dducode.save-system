@@ -69,7 +69,7 @@ namespace SaveSystemPackage.Profiles {
                     await SceneContext.Reload(token);
             }
             catch (OperationCanceledException) {
-                Logger.Log(Name, "Data reload canceled");
+                SaveSystem.Logger.Log(Name, "Data reload canceled");
             }
         }
 
@@ -96,7 +96,7 @@ namespace SaveSystemPackage.Profiles {
                     await SceneContext.Save(saveType, token);
             }
             catch (OperationCanceledException) {
-                Logger.Log(Name, "Data saving canceled");
+                SaveSystem.Logger.Log(Name, "Data saving canceled");
             }
         }
 
