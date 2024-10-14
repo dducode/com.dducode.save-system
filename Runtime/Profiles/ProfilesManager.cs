@@ -8,7 +8,6 @@ using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Storages;
 using UnityEngine;
-using Logger = SaveSystemPackage.Internal.Logger;
 using Random = System.Random;
 
 namespace SaveSystemPackage.Profiles {
@@ -85,7 +84,11 @@ namespace SaveSystemPackage.Profiles {
             return new SaveProfile(profileData, directory) {
                 Serializer = SaveSystem.Settings.SharedSerializer,
                 KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name),
-                DataStorage = new FileSystemStorage(directory, SaveSystem.Settings.SharedSerializer.GetFormatCode())
+                DataStorage = new FileSystemStorage(
+                    directory,
+                    SaveSystem.Settings.SharedSerializer.GetFormatCode(),
+                    SaveSystem.Settings.CacheSize
+                )
             };
         }
 
@@ -117,7 +120,7 @@ namespace SaveSystemPackage.Profiles {
             try {
                 await SaveSystem.Game.DeleteData<ProfileData>(profile.Id);
                 await SaveSystem.Game.SaveData(managerData);
-                Logger.Log(nameof(ProfilesManager), $"Profile \"{profile}\" deleted");
+                SaveSystem.Logger.Log(nameof(ProfilesManager), $"Profile \"{profile}\" deleted");
             }
             catch (Exception exception) {
                 Debug.LogException(exception);

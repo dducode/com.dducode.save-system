@@ -8,7 +8,6 @@ using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Settings;
 using SaveSystemPackage.Storages;
 using UnityEngine;
-using Logger = SaveSystemPackage.Internal.Logger;
 
 #if UNITY_EDITOR
 #endif
@@ -24,6 +23,7 @@ namespace SaveSystemPackage {
         public static ProfilesManager ProfilesManager { get; private set; }
         public static SystemSettings Settings { get; private set; }
         public static KeyMap KeyMap { get; private set; }
+        public static ILogger Logger { get; set; }
 
         public static bool Initialized { get; private set; }
 
@@ -50,11 +50,13 @@ namespace SaveSystemPackage {
         public static async Task Initialize () {
             try {
                 using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
-                    SetSettings(settings);
+                    Settings = settings;
                     Game = new Game {
                         Serializer = Settings.SharedSerializer,
                         KeyProvider = new KeyStore(KeyMap = KeyMap.PredefinedMap),
-                        DataStorage = new FileSystemStorage(Storage.Root, Settings.SharedSerializer.GetFormatCode())
+                        DataStorage = new FileSystemStorage(
+                            Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.cacheSize
+                        )
                     };
                 }
 

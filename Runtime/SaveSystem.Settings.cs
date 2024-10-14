@@ -36,6 +36,9 @@ namespace SaveSystemPackage {
                 set => Logger.EnabledLogs = value;
             }
 
+            public float LogsFlushingTime { get; set; }
+            public int CacheSize { get; set; }
+
             /// <summary>
             /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
             /// </summary>
@@ -130,13 +133,15 @@ namespace SaveSystemPackage {
 
 
             private SystemSettings (SaveSystemSettings settings) {
-                EnabledLogs = settings.enabledLogs;
+                Logger = new Logger(settings.enabledLogs, Storage.LogDirectory);
+                LogsFlushingTime = settings.logsFlushingTime;
                 EnabledSaveEvents = settings.enabledSaveEvents;
                 SavePeriod = settings.savePeriod;
                 PlayerTag = settings.playerTag;
 
                 SetupUserInputs(settings);
                 SharedSerializer = SelectSerializer(settings);
+                CacheSize = settings.cacheSize;
             }
 
 
@@ -197,15 +202,16 @@ namespace SaveSystemPackage {
                 if (settings.encrypt && settings.compress) {
                     return new CompositeSerializer(
                         serializer,
-                        new Cryptographer(settings.encryptionSettings),
-                        new FileCompressor(settings.compressionSettings)
+                        new AesEncryptor(settings.encryptionSettings),
+                        new DeflateCompressor(settings.compressionSettings)
                     );
                 }
                 else {
                     if (settings.compress)
-                        return new CompressionSerializer(serializer, new FileCompressor(settings.compressionSettings));
+                        return new CompressionSerializer(serializer,
+                            new DeflateCompressor(settings.compressionSettings));
                     else if (settings.encrypt)
-                        return new EncryptionSerializer(serializer, new Cryptographer(settings.encryptionSettings));
+                        return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
                     else
                         return serializer;
                 }

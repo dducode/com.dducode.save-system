@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Profiles;
 
 // ReSharper disable UnusedMember.Global
@@ -48,7 +47,7 @@ namespace SaveSystemPackage {
                     await SceneContext.Reload(token);
             }
             catch (OperationCanceledException) {
-                Logger.Log(Name, "Data reload canceled");
+                SaveSystem.Logger.Log(Name, "Data reload canceled");
             }
         }
 
@@ -63,7 +62,7 @@ namespace SaveSystemPackage {
                     await SceneContext.Save(saveType, token);
             }
             catch (OperationCanceledException) {
-                Logger.Log(Name, "Data saving canceled");
+                SaveSystem.Logger.Log(Name, "Data saving canceled");
             }
         }
 

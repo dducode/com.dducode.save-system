@@ -18,9 +18,9 @@ namespace SaveSystemPackage.Settings {
         public bool automaticInitialize = true;
         public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
         public SaveEvents enabledSaveEvents;
+        public float logsFlushingTime = 5;
 
-        [Min(0)]
-        [Tooltip(Tooltips.SavePeriod)]
+        [Min(0), Tooltip(Tooltips.SavePeriod)]
         public float savePeriod = 5;
 
         public SerializerType serializerType;
@@ -46,6 +46,9 @@ namespace SaveSystemPackage.Settings {
         public EncryptionSettings encryptionSettings;
 
         public JsonSerializerSettings jsonSerializerSettings;
+
+        [Min(0), Tooltip(Tooltips.CacheSize)]
+        public int cacheSize = 64;
 
 
         internal static SaveSystemSettings Load () {

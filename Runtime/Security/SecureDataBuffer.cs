@@ -10,11 +10,11 @@ namespace SaveSystemPackage.Security {
 
     public record SecureDataBuffer : DataBuffer {
 
-        private readonly Cryptographer m_cryptographer;
+        private readonly IEncryptor m_encryptor;
 
 
         public SecureDataBuffer () {
-            m_cryptographer = new Cryptographer(
+            m_encryptor = new AesEncryptor(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 new KeyGenerationParams {
@@ -27,7 +27,7 @@ namespace SaveSystemPackage.Security {
 
 
         internal SecureDataBuffer (SaveReader reader) : base(reader) {
-            m_cryptographer = new Cryptographer(
+            m_encryptor = new AesEncryptor(
                 new RandomSessionKeyProvider(),
                 new RandomSessionKeyProvider(),
                 new KeyGenerationParams {
@@ -38,13 +38,13 @@ namespace SaveSystemPackage.Security {
             );
 
             foreach (string key in commonBuffer.Keys.ToArray())
-                commonBuffer[key] = m_cryptographer.Encrypt(commonBuffer[key]);
+                commonBuffer[key] = m_encryptor.Encrypt(commonBuffer[key]);
         }
 
 
         public override void Write<TValue> (string key, TValue value) {
             base.Write(key, value);
-            commonBuffer[key] = m_cryptographer.Encrypt(commonBuffer[key]);
+            commonBuffer[key] = m_encryptor.Encrypt(commonBuffer[key]);
         }
 
 
@@ -53,14 +53,14 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(key));
 
             return commonBuffer.TryGetValue(key, out byte[] value)
-                ? MemoryMarshal.Read<TValue>(m_cryptographer.Decrypt(value))
+                ? MemoryMarshal.Read<TValue>(m_encryptor.Decrypt(value))
                 : defaultValue;
         }
 
 
         public override void Write<TArray> (string key, TArray[] array) {
             base.Write(key, array);
-            commonBuffer[key] = m_cryptographer.Encrypt(commonBuffer[key]);
+            commonBuffer[key] = m_encryptor.Encrypt(commonBuffer[key]);
         }
 
 
@@ -69,7 +69,7 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(key));
 
             if (commonBuffer.TryGetValue(key, out byte[] value)) {
-                (byte[] length, byte[] data) split = m_cryptographer.Decrypt(value).Split(sizeof(int));
+                (byte[] length, byte[] data) split = m_encryptor.Decrypt(value).Split(sizeof(int));
                 var array = new TArray[MemoryMarshal.Read<int>(split.length)];
                 Span<byte> span = MemoryMarshal.AsBytes((Span<TArray>)array);
                 for (var i = 0; i < span.Length; i++)
@@ -84,7 +84,7 @@ namespace SaveSystemPackage.Security {
 
         public override void Write (string key, string value) {
             base.Write(key, value);
-            commonBuffer[key] = m_cryptographer.Encrypt(commonBuffer[key]);
+            commonBuffer[key] = m_encryptor.Encrypt(commonBuffer[key]);
         }
 
 
@@ -93,7 +93,7 @@ namespace SaveSystemPackage.Security {
                 throw new ArgumentNullException(nameof(key));
 
             return commonBuffer.TryGetValue(key, out byte[] value)
-                ? Encoding.Default.GetString(m_cryptographer.Decrypt(value))
+                ? Encoding.Default.GetString(m_encryptor.Decrypt(value))
                 : defaultValue;
         }
 
@@ -103,7 +103,7 @@ namespace SaveSystemPackage.Security {
 
             foreach (string key in commonBuffer.Keys) {
                 writer.Write(Encoding.UTF8.GetBytes(key));
-                writer.Write(m_cryptographer.Decrypt(commonBuffer[key]));
+                writer.Write(m_encryptor.Decrypt(commonBuffer[key]));
             }
 
             HasChanges = false;
