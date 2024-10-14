@@ -8,22 +8,17 @@ using Object = UnityEngine.Object;
 
 namespace SaveSystemPackage.Internal {
 
-    internal class Logger : ILogger, IDisposable, IAsyncDisposable {
+    internal class Logger : ILogger {
 
         public LogLevel EnabledLogs { get; set; }
-        private readonly FileStream m_logStream;
         private readonly StringBuilder m_logCache;
+        private readonly File m_logFile;
 
 
         internal Logger (LogLevel enabledLogs, Directory logDirectory, int logCacheCapacity = 4096) {
             EnabledLogs = enabledLogs;
-            m_logStream = logDirectory.CreateFile("save-system", "log").Open();
+            m_logFile = logDirectory.CreateFile("save-system", "log");
             m_logCache = new StringBuilder(logCacheCapacity);
-        }
-
-
-        ~Logger () {
-            Dispose();
         }
 
 
@@ -68,30 +63,39 @@ namespace SaveSystemPackage.Internal {
 
 
         public void FlushLogs () {
-            if (m_logCache.Length == 0)
-                return;
+            lock (m_logCache) {
+                if (m_logCache.Length == 0)
+                    return;
 
-            m_logStream.Write(Encoding.Default.GetBytes(m_logCache.ToString()));
-            m_logCache.Clear();
-        }
-
-
-        public void Dispose () {
-            m_logStream?.Dispose();
-        }
-
-
-        public async ValueTask DisposeAsync () {
-            if (m_logStream != null)
-                await m_logStream.DisposeAsync();
+                WriteToFile(m_logCache.ToString());
+                m_logCache.Clear();
+            }
         }
 
 
         private void WriteLogs (LogLevel logLevel, object sender, object message) {
             var fullMessage = $"[{logLevel}][{DateTime.Now}] {sender}: {message}";
-            if (m_logCache.Capacity < m_logCache.Length + fullMessage.Length)
-                FlushLogs();
-            m_logCache.AppendLine(fullMessage);
+
+            lock (m_logCache) {
+                if (fullMessage.Length > m_logCache.Capacity) {
+                    WriteToFile(fullMessage);
+                    return;
+                }
+
+                if (m_logCache.Capacity < m_logCache.Length + fullMessage.Length)
+                    FlushLogs();
+                m_logCache.AppendLine(fullMessage);
+            }
+        }
+
+
+        private void WriteToFile (string message) {
+            lock (m_logFile) {
+                Task.Run(() => {
+                    using FileStream fileStream = m_logFile.Open(FileMode.Append);
+                    fileStream.Write(Encoding.Default.GetBytes(message));
+                });
+            }
         }
 
 

@@ -3,7 +3,6 @@ using SaveSystemPackage.Internal;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using Logger = SaveSystemPackage.Internal.Logger;
 
 namespace SaveSystemPackage {
 
@@ -24,8 +23,6 @@ namespace SaveSystemPackage {
             exitCancellation.Cancel();
             s_periodicSaveLastTime = 0;
             Logger.FlushLogs();
-            if (Logger is Logger defaultLogger)
-                defaultLogger.Dispose();
             Logger = null;
             Settings = null;
             Game = null;
