@@ -8,7 +8,6 @@ using SaveSystemPackage.Internal;
 using SaveSystemPackage.Internal.Extensions;
 using SaveSystemPackage.Internal.Security;
 using SaveSystemPackage.Settings;
-using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 // ReSharper disable UnusedMember.Global
@@ -26,7 +25,7 @@ namespace SaveSystemPackage.Security {
             get => m_passwordProvider;
             set {
                 m_passwordProvider = value ?? throw new ArgumentNullException(nameof(PasswordProvider));
-                Logger.Log(nameof(AesEncryptor), $"Set password provider: {value}");
+                SaveSystem.Logger.Log(nameof(AesEncryptor), $"Set password provider: {value}");
             }
         }
 
@@ -35,7 +34,7 @@ namespace SaveSystemPackage.Security {
             get => m_saltProvider;
             set {
                 m_saltProvider = value ?? throw new ArgumentNullException(nameof(SaltProvider));
-                Logger.Log(nameof(AesEncryptor), $"Set salt provider: {value}");
+                SaveSystem.Logger.Log(nameof(AesEncryptor), $"Set salt provider: {value}");
             }
         }
 
@@ -43,7 +42,7 @@ namespace SaveSystemPackage.Security {
             get => m_generationParams;
             set {
                 m_generationParams = value;
-                Logger.Log(nameof(AesEncryptor), $"Set key generation params: {value}");
+                SaveSystem.Logger.Log(nameof(AesEncryptor), $"Set key generation params: {value}");
             }
         }
 
@@ -75,8 +74,12 @@ namespace SaveSystemPackage.Security {
         public byte[] Encrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
-            if (data.Length > 85_000)
-                Logger.LogWarning(nameof(AesEncryptor), string.Format(OperationWarning, "encrypt", "encryption"));
+
+            if (data.Length > 85_000) {
+                SaveSystem.Logger.LogWarning(
+                    nameof(AesEncryptor), string.Format(OperationWarning, "encrypt", "encryption")
+                );
+            }
 
             byte[] iv = GetIV();
 
@@ -107,8 +110,12 @@ namespace SaveSystemPackage.Security {
         public byte[] Decrypt ([NotNull] byte[] data) {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
-            if (data.Length > 85_000)
-                Logger.LogWarning(nameof(AesEncryptor), string.Format(OperationWarning, "decrypt", "decryption"));
+
+            if (data.Length > 85_000) {
+                SaveSystem.Logger.LogWarning(
+                    nameof(AesEncryptor), string.Format(OperationWarning, "decrypt", "decryption")
+                );
+            }
 
             using var aes = Aes.Create();
             Key key = GetKey(PasswordProvider.GetKey(), SaltProvider.GetKey(), GenerationParams).Pin();

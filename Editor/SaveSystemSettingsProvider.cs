@@ -23,6 +23,7 @@ namespace SaveSystemPackage.Editor {
 
         private SerializedProperty m_automaticInitializeProperty;
         private SerializedProperty m_enabledSaveEventsProperty;
+        private SerializedProperty m_logsFlushingTimeProperty;
         private SerializedProperty m_enabledLogsProperty;
         private SerializedProperty m_savePeriodProperty;
         private SerializedProperty m_serializerType;
@@ -121,6 +122,7 @@ namespace SaveSystemPackage.Editor {
                 nameof(SaveSystemSettings.enabledSaveEvents)
             );
             m_enabledLogsProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.enabledLogs));
+            m_logsFlushingTimeProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.logsFlushingTime));
             m_savePeriodProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.savePeriod));
             m_serializerType = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.serializerType));
             m_compressProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.compress));
@@ -162,6 +164,7 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_automaticInitializeProperty);
             EditorGUILayout.PropertyField(m_enabledLogsProperty);
             EditorGUILayout.PropertyField(m_enabledSaveEventsProperty);
+            EditorGUILayout.PropertyField(m_logsFlushingTimeProperty);
 
             var saveEvents = (SaveEvents)m_enabledSaveEventsProperty.enumValueFlag;
             GUI.enabled = saveEvents.HasFlag(SaveEvents.PeriodicSave);

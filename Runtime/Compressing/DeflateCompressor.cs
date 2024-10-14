@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Settings;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
-using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
@@ -21,7 +20,7 @@ namespace SaveSystemPackage.Compressing {
             get => m_compressionLevel;
             set {
                 m_compressionLevel = value;
-                Logger.Log(nameof(DeflateCompressor), $"Set compression level: {m_compressionLevel}");
+                SaveSystem.Logger.Log(nameof(DeflateCompressor), $"Set compression level: {m_compressionLevel}");
             }
         }
 
