@@ -18,6 +18,7 @@ namespace SaveSystemPackage.Settings {
         public bool automaticInitialize = true;
         public LogLevel enabledLogs = LogLevel.Warning | LogLevel.Error;
         public SaveEvents enabledSaveEvents;
+        public float logsFlushingTime = 5;
 
         [Min(0)]
         [Tooltip(Tooltips.SavePeriod)]

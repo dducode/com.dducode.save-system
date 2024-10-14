@@ -23,6 +23,10 @@ namespace SaveSystemPackage {
             s_synchronizationPoint.Clear();
             exitCancellation.Cancel();
             s_periodicSaveLastTime = 0;
+            Logger.FlushLogs();
+            if (Logger is Logger defaultLogger)
+                defaultLogger.Dispose();
+            Logger = null;
             Settings = null;
             Game = null;
             ProfilesManager = null;

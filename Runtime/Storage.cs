@@ -27,9 +27,12 @@ namespace SaveSystemPackage {
         internal static Directory ScreenshotsDirectory =>
             s_screenshotsDirectory ??= Root.GetOrCreateDirectory("screenshots");
 
+        internal static Directory LogDirectory => s_logDirectory ??= Root.GetOrCreateDirectory("logs");
+
         private static Directory s_root;
         private static Directory s_cacheRoot;
         private static Directory s_screenshotsDirectory;
+        private static Directory s_logDirectory;
 
 
         /// <returns> Returns the size of the data in bytes </returns>

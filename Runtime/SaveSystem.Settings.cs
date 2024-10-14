@@ -36,6 +36,8 @@ namespace SaveSystemPackage {
                 set => Logger.EnabledLogs = value;
             }
 
+            public float LogsFlushingTime { get; set; }
+
             /// <summary>
             /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
             /// </summary>
@@ -130,7 +132,8 @@ namespace SaveSystemPackage {
 
 
             private SystemSettings (SaveSystemSettings settings) {
-                EnabledLogs = settings.enabledLogs;
+                Logger = new Logger(settings.enabledLogs, Storage.LogDirectory);
+                LogsFlushingTime = settings.logsFlushingTime;
                 EnabledSaveEvents = settings.enabledSaveEvents;
                 SavePeriod = settings.savePeriod;
                 PlayerTag = settings.playerTag;
@@ -203,7 +206,8 @@ namespace SaveSystemPackage {
                 }
                 else {
                     if (settings.compress)
-                        return new CompressionSerializer(serializer, new DeflateCompressor(settings.compressionSettings));
+                        return new CompressionSerializer(serializer,
+                            new DeflateCompressor(settings.compressionSettings));
                     else if (settings.encrypt)
                         return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
                     else

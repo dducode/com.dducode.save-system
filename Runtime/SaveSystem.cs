@@ -6,12 +6,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
-using SaveSystemPackage.Internal.Templates;
 using SaveSystemPackage.Settings;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
-using Logger = SaveSystemPackage.Internal.Logger;
 
 // ReSharper disable SuspiciousTypeConversion.Global
 
@@ -24,12 +22,11 @@ namespace SaveSystemPackage {
         /// It will be canceled before exit game
         internal static CancellationTokenSource exitCancellation;
 
-        internal static Logger Logger { get; private set; }
-
         private static readonly SynchronizationPoint s_synchronizationPoint = new();
 
         private static bool s_periodicSaveEnabled;
         private static float s_periodicSaveLastTime;
+        private static float s_logsFlushingLastTime;
 
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -54,18 +51,6 @@ namespace SaveSystemPackage {
                 PlayerLoop.SetPlayerLoop(modifiedLoop);
             else
                 Logger.LogError(nameof(SaveSystem), $"Failed insert system: {saveSystemLoop}");
-        }
-
-
-        private static void SetSettings (SaveSystemSettings settings) {
-            if (settings == null) {
-                settings = ScriptableObject.CreateInstance<SaveSystemSettings>();
-                Debug.LogWarning(Logger.FormattedMessage(
-                    nameof(SaveSystem), Messages.SettingsNotFound
-                ));
-            }
-
-            Settings = settings;
         }
 
 
@@ -94,6 +79,9 @@ namespace SaveSystemPackage {
 
             if (s_periodicSaveEnabled)
                 PeriodicSave();
+
+            if (s_logsFlushingLastTime + Settings.LogsFlushingTime < Time.time)
+                Logger.FlushLogs();
 
             OnUpdateSystem?.Invoke();
         }
