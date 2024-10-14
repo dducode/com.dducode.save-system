@@ -2,9 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
-using System.Threading;
-using System.Threading.Tasks;
-using SaveSystemPackage.Internal;
 using SaveSystemPackage.Settings;
 using CompressionLevel = System.IO.Compression.CompressionLevel;
 
@@ -56,42 +53,6 @@ namespace SaveSystemPackage.Compressing {
             using (var compressor = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress))
                 compressor.CopyTo(memoryStream);
             return memoryStream.ToArray();
-        }
-
-
-        public async Task Compress (Stream stream, CancellationToken token = default) {
-            stream.Position = 0;
-
-            try {
-                using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("compress");
-                await using FileStream cacheStream = cacheFile.Open();
-                await using (var compressor = new DeflateStream(cacheStream, m_compressionLevel, true))
-                    await stream.CopyToAsync(compressor, token);
-                stream.SetLength(0);
-                cacheStream.Position = 0;
-                await cacheStream.CopyToAsync(stream, token);
-            }
-            finally {
-                stream.Position = 0;
-            }
-        }
-
-
-        public async Task Decompress (Stream stream, CancellationToken token = default) {
-            stream.Position = 0;
-
-            try {
-                using TempFile cacheFile = Storage.CacheRoot.CreateTempFile("decompress");
-                await using FileStream cacheStream = cacheFile.Open();
-                await stream.CopyToAsync(cacheStream, token);
-                stream.SetLength(0);
-                cacheStream.Position = 0;
-                await using var decompressor = new DeflateStream(cacheStream, CompressionMode.Decompress);
-                await decompressor.CopyToAsync(stream, token);
-            }
-            finally {
-                stream.Position = 0;
-            }
         }
 
 
