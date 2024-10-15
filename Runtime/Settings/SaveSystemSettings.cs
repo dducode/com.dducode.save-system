@@ -45,8 +45,6 @@ namespace SaveSystemPackage.Settings {
         public bool encrypt;
         public EncryptionSettings encryptionSettings;
 
-        public JsonSerializerSettings jsonSerializerSettings;
-
         [Min(0), Tooltip(Tooltips.CacheSize)]
         public int cacheSize = 64;
 

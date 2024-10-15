@@ -1,15 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+using UnityEngine;
 
 namespace SaveSystemPackage {
 
     [XmlRoot("map")]
     [Serializable]
-    public class Map<Tkey, TValue> : Dictionary<Tkey, TValue>, IXmlSerializable {
+    public class Map<Tkey, TValue> : Dictionary<Tkey, TValue>, IXmlSerializable, ISerializationCallbackReceiver {
+
+        [SerializeField]
+        private SerializableKeyValuePair<Tkey, TValue>[] map;
 
         public Map () { }
         public Map (Dictionary<Tkey, TValue> dictionary) : base(dictionary) { }
@@ -21,7 +26,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public virtual void ReadXml (XmlReader reader) {
+        public void ReadXml (XmlReader reader) {
             if (reader.IsEmptyElement)
                 return;
 
@@ -49,7 +54,7 @@ namespace SaveSystemPackage {
         }
 
 
-        public virtual void WriteXml (XmlWriter writer) {
+        public void WriteXml (XmlWriter writer) {
             var keySerializer = new XmlSerializer(typeof(Tkey));
             var valueSerializer = new XmlSerializer(typeof(TValue));
 
@@ -66,6 +71,19 @@ namespace SaveSystemPackage {
 
                 writer.WriteEndElement();
             }
+        }
+
+
+        public void OnBeforeSerialize () {
+            map = this
+               .Select(item => (SerializableKeyValuePair<Tkey, TValue>)item)
+               .ToArray();
+        }
+
+
+        public void OnAfterDeserialize () {
+            foreach ((Tkey key, TValue value) in map)
+                Add(key, value);
         }
 
     }
