@@ -3,8 +3,8 @@
     public enum SerializerType {
 
         BinarySerializer,
-        JsonSerializer,
-        XmlSerializer,
+        JSONSerializer,
+        XMLSerializer,
         Custom
 
     }

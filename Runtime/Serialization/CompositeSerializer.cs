@@ -1,4 +1,6 @@
-﻿using SaveSystemPackage.Compressing;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using SaveSystemPackage.Compressing;
 using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage.Serialization {
@@ -19,7 +21,12 @@ namespace SaveSystemPackage.Serialization {
         }
 
 
-        public byte[] Serialize<TData> (TData data) where TData : ISaveData {
+        public byte[] Serialize<TData> ([NotNull] TData data) where TData : ISaveData {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.IsEmpty)
+                return Array.Empty<byte>();
+
             byte[] serializedData = m_baseSerializer.Serialize(data);
             byte[] compressedData = m_compressor.Compress(serializedData);
             return m_encryptor.Encrypt(compressedData);
@@ -27,6 +34,9 @@ namespace SaveSystemPackage.Serialization {
 
 
         public TData Deserialize<TData> (byte[] data) where TData : ISaveData {
+            if (data == null || data.Length == 0)
+                return default;
+
             byte[] decryptedData = m_encryptor.Decrypt(data);
             byte[] decompressedData = m_compressor.Decompress(decryptedData);
             return m_baseSerializer.Deserialize<TData>(decompressedData);

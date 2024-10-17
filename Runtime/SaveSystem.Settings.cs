@@ -183,10 +183,10 @@ namespace SaveSystemPackage {
                     case SerializerType.BinarySerializer:
                         serializer = new BinarySerializer();
                         break;
-                    case SerializerType.JsonSerializer:
+                    case SerializerType.JSONSerializer:
                         serializer = new JsonSerializer();
                         break;
-                    case SerializerType.XmlSerializer:
+                    case SerializerType.XMLSerializer:
                         serializer = new XmlSerializer();
                         break;
                     case SerializerType.Custom:

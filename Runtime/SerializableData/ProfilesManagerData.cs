@@ -6,6 +6,7 @@ namespace SaveSystemPackage.SerializableData {
     public struct ProfilesManagerData : ISaveData {
 
         public Map<string, string> profilesMap;
+        public bool IsEmpty => profilesMap.Count == 0;
 
     }
 

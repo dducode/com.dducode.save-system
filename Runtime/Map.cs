@@ -27,8 +27,10 @@ namespace SaveSystemPackage {
 
 
         public void ReadXml (XmlReader reader) {
-            if (reader.IsEmptyElement)
+            if (reader.IsEmptyElement) {
+                reader.Read();
                 return;
+            }
 
             var keySerializer = new XmlSerializer(typeof(Tkey));
             var valueSerializer = new XmlSerializer(typeof(TValue));
@@ -49,8 +51,11 @@ namespace SaveSystemPackage {
                 reader.ReadEndElement();
 
                 Add((Tkey)key, (TValue)value);
-                reader.Read();
+
+                reader.MoveToContent();
             }
+
+            reader.ReadEndElement();
         }
 
 

@@ -9,6 +9,11 @@ namespace SaveSystemPackage.SerializableData {
         public string name;
         public string iconId;
 
+        public bool IsEmpty =>
+            string.IsNullOrEmpty(id)
+            && string.IsNullOrEmpty(name)
+            && string.IsNullOrEmpty(iconId);
+
     }
 
 }

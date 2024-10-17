@@ -1,4 +1,6 @@
-﻿using SaveSystemPackage.Security;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using SaveSystemPackage.Security;
 
 namespace SaveSystemPackage.Serialization {
 
@@ -14,13 +16,21 @@ namespace SaveSystemPackage.Serialization {
         }
 
 
-        public byte[] Serialize<TData> (TData data) where TData : ISaveData {
+        public byte[] Serialize<TData> ([NotNull] TData data) where TData : ISaveData {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.IsEmpty)
+                return Array.Empty<byte>();
+
             byte[] serializedData = m_baseSerializer.Serialize(data);
             return m_encryptor.Encrypt(serializedData);
         }
 
 
         public TData Deserialize<TData> (byte[] data) where TData : ISaveData {
+            if (data == null || data.Length == 0)
+                return default;
+
             byte[] decryptedData = m_encryptor.Decrypt(data);
             return m_baseSerializer.Deserialize<TData>(decryptedData);
         }

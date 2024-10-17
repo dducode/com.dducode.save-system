@@ -11,6 +11,8 @@ namespace SaveSystemPackage.SerializableData {
         public float z;
         public float w;
 
+        public bool IsEmpty => false;
+
 
         public QuaternionData (float x, float y, float z, float w) {
             this.x = x;

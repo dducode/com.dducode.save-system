@@ -48,8 +48,14 @@ namespace SaveSystemPackage {
         }
 
 
-        public virtual async Task SaveData<TData> (TData data, CancellationToken token = default)
-            where TData : ISaveData {
+        public virtual async Task SaveData<TData> (
+            [NotNull] TData data, CancellationToken token = default
+        ) where TData : ISaveData {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.IsEmpty)
+                return;
+
             try {
                 token.ThrowIfCancellationRequested();
                 string key = KeyProvider.Provide<TData>();
@@ -62,8 +68,16 @@ namespace SaveSystemPackage {
         }
 
 
-        public virtual async Task SaveData<TData> (string key, TData data, CancellationToken token = default)
-            where TData : ISaveData {
+        public virtual async Task SaveData<TData> (
+            [NotNull] string key, [NotNull] TData data, CancellationToken token = default
+        ) where TData : ISaveData {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (data.IsEmpty)
+                return;
+
             try {
                 token.ThrowIfCancellationRequested();
                 string resultKey = KeyProvider.Provide<TData>(key);
@@ -95,8 +109,11 @@ namespace SaveSystemPackage {
 
 
         public virtual async Task<TData> LoadData<TData> (
-            string key, TData @default = default, CancellationToken token = default
+            [NotNull] string key, TData @default = default, CancellationToken token = default
         ) where TData : ISaveData {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
             try {
                 token.ThrowIfCancellationRequested();
                 string resultKey = KeyProvider.Provide<TData>(key);
@@ -118,7 +135,9 @@ namespace SaveSystemPackage {
         }
 
 
-        public virtual async Task DeleteData<TData> (string key) where TData : ISaveData {
+        public virtual async Task DeleteData<TData> ([NotNull] string key) where TData : ISaveData {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
             string resultKey = KeyProvider.Provide<TData>(key);
             await DataStorage.Delete(resultKey);
         }

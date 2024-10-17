@@ -11,6 +11,8 @@ namespace SaveSystemPackage.Tests.TestObjects {
         public Color color;
         public MeshData meshData;
 
+        public bool IsEmpty => false;
+
     }
 
 }

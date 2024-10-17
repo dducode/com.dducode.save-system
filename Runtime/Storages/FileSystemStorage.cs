@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using Directory = SaveSystemPackage.Internal.Directory;
 using File = SaveSystemPackage.Internal.File;
@@ -19,7 +21,12 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public async Task Write (string key, byte[] data, CancellationToken token) {
+        public async Task Write ([NotNull] string key, byte[] data, CancellationToken token) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (data == null || data.Length == 0)
+                return;
+
             token.ThrowIfCancellationRequested();
             File file = m_folder.GetOrCreateFile(key, m_fileExtension);
             await file.WriteAllBytesAsync(data, token);
@@ -28,7 +35,9 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public async Task<byte[]> Read (string key, CancellationToken token) {
+        public async Task<byte[]> Read ([NotNull] string key, CancellationToken token) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
             token.ThrowIfCancellationRequested();
 
             if (await m_cacheStorage.Exists(key)) {
@@ -43,7 +52,9 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public async Task Delete (string key) {
+        public async Task Delete ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
             await m_cacheStorage.Delete(key);
             m_folder.DeleteFile(key);
         }
@@ -55,7 +66,9 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public async Task<bool> Exists (string key) {
+        public async Task<bool> Exists ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
             return await m_cacheStorage.Exists(key) || m_folder.ContainsFile(key);
         }
 

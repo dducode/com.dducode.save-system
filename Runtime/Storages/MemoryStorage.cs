@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,12 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public Task Write (string key, byte[] data, CancellationToken token = default) {
+        public Task Write ([NotNull] string key, byte[] data, CancellationToken token = default) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+            if (data == null || data.Length == 0)
+                return Task.CompletedTask;
+
             token.ThrowIfCancellationRequested();
             if (m_cache.TryGetValue(key, out byte[] value))
                 m_cacheSize -= value.Length;
@@ -36,7 +42,10 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public Task<byte[]> Read (string key, CancellationToken token = default) {
+        public Task<byte[]> Read ([NotNull] string key, CancellationToken token = default) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
             token.ThrowIfCancellationRequested();
             if (!m_cache.ContainsKey(key))
                 throw new KeyNotFoundException("Requested key doesn't exist in memory storage");
@@ -45,7 +54,10 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public Task Delete (string key) {
+        public Task Delete ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
+
             if (m_cache.TryGetValue(key, out byte[] value))
                 m_cacheSize -= value.Length;
             m_cache.Remove(key);
@@ -66,7 +78,9 @@ namespace SaveSystemPackage.Storages {
         }
 
 
-        public Task<bool> Exists (string key) {
+        public Task<bool> Exists ([NotNull] string key) {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentNullException(nameof(key));
             return Task.FromResult(m_cache.ContainsKey(key));
         }
 

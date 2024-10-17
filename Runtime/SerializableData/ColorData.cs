@@ -11,6 +11,8 @@ namespace SaveSystemPackage.SerializableData {
         public float b;
         public float a;
 
+        public bool IsEmpty => false;
+
 
         public ColorData (float r, float g, float b, float a) {
             this.r = r;

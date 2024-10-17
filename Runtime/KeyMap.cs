@@ -3,8 +3,7 @@ using SaveSystemPackage.SerializableData;
 
 namespace SaveSystemPackage {
 
-    [Serializable]
-    public class KeyMap : Map<Type, string>, ISaveData {
+    public class KeyMap : Map<Type, string> {
 
         internal static KeyMap PredefinedMap = new() {
             {typeof(ColorData), "color-data"},
