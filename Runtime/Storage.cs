@@ -1,5 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
+using JetBrains.Annotations;
 using UnityEngine;
 using Directory = SaveSystemPackage.Internal.Directory;
 
@@ -15,19 +17,19 @@ namespace SaveSystemPackage {
         internal static Directory Root =>
             s_root ??= Directory.CreateRoot("save-system", Application.persistentDataPath);
 
-        internal static Directory InternalDirectory => Root.GetOrCreateDirectory(".internal", FileAttributes.Hidden);
-        internal static Directory ScenesDirectory => Root.GetOrCreateDirectory("scenes");
-        internal static Directory ProfilesDirectory => Root.GetOrCreateDirectory("profiles");
+        internal static Directory InternalDirectory => Root.CreateDirectory(".internal", FileAttributes.Hidden);
+        internal static Directory ScenesDirectory => Root.CreateDirectory("scenes");
+        internal static Directory ProfilesDirectory => Root.CreateDirectory("profiles");
 
         internal static Directory CacheRoot =>
             s_cacheRoot ??= Directory.CreateRoot("save-system", Application.temporaryCachePath);
 
-        internal static Directory TestsDirectory => CacheRoot.GetOrCreateDirectory("tests");
+        internal static Directory TestsDirectory => CacheRoot.CreateDirectory("tests");
 
         internal static Directory ScreenshotsDirectory =>
-            s_screenshotsDirectory ??= Root.GetOrCreateDirectory("screenshots");
+            s_screenshotsDirectory ??= Root.CreateDirectory("screenshots");
 
-        internal static Directory LogDirectory => s_logDirectory ??= CacheRoot.GetOrCreateDirectory("logs");
+        internal static Directory LogDirectory => s_logDirectory ??= CacheRoot.CreateDirectory("logs");
 
         private static Directory s_root;
         private static Directory s_cacheRoot;
@@ -89,6 +91,20 @@ namespace SaveSystemPackage {
             }
 
             return label;
+        }
+
+
+        internal static Directory CreateDirectory ([NotNull] string path) {
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentNullException(nameof(path));
+            if (string.Equals(Root.Path, path))
+                return Root;
+
+            string[] chunks = Path.GetRelativePath(Root.Path, path).Split(Path.DirectorySeparatorChar);
+            Directory directory = Root;
+            foreach (string chunk in chunks)
+                directory = directory.CreateDirectory(chunk);
+            return directory;
         }
 
 

@@ -58,7 +58,7 @@ namespace SaveSystemPackage.Internal {
         }
 
 
-        internal Directory GetOrCreateDirectory (string name, FileAttributes attributes = 0) {
+        internal Directory CreateDirectory (string name, FileAttributes attributes = 0) {
             if (!m_directories.ContainsKey(name))
                 m_directories.Add(name, new Directory(name, this, attributes));
             return m_directories[name];

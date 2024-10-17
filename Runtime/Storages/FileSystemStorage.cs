@@ -2,8 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using Directory = SaveSystemPackage.Internal.Directory;
-using File = SaveSystemPackage.Internal.File;
+using SaveSystemPackage.Internal;
 
 namespace SaveSystemPackage.Storages {
 
@@ -12,6 +11,13 @@ namespace SaveSystemPackage.Storages {
         private readonly Directory m_folder;
         private readonly IDataStorage m_cacheStorage;
         private readonly string m_fileExtension;
+
+
+        public FileSystemStorage (string folderPath, string fileExtension, int cacheCapacity = 64) {
+            m_folder = Storage.CreateDirectory(folderPath);
+            m_cacheStorage = new MemoryStorage(cacheCapacity);
+            m_fileExtension = fileExtension;
+        }
 
 
         internal FileSystemStorage (Directory directory, string fileExtension, int cacheCapacity = 64) {

@@ -31,13 +31,13 @@ namespace SaveSystemPackage {
             int cacheSize = SaveSystem.Settings.CacheSize;
 
             if (profile == null) {
-                Directory directory = Storage.ScenesDirectory.GetOrCreateDirectory(id);
+                Directory directory = Storage.ScenesDirectory.CreateDirectory(id);
                 SceneContext.KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name);
                 SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
                 SaveSystem.Game.SceneContext = SceneContext;
             }
             else {
-                Directory directory = profile.directory.GetOrCreateDirectory(id);
+                Directory directory = profile.directory.CreateDirectory(id);
                 SceneContext.KeyProvider = new KeyDecorator(profile.KeyProvider, directory.Name);
                 SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
                 profile.SceneContext = SceneContext;

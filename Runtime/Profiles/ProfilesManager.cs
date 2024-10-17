@@ -80,7 +80,7 @@ namespace SaveSystemPackage.Profiles {
 
 
         private SaveProfile CreateProfileInstance (ProfileData profileData) {
-            Directory directory = Storage.ProfilesDirectory.GetOrCreateDirectory(profileData.id);
+            Directory directory = Storage.ProfilesDirectory.CreateDirectory(profileData.id);
             return new SaveProfile(profileData, directory) {
                 Serializer = SaveSystem.Settings.SharedSerializer,
                 KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name),
