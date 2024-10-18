@@ -95,12 +95,14 @@ namespace SaveSystemPackage {
 
 
         internal static Directory CreateDirectory ([NotNull] string path) {
-            if (string.IsNullOrEmpty(path))
+            if (path == null)
                 throw new ArgumentNullException(nameof(path));
-            if (string.Equals(Root.Path, path))
+            if (Path.IsPathRooted(path))
+                throw new InvalidOperationException("Path must be relative to the root directory");
+            if (string.Equals(path, string.Empty))
                 return Root;
 
-            string[] chunks = Path.GetRelativePath(Root.Path, path).Split(Path.DirectorySeparatorChar);
+            string[] chunks = path.Split(Path.DirectorySeparatorChar);
             Directory directory = Root;
             foreach (string chunk in chunks)
                 directory = directory.CreateDirectory(chunk);
