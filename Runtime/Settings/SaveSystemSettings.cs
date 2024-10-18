@@ -53,7 +53,7 @@ namespace SaveSystemPackage.Settings {
 
 
         internal static SaveSystemSettings Load () {
-            return Resources.Load<SaveSystemSettings>($"Save System/{nameof(SaveSystemSettings)}");
+            return Resources.Load<SaveSystemSettings>($"{nameof(SaveSystemSettings)}");
         }
 
 

@@ -6,6 +6,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
+using SaveSystemPackage.Serialization;
 using SaveSystemPackage.Settings;
 using UnityEngine;
 using UnityEngine.LowLevel;
@@ -18,11 +19,12 @@ namespace SaveSystemPackage {
     public static partial class SaveSystem {
 
         internal static event Action OnUpdateSystem;
-
-        /// It will be canceled before exit game
-        internal static CancellationTokenSource exitCancellation;
+        internal static readonly ISerializer EditorSerializer = new YamlSerializer();
 
         private static readonly SynchronizationPoint s_synchronizationPoint = new();
+
+        /// It will be canceled before exit game
+        private static CancellationTokenSource exitCancellation;
 
         private static bool s_periodicSaveEnabled;
         private static float s_periodicSaveLastTime;

@@ -15,7 +15,7 @@ namespace SaveSystemPackage.Providers {
         public string Provide<TData> () where TData : ISaveData {
             Type type = typeof(TData);
             if (!m_keyMap.ContainsKey(type))
-                throw new InvalidOperationException($"Key store doesn't contain a key for type \"{type.Name}\"");
+                throw new InvalidOperationException($"Key store doesn't contain a key for type \"{type.FullName}\"");
             return m_keyMap[type];
         }
 

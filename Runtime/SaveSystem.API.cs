@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Profiles;
 using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
@@ -49,6 +50,8 @@ namespace SaveSystemPackage {
 
         public static async Task Initialize () {
             try {
+                KeyMap.PredefinedMap.Concat(ResourcesManager.LoadKeyMapConfig());
+
                 using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
                     Settings = settings;
                     Game = new Game {
