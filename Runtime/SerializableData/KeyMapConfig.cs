@@ -9,14 +9,14 @@ namespace SaveSystemPackage.SerializableData {
 
         internal static readonly KeyMapConfig Template = new() {
             new KeyMapItem {
-                assemblyName = "YourFirstAssemblyName",
+                assemblyName = "YourFirstAssemblyName, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
                 types = new Map<string, string> {
                     {"YourNamespace.YourFirstExampleType", "first-type-key"},
                     {"YourNamespace.YourSecondExampleType", "second-type-key"},
                 }
             },
             new KeyMapItem {
-                assemblyName = "YourSecondAssemblyName",
+                assemblyName = "YourSecondAssemblyName, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
                 types = new Map<string, string> {
                     {"YourNamespace.YourThirdExampleType", "third-type-key"},
                 }

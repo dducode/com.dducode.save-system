@@ -1,12 +1,15 @@
 {
   "name": "com.dducode.save-system",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "displayName": "Save System",
   "unity": "2021.3",
   "description": "Use this save system to save and load your game objects",
   "documentationUrl": "https://dducode.github.io/save-system-docs/index.html",
   "licensesUrl": "https://dducode.github.io/save-system-docs/license/LICENSE.html",
   "changelogUrl": "https://dducode.github.io/save-system-docs/changelog/CHANGELOG.html",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  },
   "author": {
     "name": "dducode",
     "email": "dducode98@gmail.com"
