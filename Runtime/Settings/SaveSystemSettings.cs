@@ -5,6 +5,7 @@
 using System;
 using System.Text;
 using SaveSystemPackage.Internal.Templates;
+using SaveSystemPackage.Serialization;
 using UnityEngine;
 
 #if ENABLE_INPUT_SYSTEM
@@ -47,6 +48,8 @@ namespace SaveSystemPackage.Settings {
 
         [Min(0), Tooltip(Tooltips.CacheSize)]
         public int cacheSize = 64;
+
+        public JsonSerializationSettings jsonSerializationSettings;
 
 
         internal static SaveSystemSettings Load () {

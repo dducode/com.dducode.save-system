@@ -3,10 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using SaveSystemPackage.Internal;
+using YamlDotNet.Serialization;
 
 namespace SaveSystemPackage.Serialization {
 
-    public class XmlSerializer : ISerializer {
+    public class YamlSerializer : ISerializer {
 
         public byte[] Serialize<TData> ([NotNull] TData data) where TData : ISaveData {
             if (data == null)
@@ -17,7 +18,7 @@ namespace SaveSystemPackage.Serialization {
             using var stream = new MemoryStream();
 
             using (var writer = new StreamWriter(stream, Encoding.UTF8)) {
-                var serializer = new System.Xml.Serialization.XmlSerializer(typeof(TData));
+                YamlDotNet.Serialization.ISerializer serializer = new SerializerBuilder().Build();
                 serializer.Serialize(writer, data);
             }
 
@@ -30,13 +31,13 @@ namespace SaveSystemPackage.Serialization {
                 return default;
 
             using var reader = new StreamReader(new MemoryStream(data), Encoding.UTF8);
-            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(TData));
-            return (TData)serializer.Deserialize(reader);
+            IDeserializer deserializer = new DeserializerBuilder().Build();
+            return deserializer.Deserialize<TData>(reader);
         }
 
 
         public string GetFormatCode () {
-            return CodeFormats.XML;
+            return CodeFormats.YAML;
         }
 
     }

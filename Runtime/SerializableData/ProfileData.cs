@@ -1,4 +1,6 @@
 ﻿using System;
+using Newtonsoft.Json;
+using YamlDotNet.Serialization;
 
 namespace SaveSystemPackage.SerializableData {
 
@@ -9,6 +11,7 @@ namespace SaveSystemPackage.SerializableData {
         public string name;
         public string iconId;
 
+        [YamlIgnore, JsonIgnore]
         public bool IsEmpty =>
             string.IsNullOrEmpty(id)
             && string.IsNullOrEmpty(name)

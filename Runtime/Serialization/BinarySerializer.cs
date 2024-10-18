@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using SaveSystemPackage.Internal;
 
 namespace SaveSystemPackage.Serialization {
 
@@ -23,6 +24,7 @@ namespace SaveSystemPackage.Serialization {
         public TData Deserialize<TData> (byte[] data) where TData : ISaveData {
             if (data == null || data.Length == 0)
                 return default;
+
             using var stream = new MemoryStream(data);
             var formatter = new BinaryFormatter();
             return (TData)formatter.Deserialize(stream);

@@ -17,8 +17,6 @@ namespace SaveSystemPackage.SerializableData {
 
         public Vector3Data scale;
 
-        public bool IsEmpty => false;
-
 
         public static implicit operator TransformData (Transform transform) {
             return new TransformData {

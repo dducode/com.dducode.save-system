@@ -9,8 +9,6 @@ namespace SaveSystemPackage.SerializableData {
         public float x;
         public float y;
 
-        public bool IsEmpty => false;
-
 
         public Vector2Data (float x, float y) {
             this.x = x;

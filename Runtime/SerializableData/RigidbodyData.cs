@@ -12,8 +12,6 @@ namespace SaveSystemPackage.SerializableData {
         public Vector3Data angularVelocity;
         public bool isKinematic;
 
-        public bool IsEmpty => false;
-
 
         public static implicit operator RigidbodyData (Rigidbody rigidbody) {
             return new RigidbodyData {

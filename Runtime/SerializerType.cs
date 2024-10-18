@@ -5,6 +5,7 @@
         BinarySerializer,
         JSONSerializer,
         XMLSerializer,
+        YAMLSerializer,
         Custom
 
     }

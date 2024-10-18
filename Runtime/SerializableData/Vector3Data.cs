@@ -10,8 +10,6 @@ namespace SaveSystemPackage.SerializableData {
         public float y;
         public float z;
 
-        public bool IsEmpty => false;
-
 
         public Vector3Data (float x, float y, float z) {
             this.x = x;

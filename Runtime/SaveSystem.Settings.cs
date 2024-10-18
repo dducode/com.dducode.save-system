@@ -184,10 +184,13 @@ namespace SaveSystemPackage {
                         serializer = new BinarySerializer();
                         break;
                     case SerializerType.JSONSerializer:
-                        serializer = new JsonSerializer();
+                        serializer = new JsonSerializer(settings.jsonSerializationSettings);
                         break;
                     case SerializerType.XMLSerializer:
                         serializer = new XmlSerializer();
+                        break;
+                    case SerializerType.YAMLSerializer:
+                        serializer = new YamlSerializer();
                         break;
                     case SerializerType.Custom:
                         serializer = null;

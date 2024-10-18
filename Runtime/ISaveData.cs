@@ -1,8 +1,12 @@
-﻿namespace SaveSystemPackage {
+﻿using Newtonsoft.Json;
+using YamlDotNet.Serialization;
+
+namespace SaveSystemPackage {
 
     public interface ISaveData {
 
-        public bool IsEmpty { get; }
+        [YamlIgnore, JsonIgnore]
+        public bool IsEmpty => false;
 
     }
 

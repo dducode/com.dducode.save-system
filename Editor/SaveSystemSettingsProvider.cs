@@ -47,6 +47,7 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
         private SerializedProperty m_cacheSizeProperty;
+        private SerializedProperty m_jsonSerializationSettingsProperty;
 
 
         [SettingsProvider]
@@ -134,6 +135,9 @@ namespace SaveSystemPackage.Editor {
                 nameof(SaveSystemSettings.encryptionSettings)
             );
             m_cacheSizeProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.cacheSize));
+            m_jsonSerializationSettingsProperty = m_serializedSettings.FindProperty(
+                nameof(SaveSystemSettings.jsonSerializationSettings)
+            );
         }
 
 
@@ -171,6 +175,7 @@ namespace SaveSystemPackage.Editor {
 
             EditorGUILayout.PropertyField(m_serializerType);
             EditorGUILayout.PropertyField(m_cacheSizeProperty);
+            DrawJsonSerializationSettings();
             DrawCompressionSettings();
             DrawEncryptionSettings();
 
@@ -215,6 +220,13 @@ namespace SaveSystemPackage.Editor {
             );
 
             EditorGUILayout.Space(15);
+        }
+
+
+        private void DrawJsonSerializationSettings () {
+            var serializerType = (SerializerType)m_serializerType.enumValueIndex;
+            if (serializerType is SerializerType.JSONSerializer)
+                EditorGUILayout.PropertyField(m_jsonSerializationSettingsProperty);
         }
 
 
