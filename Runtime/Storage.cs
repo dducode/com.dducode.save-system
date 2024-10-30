@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using JetBrains.Annotations;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using Directory = SaveSystemPackage.Internal.Directory;
 
 // ReSharper disable UnusedMember.Global
@@ -14,9 +15,7 @@ namespace SaveSystemPackage {
     /// </summary>
     public static class Storage {
 
-        internal static Directory Root =>
-            s_root ??= Directory.CreateRoot("save-system", Application.persistentDataPath);
-
+        internal static Directory Root => s_root ??= CreateRoot();
         internal static Directory InternalDirectory => Root.CreateDirectory(".internal", FileAttributes.Hidden);
         internal static Directory ScenesDirectory => Root.CreateDirectory("scenes");
         internal static Directory ProfilesDirectory => Root.CreateDirectory("profiles");
@@ -116,6 +115,12 @@ namespace SaveSystemPackage {
         [Conditional("UNITY_EDITOR")]
         internal static void DeleteAllData () {
             Root.Clear();
+        }
+
+
+        private static Directory CreateRoot () {
+            string name = Debug.isDebugBuild ? "save-system-debug" : "save-system";
+            return Directory.CreateRoot(name, Application.persistentDataPath);
         }
 
     }

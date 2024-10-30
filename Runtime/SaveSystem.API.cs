@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Internal;
 using SaveSystemPackage.Profiles;
-using SaveSystemPackage.Providers;
 using SaveSystemPackage.SerializableData;
 using SaveSystemPackage.Settings;
 using SaveSystemPackage.Storages;
@@ -56,7 +55,7 @@ namespace SaveSystemPackage {
                     Settings = settings;
                     Game = new Game {
                         Serializer = Settings.SharedSerializer,
-                        KeyProvider = new KeyStore(KeyMap = KeyMap.PredefinedMap),
+                        KeyProvider = KeyProviderFactory.Create(KeyMap = KeyMap.PredefinedMap),
                         DataStorage = new FileSystemStorage(
                             Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.cacheSize
                         )
