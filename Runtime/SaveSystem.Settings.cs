@@ -102,13 +102,13 @@ namespace SaveSystemPackage {
             public InputAction QuickSaveAction { get; set; }
         #endif
 
+            public ISerializer SharedSerializer { get; }
 
         #if ENABLE_BOTH_SYSTEMS
             internal UsedInputSystem UsedInputSystem { get; private set; }
         #endif
 
             internal FileSystemCacheSettings FileSystemCacheSettings { get; }
-            internal ISerializer SharedSerializer { get; }
 
             private SaveEvents m_enabledSaveEvents;
             private float m_savePeriod;
