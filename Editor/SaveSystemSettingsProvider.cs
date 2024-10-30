@@ -46,7 +46,7 @@ namespace SaveSystemPackage.Editor {
         private SerializedProperty m_compressionSettingsProperty;
         private SerializedProperty m_encryptProperty;
         private SerializedProperty m_encryptionSettingsProperty;
-        private SerializedProperty m_cacheSizeProperty;
+        private SerializedProperty m_fileSystemCacheSettings;
         private SerializedProperty m_jsonSerializationSettingsProperty;
 
 
@@ -134,7 +134,7 @@ namespace SaveSystemPackage.Editor {
             m_encryptionSettingsProperty = m_serializedSettings.FindProperty(
                 nameof(SaveSystemSettings.encryptionSettings)
             );
-            m_cacheSizeProperty = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.cacheSize));
+            m_fileSystemCacheSettings = m_serializedSettings.FindProperty(nameof(SaveSystemSettings.fileSystemCacheSettings));
             m_jsonSerializationSettingsProperty = m_serializedSettings.FindProperty(
                 nameof(SaveSystemSettings.jsonSerializationSettings)
             );
@@ -173,9 +173,9 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.PropertyField(m_savePeriodProperty);
             GUI.enabled = true;
 
-            EditorGUILayout.PropertyField(m_serializerType);
-            EditorGUILayout.PropertyField(m_cacheSizeProperty);
-            DrawJsonSerializationSettings();
+            DrawSerializerTypeSettings();
+            EditorGUILayout.PropertyField(m_fileSystemCacheSettings);
+            EditorGUILayout.Space(15);
             DrawCompressionSettings();
             DrawEncryptionSettings();
 
@@ -223,7 +223,8 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        private void DrawJsonSerializationSettings () {
+        private void DrawSerializerTypeSettings () {
+            EditorGUILayout.PropertyField(m_serializerType);
             var serializerType = (SerializerType)m_serializerType.enumValueIndex;
             if (serializerType is SerializerType.JSONSerializer)
                 EditorGUILayout.PropertyField(m_jsonSerializationSettingsProperty);

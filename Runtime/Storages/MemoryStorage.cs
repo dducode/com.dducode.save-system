@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SaveSystemPackage.Internal;
 
 namespace SaveSystemPackage.Storages {
 
@@ -18,8 +19,8 @@ namespace SaveSystemPackage.Storages {
         private long m_cacheSize;
 
 
-        public MemoryStorage (int cacheCapacity = 64) {
-            m_cacheCapacity = (long)cacheCapacity * 1024;
+        public MemoryStorage (long cacheCapacity = SaveSystemConstants.FileSystemCacheSize) {
+            m_cacheCapacity = cacheCapacity;
         }
 
 

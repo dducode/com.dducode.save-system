@@ -57,7 +57,7 @@ namespace SaveSystemPackage {
                         Serializer = Settings.SharedSerializer,
                         KeyProvider = KeyProviderFactory.Create(KeyMap = KeyMap.PredefinedMap),
                         DataStorage = new FileSystemStorage(
-                            Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.cacheSize
+                            Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.fileSystemCacheSettings.GetSize()
                         )
                     };
                 }

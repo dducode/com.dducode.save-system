@@ -13,14 +13,18 @@ namespace SaveSystemPackage.Storages {
         private readonly string m_fileExtension;
 
 
-        public FileSystemStorage (string folderPath, string fileExtension, int cacheCapacity = 64) {
+        public FileSystemStorage (
+            string folderPath, string fileExtension, long cacheCapacity = SaveSystemConstants.FileSystemCacheSize
+        ) {
             m_folder = Storage.CreateDirectory(folderPath);
             m_cacheStorage = new MemoryStorage(cacheCapacity);
             m_fileExtension = fileExtension;
         }
 
 
-        internal FileSystemStorage (Directory directory, string fileExtension, int cacheCapacity = 64) {
+        internal FileSystemStorage (
+            Directory directory, string fileExtension, long cacheCapacity = SaveSystemConstants.FileSystemCacheSize
+        ) {
             m_folder = directory;
             m_cacheStorage = new MemoryStorage(cacheCapacity);
             m_fileExtension = fileExtension;
