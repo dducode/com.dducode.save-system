@@ -87,7 +87,7 @@ namespace SaveSystemPackage.Profiles {
                 DataStorage = new FileSystemStorage(
                     directory,
                     SaveSystem.Settings.SharedSerializer.GetFormatCode(),
-                    SaveSystem.Settings.CacheSize
+                    SaveSystem.Settings.FileSystemCacheSettings.GetSize()
                 )
             };
         }

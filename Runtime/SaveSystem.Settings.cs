@@ -4,13 +4,11 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
-using SaveSystemPackage.Compressing;
+using SaveSystemPackage.Internal;
 using SaveSystemPackage.Providers;
-using SaveSystemPackage.Security;
 using SaveSystemPackage.Serialization;
 using SaveSystemPackage.Settings;
 using UnityEngine;
-using JsonSerializer = SaveSystemPackage.Serialization.JsonSerializer;
 using Logger = SaveSystemPackage.Internal.Logger;
 
 #if ENABLE_INPUT_SYSTEM
@@ -37,7 +35,6 @@ namespace SaveSystemPackage {
             }
 
             public float LogsFlushingTime { get; set; }
-            public int CacheSize { get; set; }
 
             /// <summary>
             /// It's used to manage autosave loop, save on focus changed, on low memory and on quitting the game
@@ -105,14 +102,13 @@ namespace SaveSystemPackage {
             public InputAction QuickSaveAction { get; set; }
         #endif
 
-            public ISerializer SharedSerializer {
-                get => m_serializer;
-                set => m_serializer = value ?? throw new ArgumentNullException(nameof(SharedSerializer));
-            }
 
         #if ENABLE_BOTH_SYSTEMS
-            public UsedInputSystem UsedInputSystem { get; private set; }
+            internal UsedInputSystem UsedInputSystem { get; private set; }
         #endif
+
+            internal FileSystemCacheSettings FileSystemCacheSettings { get; }
+            internal ISerializer SharedSerializer { get; }
 
             private SaveEvents m_enabledSaveEvents;
             private float m_savePeriod;
@@ -123,7 +119,6 @@ namespace SaveSystemPackage {
             private KeyCode m_quickSaveKey;
         #endif
 
-            private ISerializer m_serializer;
             private IKeyProvider m_keyProvider;
 
 
@@ -140,8 +135,8 @@ namespace SaveSystemPackage {
                 PlayerTag = settings.playerTag;
 
                 SetupUserInputs(settings);
-                SharedSerializer = SelectSerializer(settings);
-                CacheSize = settings.cacheSize;
+                SharedSerializer = SerializersFactory.Create(settings);
+                FileSystemCacheSettings = settings.fileSystemCacheSettings;
             }
 
 
@@ -172,52 +167,6 @@ namespace SaveSystemPackage {
                 QuickSaveAction?.Enable();
             #endif
             #endif
-            }
-
-
-            private ISerializer SelectSerializer (SaveSystemSettings settings) {
-                SerializerType serializerType = settings.serializerType;
-                ISerializer serializer;
-
-                switch (serializerType) {
-                    case SerializerType.BinarySerializer:
-                        serializer = new BinarySerializer();
-                        break;
-                    case SerializerType.JSONSerializer:
-                        serializer = new JsonSerializer(settings.jsonSerializationSettings);
-                        break;
-                    case SerializerType.XMLSerializer:
-                        serializer = new XmlSerializer();
-                        break;
-                    case SerializerType.YAMLSerializer:
-                        serializer = new YamlSerializer();
-                        break;
-                    case SerializerType.Custom:
-                        serializer = null;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(serializerType), serializerType, null);
-                }
-
-                if (serializer == null)
-                    return null;
-
-                if (settings.encrypt && settings.compress) {
-                    return new CompositeSerializer(
-                        serializer,
-                        new AesEncryptor(settings.encryptionSettings),
-                        new DeflateCompressor(settings.compressionSettings)
-                    );
-                }
-                else {
-                    if (settings.compress)
-                        return new CompressionSerializer(serializer,
-                            new DeflateCompressor(settings.compressionSettings));
-                    else if (settings.encrypt)
-                        return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
-                    else
-                        return serializer;
-                }
             }
 
         }

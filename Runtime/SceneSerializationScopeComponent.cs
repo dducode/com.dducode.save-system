@@ -28,7 +28,7 @@ namespace SaveSystemPackage {
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
             string fileExtension = SaveSystem.Settings.SharedSerializer.GetFormatCode();
-            int cacheSize = SaveSystem.Settings.CacheSize;
+            int cacheSize = SaveSystem.Settings.FileSystemCacheSettings.GetSize();
 
             if (profile == null) {
                 Directory directory = Storage.ScenesDirectory.CreateDirectory(id);
