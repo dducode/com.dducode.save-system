@@ -7,6 +7,7 @@ namespace SaveSystemPackage.Settings {
     [Serializable]
     public class EncryptionSettings {
 
+        public bool enableInDebug;
         public bool useCustomCryptographer;
         public EncryptorReference reference;
         public bool useCustomProviders;

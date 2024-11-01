@@ -13,10 +13,10 @@ namespace SaveSystemPackage.Internal {
             ISerializer serializer = SelectBaseSerializer(settings);
             if (serializer == null)
                 return null;
-            if (Debug.isDebugBuild)
-                return serializer;
+            bool encrypt = settings.encrypt && (settings.encryptionSettings.enableInDebug || !Debug.isDebugBuild);
+            bool compress = settings.compress && (settings.compressionSettings.enableInDebug || !Debug.isDebugBuild);
 
-            if (settings.encrypt && settings.compress) {
+            if (encrypt && compress) {
                 return new CompositeSerializer(
                     serializer,
                     new AesEncryptor(settings.encryptionSettings),
@@ -24,10 +24,10 @@ namespace SaveSystemPackage.Internal {
                 );
             }
             else {
-                if (settings.compress)
-                    return new CompressionSerializer(serializer, new DeflateCompressor(settings.compressionSettings));
-                else if (settings.encrypt)
+                if (encrypt)
                     return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
+                else if (compress)
+                    return new CompressionSerializer(serializer, new DeflateCompressor(settings.compressionSettings));
                 else
                     return serializer;
             }

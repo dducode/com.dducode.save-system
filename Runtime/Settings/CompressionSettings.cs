@@ -7,6 +7,7 @@ namespace SaveSystemPackage.Settings {
     [Serializable]
     public class CompressionSettings {
 
+        public bool enableInDebug;
         public bool useCustomCompressor;
         public CompressorReference reference;
         public CompressionLevel compressionLevel = CompressionLevel.NoCompression;

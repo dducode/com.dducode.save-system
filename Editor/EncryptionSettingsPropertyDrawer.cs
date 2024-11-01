@@ -8,6 +8,11 @@ namespace SaveSystemPackage.Editor {
     [CustomPropertyDrawer(typeof(EncryptionSettings))]
     public class EncryptionSettingsPropertyDrawer : PropertyDrawer {
 
+        private readonly GUIContent enableInDebugLabel = new() {
+            text = "Enable In Debug",
+            tooltip = "Encryption doesn't used in debug mode by default, but you can enable it with this toggle"
+        };
+
         private bool m_editProperties;
         private bool m_foldout = true;
         private bool m_showSecureValues;
@@ -26,6 +31,7 @@ namespace SaveSystemPackage.Editor {
             m_editProperties = EditorGUILayout.ToggleLeft("Edit Properties", m_editProperties);
             if (!settings.useCustomCryptographer && !settings.useCustomProviders)
                 m_showSecureValues = EditorGUILayout.ToggleLeft("Show Secure Values", m_showSecureValues);
+            settings.enableInDebug = EditorGUILayout.ToggleLeft(enableInDebugLabel, settings.enableInDebug);
             GUI.enabled = m_editProperties;
 
             if (m_editProperties) {

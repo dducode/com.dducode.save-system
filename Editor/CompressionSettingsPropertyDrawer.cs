@@ -9,6 +9,12 @@ namespace SaveSystemPackage.Editor {
     [CustomPropertyDrawer(typeof(CompressionSettings))]
     public class CompressionSettingsPropertyDrawer : PropertyDrawer {
 
+        private readonly GUIContent enableInDebugLabel = new() {
+            text = "Enable In Debug",
+            tooltip = "Compression doesn't used in debug mode by default, but you can enable it with this toggle"
+        };
+
+
         public override float GetPropertyHeight (SerializedProperty property, GUIContent label) {
             return 0;
         }
@@ -19,6 +25,7 @@ namespace SaveSystemPackage.Editor {
             EditorGUILayout.LabelField("Compression Settings", EditorStyles.boldLabel);
             EditorGUI.indentLevel++;
 
+            settings.enableInDebug = EditorGUILayout.Toggle(enableInDebugLabel, settings.enableInDebug);
             settings.useCustomCompressor = EditorGUILayout.Toggle(
                 "Use Custom Compressor", settings.useCustomCompressor
             );
