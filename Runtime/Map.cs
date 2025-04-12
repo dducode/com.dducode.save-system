@@ -11,13 +11,13 @@ namespace SaveSystemPackage {
 
     [XmlRoot("map")]
     [Serializable]
-    public class Map<Tkey, TValue> : Dictionary<Tkey, TValue>, IXmlSerializable, ISerializationCallbackReceiver {
+    public class Map<TKey, TValue> : Dictionary<TKey, TValue>, IXmlSerializable, ISerializationCallbackReceiver, ISaveData {
 
         [SerializeField]
-        private SerializableKeyValuePair<Tkey, TValue>[] map;
+        private SerializableKeyValuePair<TKey, TValue>[] map;
 
         public Map () { }
-        public Map (Dictionary<Tkey, TValue> dictionary) : base(dictionary) { }
+        public Map (Dictionary<TKey, TValue> dictionary) : base(dictionary) { }
         protected Map (SerializationInfo info, StreamingContext context) : base(info, context) { }
 
 
@@ -32,7 +32,7 @@ namespace SaveSystemPackage {
                 return;
             }
 
-            var keySerializer = new XmlSerializer(typeof(Tkey));
+            var keySerializer = new XmlSerializer(typeof(TKey));
             var valueSerializer = new XmlSerializer(typeof(TValue));
 
             reader.Read();
@@ -50,7 +50,7 @@ namespace SaveSystemPackage {
 
                 reader.ReadEndElement();
 
-                Add((Tkey)key, (TValue)value);
+                Add((TKey)key, (TValue)value);
 
                 reader.MoveToContent();
             }
@@ -60,10 +60,10 @@ namespace SaveSystemPackage {
 
 
         public void WriteXml (XmlWriter writer) {
-            var keySerializer = new XmlSerializer(typeof(Tkey));
+            var keySerializer = new XmlSerializer(typeof(TKey));
             var valueSerializer = new XmlSerializer(typeof(TValue));
 
-            foreach ((Tkey key, TValue value) in this) {
+            foreach ((TKey key, TValue value) in this) {
                 writer.WriteStartElement("item");
 
                 writer.WriteStartElement("key");
@@ -81,13 +81,13 @@ namespace SaveSystemPackage {
 
         public void OnBeforeSerialize () {
             map = this
-               .Select(item => (SerializableKeyValuePair<Tkey, TValue>)item)
+               .Select(item => (SerializableKeyValuePair<TKey, TValue>)item)
                .ToArray();
         }
 
 
         public void OnAfterDeserialize () {
-            foreach ((Tkey key, TValue value) in map)
+            foreach ((TKey key, TValue value) in map)
                 Add(key, value);
         }
 

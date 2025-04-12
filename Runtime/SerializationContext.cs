@@ -3,8 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using SaveSystemPackage.Providers;
-using SaveSystemPackage.Serialization;
-using SaveSystemPackage.Storages;
 using Directory = SaveSystemPackage.Internal.Directory;
 using File = SaveSystemPackage.Internal.File;
 
@@ -13,147 +11,72 @@ using File = SaveSystemPackage.Internal.File;
 
 namespace SaveSystemPackage {
 
-    public class SerializationContext : ISerializationContext {
+  public class SerializationContext : ISerializationContext {
 
-        [NotNull]
-        public virtual string Name {
-            get => m_name;
-            set {
-                if (string.IsNullOrEmpty(value))
-                    throw new ArgumentNullException(nameof(Name));
-
-                m_name = value;
-            }
-        }
-
-        public ISerializer Serializer { get; set; }
-        public IKeyProvider KeyProvider { get; set; }
-        public IDataStorage DataStorage { get; set; }
-        public event Func<SaveType, Task> OnSave;
-        public event Func<Task> OnReload;
-        internal Directory directory { get; private protected set; }
-
-        private string m_name;
-        private File m_dataFile;
-        private Directory m_folder;
-
-
-        public SerializationContext () { }
-
-
-        public SerializationContext (ISerializer serializer, IKeyProvider keyProvider, IDataStorage dataStorage) {
-            Serializer = serializer;
-            KeyProvider = keyProvider;
-            DataStorage = dataStorage;
-        }
-
-
-        public virtual async Task SaveData<TData> (
-            [NotNull] TData data, CancellationToken token = default
-        ) where TData : ISaveData {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.IsEmpty)
-                return;
-
-            try {
-                token.ThrowIfCancellationRequested();
-                string key = KeyProvider.Provide<TData>();
-                byte[] serializedData = Serializer.Serialize(data);
-                await DataStorage.Write(key, serializedData, token);
-            }
-            catch (OperationCanceledException) {
-                SaveSystem.Logger.LogWarning(Name, "Data saving was canceled");
-            }
-        }
-
-
-        public virtual async Task SaveData<TData> (
-            [NotNull] string key, [NotNull] TData data, CancellationToken token = default
-        ) where TData : ISaveData {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.IsEmpty)
-                return;
-
-            try {
-                token.ThrowIfCancellationRequested();
-                string resultKey = KeyProvider.Provide<TData>(key);
-                byte[] serializedData = Serializer.Serialize(data);
-                await DataStorage.Write(resultKey, serializedData, token);
-            }
-            catch (OperationCanceledException) {
-                SaveSystem.Logger.LogWarning(Name, "Data saving was canceled");
-            }
-        }
-
-
-        public virtual async Task<TData> LoadData<TData> (
-            TData @default = default, CancellationToken token = default
-        ) where TData : ISaveData {
-            try {
-                token.ThrowIfCancellationRequested();
-                string key = KeyProvider.Provide<TData>();
-                if (!await DataStorage.Exists(key))
-                    return @default;
-                byte[] data = await DataStorage.Read(key, token);
-                return Serializer.Deserialize<TData>(data);
-            }
-            catch (OperationCanceledException) {
-                SaveSystem.Logger.LogWarning(Name, "Data loading was canceled");
-                return @default;
-            }
-        }
-
-
-        public virtual async Task<TData> LoadData<TData> (
-            [NotNull] string key, TData @default = default, CancellationToken token = default
-        ) where TData : ISaveData {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-
-            try {
-                token.ThrowIfCancellationRequested();
-                string resultKey = KeyProvider.Provide<TData>(key);
-                if (!await DataStorage.Exists(resultKey))
-                    return @default;
-                byte[] data = await DataStorage.Read(resultKey, token);
-                return Serializer.Deserialize<TData>(data);
-            }
-            catch (OperationCanceledException) {
-                SaveSystem.Logger.LogWarning(Name, "Data loading was canceled");
-                return @default;
-            }
-        }
-
-
-        public virtual async Task DeleteData<TData> () where TData : ISaveData {
-            string key = KeyProvider.Provide<TData>();
-            await DataStorage.Delete(key);
-        }
-
-
-        public virtual async Task DeleteData<TData> ([NotNull] string key) where TData : ISaveData {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            string resultKey = KeyProvider.Provide<TData>(key);
-            await DataStorage.Delete(resultKey);
-        }
-
-
-        internal async Task OnSaveInvoke (SaveType saveType) {
-            if (OnSave != null)
-                await OnSave.Invoke(saveType);
-        }
-
-
-        internal async Task OnReloadInvoke () {
-            if (OnReload != null)
-                await OnReload.Invoke();
-        }
-
+    [NotNull]
+    public virtual string Name {
+      get => _name;
+      set => _name = !string.IsNullOrEmpty(value) ? value : throw new ArgumentNullException(nameof(Name));
     }
+
+    public ISaveDataProvider DataProvider {
+      get => _dataProvider;
+      set => _dataProvider = value ?? throw new ArgumentNullException(nameof(DataProvider));
+    }
+
+    public event Func<SaveType, Task> OnSave;
+    public event Func<Task> OnReload;
+    internal Directory Directory { get; private protected set; }
+
+    private string _name;
+    private ISaveDataProvider _dataProvider;
+    private File _dataFile;
+    private Directory _folder;
+
+    public SerializationContext() {
+    }
+
+    public SerializationContext(ISaveDataProvider dataProvider) {
+      DataProvider = dataProvider;
+    }
+
+    public virtual async Task SaveData<TData>([NotNull] TData data, string key = null, CancellationToken token = default) where TData : ISaveData {
+      try {
+        await DataProvider.SaveData(data, key, token);
+      }
+      catch (OperationCanceledException) {
+        SaveSystem.Logger.LogWarning(Name, "Data saving was canceled");
+      }
+    }
+
+    public virtual async Task<TData> LoadData<TData>(string key = null, CancellationToken token = default) where TData : ISaveData {
+      try {
+        return await DataProvider.LoadData<TData>(key, token);
+      }
+      catch (OperationCanceledException) {
+        SaveSystem.Logger.LogWarning(Name, "Data loading was canceled");
+        return default;
+      }
+    }
+
+    public virtual async Task DeleteData<TData>(string key = null, CancellationToken token = default) where TData : ISaveData {
+      await DataProvider.DeleteData<TData>(key);
+    }
+
+    public virtual void RegisterDataSaving<TData>(Func<TData> dataReceiver, string key = null) where TData : ISaveData {
+      OnSave += _ => SaveData(dataReceiver(), key);
+    }
+
+    internal async Task OnSaveInvoke(SaveType saveType) {
+      if (OnSave != null)
+        await OnSave.Invoke(saveType);
+    }
+
+    internal async Task OnReloadInvoke() {
+      if (OnReload != null)
+        await OnReload.Invoke();
+    }
+
+  }
 
 }

@@ -17,7 +17,7 @@ namespace SaveSystemPackage.SerializableData {
             return new RigidbodyData {
                 position = rigidbody.position,
                 rotation = rigidbody.rotation,
-                velocity = rigidbody.velocity,
+                velocity = rigidbody.linearVelocity,
                 angularVelocity = rigidbody.angularVelocity,
                 isKinematic = rigidbody.isKinematic
             };

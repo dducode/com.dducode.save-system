@@ -23,7 +23,9 @@ namespace SaveSystemPackage {
         private void Awake () {
             SceneContext = new SceneSerializationContext {
                 Name = $"{gameObject.scene.name} scene scope",
-                Serializer = SaveSystem.Settings.SharedSerializer
+                DataProvider = new DataProvider {
+                    Serializer = SaveSystem.Settings.SharedSerializer
+                }
             };
 
             SaveProfile profile = SaveSystem.Game.SaveProfile;
@@ -32,14 +34,14 @@ namespace SaveSystemPackage {
 
             if (profile == null) {
                 Directory directory = Storage.ScenesDirectory.CreateDirectory(id);
-                SceneContext.KeyProvider = new KeyDecorator(SaveSystem.Game.KeyProvider, directory.Name);
-                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
+                SceneContext.DataProvider.KeyProvider = new KeyDecorator(SaveSystem.Game.DataProvider.KeyProvider, directory.Name);
+                SceneContext.DataProvider.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
                 SaveSystem.Game.SceneContext = SceneContext;
             }
             else {
-                Directory directory = profile.directory.CreateDirectory(id);
-                SceneContext.KeyProvider = new KeyDecorator(profile.KeyProvider, directory.Name);
-                SceneContext.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
+                Directory directory = profile.Directory.CreateDirectory(id);
+                SceneContext.DataProvider.KeyProvider = new KeyDecorator(profile.DataProvider.KeyProvider, directory.Name);
+                SceneContext.DataProvider.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
                 profile.SceneContext = SceneContext;
             }
 

@@ -57,7 +57,7 @@ namespace SaveSystemPackage.Profiles {
             Id = data.id;
             m_name = data.name;
             m_iconId = data.iconId;
-            this.directory = directory;
+            this.Directory = directory;
         }
 
 

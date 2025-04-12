@@ -4,117 +4,106 @@ using System.Threading.Tasks;
 
 namespace SaveSystemPackage.Internal {
 
-    internal class File {
+  internal class File {
 
-        internal string Name { get; private set; }
-        internal string Extension { get; }
-        internal string FullName { get; private set; }
-        internal string Path => System.IO.Path.Combine(Directory.Path, FullName);
-        internal Directory Directory { get; }
+    internal string Name { get; private set; }
+    internal string Extension { get; }
+    internal string FullName { get; private set; }
+    internal string Path => System.IO.Path.Combine(Directory.Path, FullName);
+    internal Directory Directory { get; }
 
-        internal long DataSize {
-            get {
-                if (System.IO.File.Exists(Path)) {
-                    if (m_fileInfo == null || !string.Equals(m_fileInfo.FullName, Path))
-                        m_fileInfo = new FileInfo(Path);
-                    m_fileInfo.Refresh();
-                    return m_fileInfo.Length;
-                }
-                else {
-                    return 0;
-                }
-            }
-        }
-
-        internal bool IsEmpty => DataSize == 0;
-        internal bool Exists => System.IO.File.Exists(Path);
-
-        internal string OldFullName { get; private set; }
-        internal string OldName { get; private set; }
-
-        private FileInfo m_fileInfo;
-
-
-        internal File (string name, string extension, Directory directory) {
-            Directory = directory;
-            Name = Directory.GenerateUniqueName(name);
-            Extension = extension;
-            FullName = $"{Name}.{Extension}";
+    internal long DataSize {
+      get {
+        if (System.IO.File.Exists(Path)) {
+          if (m_fileInfo == null || !string.Equals(m_fileInfo.FullName, Path))
             m_fileInfo = new FileInfo(Path);
+          m_fileInfo.Refresh();
+          return m_fileInfo.Length;
         }
-
-
-        internal void Rename (string newName) {
-            string oldPath = Path;
-            OldName = string.Copy(Name);
-            Name = Directory.GenerateUniqueName(newName);
-            OldFullName = string.Copy(FullName);
-            FullName = $"{Name}.{Extension}";
-            Directory.UpdateFile(this, OldName);
-
-            if (System.IO.File.Exists(oldPath))
-                System.IO.File.Move(oldPath, Path);
+        else {
+          return 0;
         }
-
-
-        internal FileStream Open (FileMode fileMode = FileMode.OpenOrCreate) {
-            return System.IO.File.Open(Path, fileMode);
-        }
-
-
-        internal byte[] ReadAllBytes () {
-            return System.IO.File.ReadAllBytes(Path);
-        }
-
-
-        internal string ReadAllText () {
-            return System.IO.File.ReadAllText(Path);
-        }
-
-
-        internal async Task<byte[]> ReadAllBytesAsync (CancellationToken token) {
-            return await System.IO.File.ReadAllBytesAsync(Path, token);
-        }
-
-
-        internal async Task<string> ReadAllTextAsync (CancellationToken token) {
-            return await System.IO.File.ReadAllTextAsync(Path, token);
-        }
-
-
-        internal void WriteAllBytes (byte[] data) {
-            System.IO.File.WriteAllBytes(Path, data);
-        }
-
-
-        internal void WriteAllText (string data) {
-            System.IO.File.WriteAllText(Path, data);
-        }
-
-
-        internal async Task WriteAllBytesAsync (byte[] data, CancellationToken token) {
-            await System.IO.File.WriteAllBytesAsync(Path, data, token);
-        }
-
-
-        public async Task WriteAllTextAsync (string data, CancellationToken token) {
-            await System.IO.File.WriteAllTextAsync(Path, data, token);
-        }
-
-
-        internal void Delete () {
-            Directory.DeleteFile(Name);
-        }
-
-
-        internal void Clear () {
-            if (!Exists)
-                return;
-
-            using FileStream stream = System.IO.File.Open(Path, FileMode.Open);
-            stream.SetLength(0);
-        }
-
+      }
     }
+
+    internal bool IsEmpty => DataSize == 0;
+    internal bool Exists => System.IO.File.Exists(Path);
+
+    internal string OldFullName { get; private set; }
+    internal string OldName { get; private set; }
+
+    private FileInfo m_fileInfo;
+
+    internal File(string name, string extension, Directory directory) {
+      Directory = directory;
+      Name = Directory.GenerateUniqueName(name);
+      Extension = extension;
+      FullName = $"{Name}.{Extension}";
+      m_fileInfo = new FileInfo(Path);
+      if (!Exists)
+        System.IO.File.Create(Path).Close();
+    }
+
+    internal void Rename(string newName) {
+      string oldPath = Path;
+      OldName = string.Copy(Name);
+      Name = Directory.GenerateUniqueName(newName);
+      OldFullName = string.Copy(FullName);
+      FullName = $"{Name}.{Extension}";
+      Directory.UpdateFile(this, OldName);
+
+      if (System.IO.File.Exists(oldPath))
+        System.IO.File.Move(oldPath, Path);
+    }
+
+    internal FileStream Open(FileMode fileMode = FileMode.OpenOrCreate) {
+      return System.IO.File.Open(Path, fileMode);
+    }
+
+    internal byte[] ReadAllBytes() {
+      return System.IO.File.ReadAllBytes(Path);
+    }
+
+    internal string ReadAllText() {
+      return System.IO.File.ReadAllText(Path);
+    }
+
+    internal async Task<byte[]> ReadAllBytesAsync(CancellationToken token) {
+      return await System.IO.File.ReadAllBytesAsync(Path, token);
+    }
+
+    internal async Task<string> ReadAllTextAsync(CancellationToken token) {
+      return await System.IO.File.ReadAllTextAsync(Path, token);
+    }
+
+    internal void WriteAllBytes(byte[] data) {
+      System.IO.File.WriteAllBytes(Path, data);
+    }
+
+    internal void WriteAllText(string data) {
+      System.IO.File.WriteAllText(Path, data);
+    }
+
+    internal async Task WriteAllBytesAsync(byte[] data, CancellationToken token) {
+      await System.IO.File.WriteAllBytesAsync(Path, data, token);
+    }
+
+    public async Task WriteAllTextAsync(string data, CancellationToken token) {
+      await System.IO.File.WriteAllTextAsync(Path, data, token);
+    }
+
+    internal void Delete() {
+      Directory.DeleteFile(Name);
+    }
+
+    internal void Clear() {
+      if (!Exists)
+        return;
+
+      using FileStream stream = System.IO.File.Open(Path, FileMode.Open);
+      stream.SetLength(0);
+    }
+
+  }
 
 }

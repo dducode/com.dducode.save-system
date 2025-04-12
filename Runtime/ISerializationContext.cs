@@ -1,22 +1,16 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using SaveSystemPackage.Providers;
 
 namespace SaveSystemPackage {
 
-    public interface ISerializationContext : IReadOnlyContext {
+  public interface ISerializationContext {
 
-        public Task SaveData<TData> (TData data, CancellationToken token = default) where TData : ISaveData;
+    public ISaveDataProvider DataProvider { get; set; }
+    public Task SaveData<TData>(TData data, string key = null, CancellationToken token = default) where TData : ISaveData;
+    public Task<TData> LoadData<TData>(string key = null, CancellationToken token = default) where TData : ISaveData;
+    public Task DeleteData<TData>(string key = null, CancellationToken token = default) where TData : ISaveData;
 
-
-        public Task SaveData<TData> (string key, TData data, CancellationToken token = default)
-            where TData : ISaveData;
-
-
-        public Task DeleteData<TData> () where TData : ISaveData;
-
-
-        public Task DeleteData<TData> (string key) where TData : ISaveData;
-
-    }
+  }
 
 }

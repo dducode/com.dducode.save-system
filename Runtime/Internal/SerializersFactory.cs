@@ -23,14 +23,12 @@ namespace SaveSystemPackage.Internal {
                     new DeflateCompressor(settings.compressionSettings)
                 );
             }
-            else {
-                if (encrypt)
-                    return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
-                else if (compress)
-                    return new CompressionSerializer(serializer, new DeflateCompressor(settings.compressionSettings));
-                else
-                    return serializer;
-            }
+
+            if (encrypt)
+                return new EncryptionSerializer(serializer, new AesEncryptor(settings.encryptionSettings));
+            if (compress)
+                return new CompressionSerializer(serializer, new DeflateCompressor(settings.compressionSettings));
+            return serializer;
         }
 
 

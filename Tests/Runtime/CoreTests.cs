@@ -39,7 +39,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave;
 
             var testObjectAdapter = new TestObjectAdapter(simpleObject);
-            m_profile.OnSave += async _ => await m_profile.SaveData(testObjectAdapter.GetData());
+            m_profile.RegisterDataSaving(testObjectAdapter.GetData);
 
             var autoSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {

@@ -30,7 +30,7 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        [MenuItem("Tools/Save System/Create Key Map Config Template")]
+        [MenuItem("Assets/Create/Save System/Key Map Config Template")]
         private static void CreateKeyMapConfigTemplate () {
             byte[] bytes = SaveSystem.EditorSerializer.Serialize(KeyMapConfig.Template);
             string path = Path.Combine(ResourcesFolder, "key-map-config.yaml");
@@ -46,7 +46,7 @@ namespace SaveSystemPackage.Editor {
         }
 
 
-        [MenuItem("Tools/Save System/Create Key Map Config Template", true)]
+        [MenuItem("Assets/Create/Save System/Key Map Config Template", true)]
         private static bool CreateKeyMapConfigTemplateValidate () {
             return !ResourcesManager.KeyMapConfigExists();
         }
