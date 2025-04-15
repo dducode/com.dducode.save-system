@@ -20,7 +20,8 @@ namespace SaveSystemPackage {
     public static Game Game { get; private set; }
     public static ProfilesManager ProfilesManager { get; private set; }
     public static SystemSettings Settings { get; private set; }
-    public static KeyMap KeyMap { get; private set; }
+    public static Map<string, string> KeyToPathMap { get; private set; }
+    public static IKeyProvider KeyProvider { get; private set; }
     public static ILogger Logger { get; set; }
 
     public static bool Initialized { get; private set; }
@@ -46,21 +47,23 @@ namespace SaveSystemPackage {
 
     public static async Task Initialize() {
       try {
-        KeyMap = new KeyMap(KeyMap.PredefinedMap);
-        KeyMap.Concat(ResourcesManager.LoadKeyMapConfig());
+        var keyMap = new KeyMap(KeyMap.PredefinedMap);
+        keyMap.Concat(ResourcesManager.LoadKeyMapConfig());
+        KeyProvider = new KeyStore(keyMap);
 
         using (SaveSystemSettings settings = SaveSystemSettings.Load()) {
           Settings = settings;
           Game = new Game {
             DataProvider = new DataProvider {
               Serializer = Settings.SharedSerializer,
-              KeyProvider = new KeyStore(KeyMap),
-              DataStorage = new FileSystemStorage(Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.fileSystemCacheSettings.GetSize())
+              DataStorage = new FileSystemStorage(
+                Storage.Root, Settings.SharedSerializer.GetFormatCode(), settings.fileSystemCacheSettings.GetSize()
+              )
             }
           };
         }
 
-        var data = await Game.LoadData<ProfilesManagerData>();
+        var data = await Game.LoadData<ProfilesManagerData>(KeyProvider.Provide<ProfilesManagerData>());
         ProfilesManager = new ProfilesManager(data);
         SetOnExitPlayModeCallback();
         SetPlayerLoop();

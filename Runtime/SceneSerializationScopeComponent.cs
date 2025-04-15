@@ -7,53 +7,45 @@ using Directory = SaveSystemPackage.Internal.Directory;
 
 namespace SaveSystemPackage {
 
-    [AddComponentMenu("Save System/Scene Serialization Scope")]
-    [DisallowMultipleComponent]
-    public class SceneSerializationScopeComponent : MonoBehaviour {
+  [AddComponentMenu("Save System/Scene Serialization Scope")]
+  [DisallowMultipleComponent]
+  public class SceneSerializationScopeComponent : MonoBehaviour {
 
-        [SerializeField]
-        private string id;
+    [SerializeField] private string id;
+    [SerializeField] private UnityEvent onInitialized;
+    public SceneSerializationContext SceneContext { get; private set; }
 
-        [SerializeField]
-        private UnityEvent onInitialized;
-
-        public SceneSerializationContext SceneContext { get; private set; }
-
-
-        private void Awake () {
-            SceneContext = new SceneSerializationContext {
-                Name = $"{gameObject.scene.name} scene scope",
-                DataProvider = new DataProvider {
-                    Serializer = SaveSystem.Settings.SharedSerializer
-                }
-            };
-
-            SaveProfile profile = SaveSystem.Game.SaveProfile;
-            string fileExtension = SaveSystem.Settings.SharedSerializer.GetFormatCode();
-            int cacheSize = SaveSystem.Settings.FileSystemCacheSettings.GetSize();
-
-            if (profile == null) {
-                Directory directory = Storage.ScenesDirectory.CreateDirectory(id);
-                SceneContext.DataProvider.KeyProvider = new KeyDecorator(SaveSystem.Game.DataProvider.KeyProvider, directory.Name);
-                SceneContext.DataProvider.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
-                SaveSystem.Game.SceneContext = SceneContext;
-            }
-            else {
-                Directory directory = profile.Directory.CreateDirectory(id);
-                SceneContext.DataProvider.KeyProvider = new KeyDecorator(profile.DataProvider.KeyProvider, directory.Name);
-                SceneContext.DataProvider.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
-                profile.SceneContext = SceneContext;
-            }
-
-            onInitialized?.Invoke();
+    private void Awake() {
+      SceneContext = new SceneSerializationContext {
+        Name = $"{gameObject.scene.name} scene scope",
+        DataProvider = new DataProvider {
+          Serializer = SaveSystem.Settings.SharedSerializer
         }
+      };
 
+      SaveProfile profile = SaveSystem.Game.SaveProfile;
+      string fileExtension = SaveSystem.Settings.SharedSerializer.GetFormatCode();
+      int cacheSize = SaveSystem.Settings.FileSystemCacheSettings.GetSize();
 
-        private void OnValidate () {
-            if (string.IsNullOrEmpty(id))
-                id = $"scene_{gameObject.GetInstanceID()}";
-        }
+      if (profile == null) {
+        Directory directory = Storage.ScenesDirectory.CreateDirectory(id);
+        SceneContext.DataProvider.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
+        SaveSystem.Game.SceneContext = SceneContext;
+      }
+      else {
+        Directory directory = profile.Directory.CreateDirectory(id);
+        SceneContext.DataProvider.DataStorage = new FileSystemStorage(directory, fileExtension, cacheSize);
+        profile.SceneContext = SceneContext;
+      }
 
+      onInitialized?.Invoke();
     }
+
+    private void OnValidate() {
+      if (string.IsNullOrEmpty(id))
+        id = $"scene_{gameObject.GetInstanceID()}";
+    }
+
+  }
 
 }

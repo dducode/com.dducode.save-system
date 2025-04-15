@@ -3,32 +3,33 @@ using UnityEngine;
 
 namespace SaveSystemPackage.SerializableData {
 
-    [Serializable]
-    public struct QuaternionData : ISaveData {
+  [Serializable]
+  public struct QuaternionData : ISaveData {
 
-        public float x;
-        public float y;
-        public float z;
-        public float w;
+    public float x;
+    public float y;
+    public float z;
+    public float w;
 
-
-        public QuaternionData (float x, float y, float z, float w) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.w = w;
-        }
-
-
-        public static implicit operator QuaternionData (Quaternion quaternion) {
-            return new QuaternionData(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
-        }
-
-
-        public static implicit operator Quaternion (QuaternionData data) {
-            return new Quaternion(data.x, data.y, data.z, data.w);
-        }
-
+    public QuaternionData(float x, float y, float z, float w) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      this.w = w;
     }
+
+    public override string ToString() {
+      return $"({x}, {y}, {z}, {w})";
+    }
+
+    public static implicit operator QuaternionData(Quaternion quaternion) {
+      return new QuaternionData(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+    }
+
+    public static implicit operator Quaternion(QuaternionData data) {
+      return new Quaternion(data.x, data.y, data.z, data.w);
+    }
+
+  }
 
 }

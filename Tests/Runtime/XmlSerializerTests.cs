@@ -14,6 +14,8 @@ namespace SaveSystemPackage.Tests {
 
     [UnityTest]
     public IEnumerator RigidbodyDataSaveLoadTest() {
+      const string key = "rigidbody-data";
+
       var data = new RigidbodyData {
         position = Random.insideUnitSphere,
         rotation = Random.rotation
@@ -21,18 +23,15 @@ namespace SaveSystemPackage.Tests {
       var testScope = new SerializationContext {
         DataProvider = new DataProvider {
           Serializer = new XmlSerializer(),
-          KeyProvider = new KeyStore(new KeyMap {
-            { typeof(RigidbodyData), "test-rigidbody-data" }
-          }),
           DataStorage = new FileSystemStorage(Storage.TestsDirectory, "xml")
         }
       };
       var completed = false;
-      testScope.SaveData(data).ContinueWith(_ => completed = true);
+      testScope.SaveData(key, data).ContinueWith(_ => completed = true);
       yield return new WaitWhile(() => !completed);
       completed = false;
       RigidbodyData loadedData = default;
-      testScope.LoadData<RigidbodyData>().ContinueWith(rd => {
+      testScope.LoadData<RigidbodyData>(key).ContinueWith(rd => {
         completed = true;
         loadedData = rd.Result;
       });

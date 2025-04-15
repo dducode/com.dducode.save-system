@@ -39,7 +39,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Settings.EnabledSaveEvents = SaveEvents.PeriodicSave;
 
             var testObjectAdapter = new TestObjectAdapter(simpleObject);
-            m_profile.RegisterDataSaving(testObjectAdapter.GetData);
+            m_profile.RegisterDataSaving("some-data", testObjectAdapter.GetData);
 
             var autoSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
@@ -65,7 +65,7 @@ namespace SaveSystemPackage.Tests {
         #endif
 
             var testObjectAdapter = new TestObjectAdapter(simpleObject);
-            m_profile.OnSave += async _ => await m_profile.SaveData(testObjectAdapter.GetData());
+            m_profile.OnSave += async _ => await m_profile.SaveData("some-data", testObjectAdapter.GetData());
 
             var quickSaveCompleted = false;
             SaveSystem.OnSaveEnd += saveType => {
@@ -89,7 +89,7 @@ namespace SaveSystemPackage.Tests {
             SaveSystem.Settings.PlayerTag = sphereTag;
 
             var testRigidbodyAdapter = new TestRigidbodyAdapter(sphere);
-            m_profile.OnSave += async _ => await m_profile.SaveData(testRigidbodyAdapter.GetData());
+            m_profile.OnSave += async _ => await m_profile.SaveData("some-data", testRigidbodyAdapter.GetData());
             CheckPointsFactory.CreateCheckPoint(Vector3.zero);
 
             var saveAtCheckpointCompleted = false;
@@ -112,7 +112,7 @@ namespace SaveSystemPackage.Tests {
             for (var i = 0; i < 1000; i++) {
                 TestRigidbody sphere = factory.CreateObject();
                 var testRigidbodyAdapter = new TestRigidbodyAdapter(sphere);
-                m_profile.OnSave += async _ => await m_profile.SaveData(testRigidbodyAdapter.GetData());
+                m_profile.OnSave += async _ => await m_profile.SaveData("some-data", testRigidbodyAdapter.GetData());
 
                 if (i == 0)
                     sphere.tag = sphereTag;

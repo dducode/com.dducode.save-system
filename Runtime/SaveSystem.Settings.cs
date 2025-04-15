@@ -119,9 +119,6 @@ namespace SaveSystemPackage {
             private KeyCode m_quickSaveKey;
         #endif
 
-            private IKeyProvider m_keyProvider;
-
-
             public static implicit operator SystemSettings (SaveSystemSettings settings) {
                 return new SystemSettings(settings);
             }

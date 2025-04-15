@@ -40,18 +40,25 @@ namespace SaveSystemPackage {
       DataProvider = dataProvider;
     }
 
-    public virtual async Task SaveData<TData>([NotNull] TData data, string key = null, CancellationToken token = default) where TData : ISaveData {
+    public virtual async Task SaveData<TData>(string key, [NotNull] TData data, CancellationToken token = default) where TData : ISaveData {
+      if (string.IsNullOrEmpty(key))
+        throw new ArgumentNullException(nameof(key));
+
       try {
-        await DataProvider.SaveData(data, key, token);
+        await DataProvider.SaveData(key, data, token);
       }
       catch (OperationCanceledException) {
         SaveSystem.Logger.LogWarning(Name, "Data saving was canceled");
       }
     }
 
-    public virtual async Task<TData> LoadData<TData>(string key = null, CancellationToken token = default) where TData : ISaveData {
+    public virtual async Task<TData> LoadData<TData>(string key, TData defaultData = default, CancellationToken token = default)
+      where TData : ISaveData {
+      if (string.IsNullOrEmpty(key))
+        throw new ArgumentNullException(nameof(key));
+
       try {
-        return await DataProvider.LoadData<TData>(key, token);
+        return await DataProvider.LoadData(key, defaultData, token);
       }
       catch (OperationCanceledException) {
         SaveSystem.Logger.LogWarning(Name, "Data loading was canceled");
@@ -59,12 +66,16 @@ namespace SaveSystemPackage {
       }
     }
 
-    public virtual async Task DeleteData<TData>(string key = null, CancellationToken token = default) where TData : ISaveData {
+    public virtual async Task DeleteData<TData>(string key, CancellationToken token = default) where TData : ISaveData {
+      if (string.IsNullOrEmpty(key))
+        throw new ArgumentNullException(nameof(key));
       await DataProvider.DeleteData<TData>(key);
     }
 
-    public virtual void RegisterDataSaving<TData>(Func<TData> dataReceiver, string key = null) where TData : ISaveData {
-      OnSave += _ => SaveData(dataReceiver(), key);
+    public virtual void RegisterDataSaving<TData>([NotNull] string key, Func<TData> dataReceiver) where TData : ISaveData {
+      if (string.IsNullOrEmpty(key))
+        throw new ArgumentNullException(nameof(key));
+      OnSave += _ => SaveData(key, dataReceiver());
     }
 
     internal async Task OnSaveInvoke(SaveType saveType) {
